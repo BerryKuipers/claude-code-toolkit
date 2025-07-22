@@ -31,9 +31,9 @@ services:
       - LOG_LEVEL=INFO
       - TZ=Europe/Amsterdam
 
-      -PUID: 1027
-      -PGID: 100
-      -UMASK: 002
+      - PUID: 1027
+      - PGID: 100
+      - UMASK: 002
     
     # Port mapping
     ports:
