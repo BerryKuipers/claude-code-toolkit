@@ -30,6 +30,10 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - LOG_LEVEL=INFO
       - TZ=Europe/Amsterdam
+
+      -PUID: 1027
+      -PGID: 100
+      -UMASK: 002
     
     # Port mapping
     ports:

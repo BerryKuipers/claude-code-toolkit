@@ -653,11 +653,47 @@ def main():
             - **Rewards Explained**: Difference explained by rewards
             - **Unexplained Diff**: Remaining unexplained discrepancy
             - **Explanation %**: How much is explained (higher = better)
+
+            **🎨 Color Legend:**
+            - 🟢 **Green border**: Assets in profit (positive return %)
+            - 🔴 **Red border**: Assets at loss (negative return %)
+            - ⚫ **Gray border**: Break-even assets (0% return)
             """)
 
-    # Display the main table with mobile-friendly formatting
+    # Add custom CSS for profit/loss row styling
+    st.markdown("""
+    <style>
+    /* Custom styling for profit/loss indicators */
+    .profit-row {
+        background: linear-gradient(90deg, rgba(0, 255, 0, 0.1) 0%, rgba(0, 255, 0, 0.05) 100%) !important;
+        border-left: 4px solid #00ff00 !important;
+    }
+    .loss-row {
+        background: linear-gradient(90deg, rgba(255, 0, 0, 0.1) 0%, rgba(255, 0, 0, 0.05) 100%) !important;
+        border-left: 4px solid #ff0000 !important;
+    }
+    .neutral-row {
+        border-left: 4px solid #666666 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Create a styled dataframe with profit/loss indicators
+    def style_profit_loss(row):
+        total_return = row["Total Return %"]
+        if total_return > 0:
+            return ['background: linear-gradient(90deg, rgba(0, 255, 0, 0.1) 0%, rgba(0, 255, 0, 0.05) 100%); border-left: 4px solid #00ff00;'] * len(row)
+        elif total_return < 0:
+            return ['background: linear-gradient(90deg, rgba(255, 0, 0, 0.1) 0%, rgba(255, 0, 0, 0.05) 100%); border-left: 4px solid #ff0000;'] * len(row)
+        else:
+            return ['border-left: 4px solid #666666;'] * len(row)
+
+    # Apply styling and display the table
+    styled_df = df.style.apply(style_profit_loss, axis=1)
+
+    # Display the main table with mobile-friendly formatting and profit/loss styling
     st.dataframe(
-        df,
+        styled_df,
         use_container_width=True,
         hide_index=True,
         column_config={
@@ -670,7 +706,7 @@ def main():
             "Actual Value €": st.column_config.NumberColumn("Actual €", format="€%.0f", width="small", help="Value based on your real holdings"),
             "Realised €": st.column_config.NumberColumn("Realised €", format="€%.0f", width="small", help="Profit/loss from completed trades"),
             "Unrealised €": st.column_config.NumberColumn("Unrealised €", format="€%.0f", width="small", help="Profit/loss if you sell NOW - Positive=Profit, Negative=Loss"),
-            "Total Return %": st.column_config.NumberColumn("Return %", format="%.1f%%", width="small", help="Overall performance percentage"),
+            "Total Return %": st.column_config.NumberColumn("Return %", format="%.1f%%", width="small", help="Overall performance percentage - Green border = Profit, Red border = Loss"),
             "Current Price €": st.column_config.NumberColumn("Price €", format="€%.2f", width="small", help="Current market price per coin"),
             # Transfer columns
             "Net Transfers": st.column_config.NumberColumn("Net Transfers", format="%.6f", width="small", help="Net amount transferred (deposits - withdrawals)"),
