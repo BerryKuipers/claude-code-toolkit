@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  crypto-dashboard:
+    # Build from Git repository (Portainer compatible)
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILDPLATFORM: linux/amd64
+    container_name: crypto-dashboard
+    restart: unless-stopped
+    
+    # Environment configuration
+    environment:
+      # Bitvavo API credentials (set in Portainer stack environment)
+      - BITVAVO_API_KEY=${BITVAVO_API_KEY}
+      - BITVAVO_API_SECRET=${BITVAVO_API_SECRET}
+      
+      # Streamlit configuration
+      - STREAMLIT_SERVER_PORT=8503
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - STREAMLIT_SERVER_HEADLESS=true
+      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+      - STREAMLIT_SERVER_ENABLE_CORS=false
+      - STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=false
+      
+      # Application configuration
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - LOG_LEVEL=INFO
+      - TZ=Europe/Amsterdam
+    
+    # Port mapping
+    ports:
+      - "8503:8503"
+    
+    # Volume mounts to NAS
+    volumes:
+      # Persistent data storage on NAS
+      - /volume2/docker/crypto_insight/data:/app/data
+      - /volume2/docker/crypto_insight/logs:/app/logs
+      - /volume2/docker/crypto_insight/config:/app/config
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8503/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

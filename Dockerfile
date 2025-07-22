@@ -1,0 +1,72 @@
+# Multi-stage Docker build for Crypto Portfolio Dashboard
+FROM python:3.11-slim as builder
+
+# Install system dependencies for building
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    gcc \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Create virtual environment and install dependencies
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Upgrade pip and install dependencies
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Runtime stage
+FROM python:3.11-slim as runtime
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/opt/venv/bin:$PATH" \
+    STREAMLIT_SERVER_PORT=8503 \
+    STREAMLIT_SERVER_ADDRESS=0.0.0.0 \
+    STREAMLIT_SERVER_HEADLESS=true \
+    STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Install runtime dependencies only
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy virtual environment from builder stage
+COPY --from=builder /opt/venv /opt/venv
+
+# Set working directory
+WORKDIR /app
+
+# Copy application code
+COPY --chown=appuser:appuser . .
+
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/logs /app/data /app/config && \
+    chown -R appuser:appuser /app
+
+# Create volume mount points
+VOLUME ["/app/logs", "/app/data", "/app/config"]
+
+# Expose port
+EXPOSE 8503
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8503/_stcore/health || exit 1
+
+# Switch to non-root user
+USER appuser
+
+# Default command
+CMD ["python", "-m", "streamlit", "run", "dashboard.py", "--server.port=8503", "--server.address=0.0.0.0", "--server.headless=true"]
