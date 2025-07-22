@@ -82,7 +82,7 @@ def get_current_prices(assets: List[str]) -> Dict[str, float]:
 
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes
-def get_portfolio_data(assets: List[str], price_overrides: Dict[str, float]) -> pd.DataFrame:
+def get_portfolio_data(assets: List[str], price_overrides: Dict[str, float], current_prices: Dict[str, float]) -> pd.DataFrame:
     """Fetch and calculate portfolio data with caching."""
     client = init_bitvavo_client()
     if not client:
@@ -96,11 +96,16 @@ def get_portfolio_data(assets: List[str], price_overrides: Dict[str, float]) -> 
             if not trades:
                 continue
             
-            # Use override price if provided, otherwise get live price
+            # Use override price if provided, otherwise use cached current price
             if asset in price_overrides:
                 price_eur = _decimal(str(price_overrides[asset]))
             else:
-                price_eur = get_current_price(client, asset)
+                # Use the current price from the cached prices
+                current_price = current_prices.get(asset, 0.0)
+                if current_price > 0:
+                    price_eur = _decimal(str(current_price))
+                else:
+                    continue  # Skip assets with no cached price
             
             pnl = calculate_pnl(trades, price_eur)
             invested = pnl["total_buys_eur"]
@@ -239,9 +244,9 @@ def main():
     with col1:
         st.subheader("📊 Portfolio Overview")
         
-        # Get portfolio data
+        # Get portfolio data using cached prices
         with st.spinner("Fetching portfolio data..."):
-            df = get_portfolio_data(selected_assets, price_overrides)
+            df = get_portfolio_data(selected_assets, price_overrides, current_prices)
         
         if df.empty:
             st.error("❌ No data available")

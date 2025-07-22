@@ -136,7 +136,7 @@ def get_current_prices(assets: List[str]) -> Dict[str, float]:
 
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes
-def get_portfolio_data(assets: List[str], price_overrides: Dict[str, float]) -> pd.DataFrame:
+def get_portfolio_data(assets: List[str], price_overrides: Dict[str, float], current_prices: Dict[str, float]) -> pd.DataFrame:
     """Fetch and calculate portfolio data with caching."""
     logger.info(f"Getting portfolio data for {len(assets)} assets: {assets}")
     logger.info(f"Price overrides: {price_overrides}")
@@ -170,18 +170,18 @@ def get_portfolio_data(assets: List[str], price_overrides: Dict[str, float]) -> 
                 skipped_assets.append(f"{asset} (no trades)")
                 continue
 
-            # Use override price if provided, otherwise get live price
+            # Use override price if provided, otherwise use cached current price
             if asset in price_overrides:
                 price_eur = _decimal(str(price_overrides[asset]))
                 logger.info(f"Using override price for {asset}: €{price_eur}")
             else:
-                logger.info(f"Fetching live price for {asset}")
-                price_eur = get_current_price(client, asset)
-                logger.info(f"Live price for {asset}: €{price_eur}")
-
-                # Skip assets with no valid price (no EUR trading pair)
-                if price_eur == 0:
-                    logger.warning(f"No valid EUR price found for {asset}")
+                # Use the current price from the cached prices
+                current_price = current_prices.get(asset, 0.0)
+                if current_price > 0:
+                    price_eur = _decimal(str(current_price))
+                    logger.info(f"Using cached price for {asset}: €{price_eur}")
+                else:
+                    logger.warning(f"No cached price found for {asset}")
                     skipped_assets.append(f"{asset} (no EUR pair)")
                     continue
 
@@ -598,9 +598,9 @@ def main():
         st.cache_data.clear()
         st.rerun()
     
-    # Get portfolio data first
+    # Get portfolio data using cached prices
     with st.spinner("Fetching portfolio data..."):
-        df = get_portfolio_data(selected_assets, price_overrides)
+        df = get_portfolio_data(selected_assets, price_overrides, current_prices)
 
     if df.empty:
         st.error("❌ No data available")
