@@ -111,6 +111,31 @@ def init_bitvavo_client() -> Optional[Bitvavo]:
 
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes
+def get_current_prices(assets: List[str]) -> Dict[str, float]:
+    """Fetch current prices for all assets with caching."""
+    logger.info(f"Fetching current prices for {len(assets)} assets: {assets}")
+
+    client = init_bitvavo_client()
+    if not client:
+        logger.error("Failed to initialize Bitvavo client for price fetching")
+        return {}
+
+    prices = {}
+    for asset in assets:
+        try:
+            price_eur = get_current_price(client, asset)
+            if price_eur > 0:
+                prices[asset] = float(price_eur)
+                logger.info(f"Current price for {asset}: €{price_eur}")
+            else:
+                logger.warning(f"No valid EUR price found for {asset}")
+        except Exception as e:
+            logger.error(f"Error fetching price for {asset}: {e}")
+
+    return prices
+
+
+@st.cache_data(ttl=300)  # Cache for 5 minutes
 def get_portfolio_data(assets: List[str], price_overrides: Dict[str, float]) -> pd.DataFrame:
     """Fetch and calculate portfolio data with caching."""
     logger.info(f"Getting portfolio data for {len(assets)} assets: {assets}")
@@ -536,18 +561,36 @@ def main():
     # Price overrides section
     st.sidebar.subheader("💰 Price Overrides")
     st.sidebar.markdown("*Override live prices for what-if scenarios*")
-    
+
+    # Get current prices for all selected assets
+    with st.spinner("Fetching current prices..."):
+        current_prices = get_current_prices(selected_assets)
+
     price_overrides = {}
     for asset in selected_assets:
+        # Use current price as default, or 0.0 if not available
+        current_price = current_prices.get(asset, 0.0)
+
+        # Show current price in the label if available
+        if current_price > 0:
+            label = f"{asset} Price (€) - Current: €{current_price:.2f}"
+            help_text = f"Current live price: €{current_price:.2f}. Modify to run what-if scenarios."
+        else:
+            label = f"{asset} Price (€) - No EUR pair"
+            help_text = f"No EUR trading pair available for {asset}"
+
         override_value = st.sidebar.number_input(
-            f"{asset} Price (€)",
+            label,
             min_value=0.0,
-            value=0.0,
+            value=current_price,
             step=0.01,
             format="%.2f",
-            help=f"Leave at 0 to use live {asset} price"
+            help=help_text,
+            key=f"price_override_{asset}"  # Unique key to prevent conflicts
         )
-        if override_value > 0:
+
+        # Only consider it an override if it's different from current price
+        if override_value != current_price and override_value > 0:
             price_overrides[asset] = override_value
     
     # Refresh button
