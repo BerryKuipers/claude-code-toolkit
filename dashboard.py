@@ -15,6 +15,9 @@ import streamlit as st
 import pandas as pd
 from python_bitvavo_api.bitvavo import Bitvavo
 
+# Import performance optimizations
+from src.portfolio.ui.performance import apply_global_optimizations, PerformanceOptimizer, render_optimized_dataframe
+
 # Set up logging
 def setup_logging():
     """Set up comprehensive logging to file and console with fallback for permission issues."""
@@ -85,6 +88,9 @@ from src.portfolio.core import (
 )
 from src.portfolio.ai_explanations import generate_coin_explanation, get_position_summary
 from src.portfolio.chat import render_chat_interface
+from src.portfolio.chat.cost_tracker import render_cost_footer, CostTracker
+from src.portfolio.chat.api_status import APIStatusChecker
+from src.portfolio.ui import render_sticky_nav, add_section_anchor, render_quick_actions
 
 
 def init_bitvavo_client() -> Optional[Bitvavo]:
@@ -508,12 +514,34 @@ def create_pnl_chart(df: pd.DataFrame) -> None:
 
 def main():
     """Main Streamlit application."""
+    # Apply global performance optimizations
+    apply_global_optimizations()
+
     st.set_page_config(
         page_title="Crypto Portfolio Dashboard",
         page_icon="📈",
         layout="wide",
         initial_sidebar_state="expanded"
     )
+
+    # Initialize session state objects FIRST
+    if "api_status_checker" not in st.session_state:
+        st.session_state.api_status_checker = APIStatusChecker()
+
+    # Initialize cost tracker
+    if "cost_tracker" not in st.session_state:
+        st.session_state.cost_tracker = CostTracker()
+
+    # Initialize other required session state objects
+    if "selected_model" not in st.session_state:
+        st.session_state.selected_model = "claude"
+
+    if "total_cost" not in st.session_state:
+        st.session_state.total_cost = 0.0
+
+    # Render sticky navigation
+    render_sticky_nav()
+    render_quick_actions()
 
     # Add mobile-responsive CSS
     st.markdown("""
@@ -547,11 +575,12 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
-    st.title("📈 Crypto Portfolio FIFO P&L Dashboard")
+    # Portfolio section header (title now in sticky nav)
     st.markdown("*Real-time portfolio analysis with FIFO accounting*")
     
     # Sidebar for controls
     st.sidebar.header("🎛️ Controls")
+    st.sidebar.caption("💡 Note: Changing settings will refresh the dashboard to update data")
     
     # Get available assets
     available_assets = get_available_assets()
@@ -566,7 +595,8 @@ def main():
         "Select Assets",
         options=available_assets,
         default=available_assets,
-        help="Choose which assets to include in the analysis"
+        help="Choose which assets to include in the analysis",
+        key="asset_selector"  # Stable key to reduce unnecessary reruns
     )
     
     if not selected_assets:
@@ -609,7 +639,7 @@ def main():
             price_overrides[asset] = override_value
     
     # Refresh button
-    if st.sidebar.button("🔄 Refresh Data", type="primary"):
+    if st.sidebar.button("🔄 Refresh Data", type="primary", key="refresh_data_btn"):
         st.cache_data.clear()
         st.rerun()
     
@@ -696,15 +726,80 @@ def main():
     # Create a styled dataframe with profit/loss indicators
     def style_profit_loss(row):
         total_return = row["Total Return %"]
-        if total_return > 0:
-            return ['background: linear-gradient(90deg, rgba(0, 255, 0, 0.1) 0%, rgba(0, 255, 0, 0.05) 100%); border-left: 4px solid #00ff00;'] * len(row)
+        current_value = row["Actual Value €"]
+
+        # For very small positions (< €1), use muted styling
+        if current_value < 1.0:
+            if total_return > 0:
+                # Tiny profit - very light green
+                return ['background: linear-gradient(90deg, rgba(0, 255, 0, 0.03) 0%, rgba(0, 255, 0, 0.01) 100%); border-left: 3px solid #88cc88;'] * len(row)
+            elif total_return < 0:
+                # Tiny loss - very light red
+                return ['background: linear-gradient(90deg, rgba(255, 0, 0, 0.03) 0%, rgba(255, 0, 0, 0.01) 100%); border-left: 3px solid #cc8888;'] * len(row)
+            else:
+                # Tiny position - very light gray
+                return ['background: linear-gradient(90deg, rgba(128, 128, 128, 0.03) 0%, rgba(128, 128, 128, 0.01) 100%); border-left: 3px solid #999999;'] * len(row)
+
+        # For normal positions, use standard styling
+        if total_return > 5:
+            # Strong profit - bright green
+            return ['background: linear-gradient(90deg, rgba(0, 255, 0, 0.15) 0%, rgba(0, 255, 0, 0.08) 100%); border-left: 6px solid #00ff00;'] * len(row)
+        elif total_return > 0:
+            # Moderate profit - light green
+            return ['background: linear-gradient(90deg, rgba(0, 255, 0, 0.08) 0%, rgba(0, 255, 0, 0.03) 100%); border-left: 4px solid #00cc00;'] * len(row)
+        elif total_return < -5:
+            # Strong loss - bright red
+            return ['background: linear-gradient(90deg, rgba(255, 0, 0, 0.15) 0%, rgba(255, 0, 0, 0.08) 100%); border-left: 6px solid #ff0000;'] * len(row)
         elif total_return < 0:
-            return ['background: linear-gradient(90deg, rgba(255, 0, 0, 0.1) 0%, rgba(255, 0, 0, 0.05) 100%); border-left: 4px solid #ff0000;'] * len(row)
+            # Moderate loss - light red
+            return ['background: linear-gradient(90deg, rgba(255, 0, 0, 0.08) 0%, rgba(255, 0, 0, 0.03) 100%); border-left: 4px solid #cc0000;'] * len(row)
         else:
+            # Break-even - neutral
             return ['border-left: 4px solid #666666;'] * len(row)
 
+    # Add profit/loss indicator column with better logic
+    def get_profit_indicator(row):
+        return_pct = row["Total Return %"]
+        current_value = row["Actual Value €"]
+        unrealised = row["Unrealised €"]
+
+        # For very small positions (< €1), show different indicators
+        if current_value < 1.0:
+            if return_pct > 0:
+                return "🔸 Tiny Profit"  # Small position with profit
+            elif return_pct < 0:
+                return "🔹 Tiny Loss"   # Small position with loss
+            else:
+                return "⚪ Tiny Position"  # Small position break-even
+
+        # For normal positions, use standard indicators
+        if return_pct > 10:
+            return "🚀 Strong Profit"
+        elif return_pct > 5:
+            return "📈 Good Profit"
+        elif return_pct > 0:
+            return "🟢 Profit"
+        elif return_pct == 0:
+            return "⚪ Break-even"
+        elif return_pct > -5:
+            return "🔴 Loss"
+        elif return_pct > -10:
+            return "📉 Bad Loss"
+        else:
+            return "💥 Heavy Loss"
+
+    # Add the indicator column
+    df_with_indicators = df.copy()
+    df_with_indicators['P&L Status'] = df_with_indicators.apply(get_profit_indicator, axis=1)
+
+    # Reorder columns to put P&L Status after Asset
+    cols = df_with_indicators.columns.tolist()
+    cols.remove('P&L Status')
+    cols.insert(1, 'P&L Status')  # Insert after Asset column
+    df_with_indicators = df_with_indicators[cols]
+
     # Apply styling and display the table
-    styled_df = df.style.apply(style_profit_loss, axis=1)
+    styled_df = df_with_indicators.style.apply(style_profit_loss, axis=1)
 
     # Display the main table with mobile-friendly formatting, profit/loss styling, and row selection
     selected_rows = st.dataframe(
@@ -715,6 +810,7 @@ def main():
         selection_mode="single-row",
         column_config={
             "Asset": st.column_config.TextColumn("Asset", width="small"),
+            "P&L Status": st.column_config.TextColumn("P&L Status", width="medium", help="Visual profit/loss indicator"),
             "FIFO Amount": st.column_config.NumberColumn("FIFO Amt", format="%.6f", width="small", help="Amount calculated from trade history"),
             "Actual Amount": st.column_config.NumberColumn("Actual Amt", format="%.6f", width="small", help="Your real current balance on Bitvavo"),
             "Amount Diff": st.column_config.NumberColumn("Diff", format="%.6f", width="small", help="Difference between FIFO and actual amounts"),
@@ -723,7 +819,7 @@ def main():
             "Actual Value €": st.column_config.NumberColumn("Actual €", format="€%.0f", width="small", help="Value based on your real holdings"),
             "Realised €": st.column_config.NumberColumn("Realised €", format="€%.0f", width="small", help="Profit/loss from completed trades"),
             "Unrealised €": st.column_config.NumberColumn("Unrealised €", format="€%.0f", width="small", help="Profit/loss if you sell NOW - Positive=Profit, Negative=Loss"),
-            "Total Return %": st.column_config.NumberColumn("Return %", format="%.1f%%", width="small", help="Overall performance percentage - Green border = Profit, Red border = Loss"),
+            "Total Return %": st.column_config.NumberColumn("Return % 📊", format="%.1f%%", width="small", help="Overall performance percentage - 🟢 Green = Profit, 🔴 Red = Loss, 🟡 Yellow = Break-even"),
             "Current Price €": st.column_config.NumberColumn("Price €", format="€%.2f", width="small", help="Current market price per coin"),
             # Transfer columns
             "Net Transfers": st.column_config.NumberColumn("Net Transfers", format="%.6f", width="small", help="Net amount transferred (deposits - withdrawals)"),
@@ -895,9 +991,15 @@ def main():
 
     # AI Chat Interface Section
     st.markdown("---")
+    add_section_anchor("ai-chat", "🤖 AI Portfolio Assistant")
     render_chat_interface(df)
 
-    # Explanation section
+    # Performance Monitor Section
+    st.markdown("---")
+    PerformanceOptimizer.render_performance_monitor()
+
+    # Analysis section
+    add_section_anchor("analysis", "📊 Portfolio Analysis")
     with st.expander("ℹ️ What do these metrics mean?"):
         st.markdown("""
         **FIFO vs Actual Values:**
@@ -924,6 +1026,9 @@ def main():
     st.markdown("---")
     st.markdown("*Data refreshed every 5 minutes. Price overrides update immediately.*")
     st.markdown(f"*Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*")
+
+    # Render cost footer for LLM usage tracking
+    render_cost_footer()
 
 
 if __name__ == "__main__":

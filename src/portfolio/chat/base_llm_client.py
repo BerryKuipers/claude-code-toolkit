@@ -160,6 +160,31 @@ class BaseLLMClient(ABC):
         prompt_cost = (prompt_tokens / 1000) * self.model_info.cost_per_1k_input
         completion_cost = (completion_tokens / 1000) * self.model_info.cost_per_1k_output
         return prompt_cost + completion_cost
+
+    def track_usage(self, prompt_tokens: int, completion_tokens: int, query_type: str = "chat"):
+        """Track usage with cost tracker if available.
+
+        Args:
+            prompt_tokens: Number of input tokens
+            completion_tokens: Number of output tokens
+            query_type: Type of query (chat, function_call, etc.)
+        """
+        try:
+            import streamlit as st
+            if "cost_tracker" in st.session_state:
+                cost = self.estimate_cost(prompt_tokens, completion_tokens)
+                st.session_state.cost_tracker.track_usage(
+                    self.provider,
+                    self.model_id,
+                    prompt_tokens,
+                    completion_tokens,
+                    cost,
+                    query_type
+                )
+        except Exception as e:
+            # Don't fail if cost tracking fails
+            import logging
+            logging.warning(f"Cost tracking failed: {e}")
     
     def get_model_info(self) -> ModelInfo:
         """Get information about the current model."""

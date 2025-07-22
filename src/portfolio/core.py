@@ -261,7 +261,12 @@ def fetch_deposit_history(client: "Bitvavo", asset: str) -> List[Dict[str, str]]
     _check_rate_limit(client)
     try:
         deposits = client.depositHistory({"symbol": asset})  # type: ignore[arg-type]
-        return deposits if deposits else []
+        if not deposits:
+            return []
+        # Ensure we return a list of dictionaries
+        if isinstance(deposits, list):
+            return [d for d in deposits if isinstance(d, dict)]
+        return []
     except Exception:
         return []
 
@@ -271,7 +276,12 @@ def fetch_withdrawal_history(client: "Bitvavo", asset: str) -> List[Dict[str, st
     _check_rate_limit(client)
     try:
         withdrawals = client.withdrawalHistory({"symbol": asset})  # type: ignore[arg-type]
-        return withdrawals if withdrawals else []
+        if not withdrawals:
+            return []
+        # Ensure we return a list of dictionaries
+        if isinstance(withdrawals, list):
+            return [w for w in withdrawals if isinstance(w, dict)]
+        return []
     except Exception:
         return []
 
@@ -292,12 +302,18 @@ def analyze_transfers(client: "Bitvavo", asset: str) -> TransferSummary:
 
     # Process deposits
     for deposit in deposits:
+        # Ensure deposit is a dictionary
+        if not isinstance(deposit, dict):
+            continue
         if deposit.get("status") == "completed":
             amount = _decimal(deposit.get("amount", "0"))
             total_deposits += amount
 
     # Process withdrawals
     for withdrawal in withdrawals:
+        # Ensure withdrawal is a dictionary
+        if not isinstance(withdrawal, dict):
+            continue
         if withdrawal.get("status") == "completed":
             amount = _decimal(withdrawal.get("amount", "0"))
             total_withdrawals += amount
@@ -331,8 +347,9 @@ def _detect_potential_rewards(deposits: List[Dict[str, str]]) -> Decimal:
 
     potential_rewards = Decimal("0")
 
-    # Sort deposits by timestamp
-    sorted_deposits = sorted(deposits, key=lambda x: int(x.get("timestamp", "0")))
+    # Sort deposits by timestamp, filtering out non-dict entries
+    valid_deposits = [d for d in deposits if isinstance(d, dict)]
+    sorted_deposits = sorted(valid_deposits, key=lambda x: int(x.get("timestamp", "0")))
 
     if len(sorted_deposits) < 2:
         return Decimal("0")  # Need at least 2 deposits to detect patterns

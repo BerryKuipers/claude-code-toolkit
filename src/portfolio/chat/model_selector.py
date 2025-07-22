@@ -40,7 +40,8 @@ def render_model_selector() -> str:
             range(len(model_options)),
             index=current_index,
             format_func=lambda i: model_labels[i],
-            help="Select the AI model for portfolio analysis and chat"
+            help="Select the AI model for portfolio analysis and chat",
+            key="model_selector_key"  # Stable key to reduce unnecessary reruns
         )
         
         # Update selected model

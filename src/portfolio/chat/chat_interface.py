@@ -8,6 +8,9 @@ import pandas as pd
 from .base_llm_client import LLMClientFactory, LLMProvider
 from .function_handlers import PortfolioFunctionHandler
 from .model_selector import render_model_selector, show_model_switch_success, render_model_status_indicator
+from .cost_tracker import CostTracker, render_cost_footer, render_detailed_cost_analysis
+from .prompt_editor import PromptEditor
+from .api_status import render_error_help, get_error_suggestion
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +50,14 @@ def render_chat_interface(portfolio_data: pd.DataFrame):
             }
         ]
 
+    # Initialize cost tracker
+    if "cost_tracker" not in st.session_state:
+        st.session_state.cost_tracker = CostTracker()
+
+    # Initialize prompt editor
+    if "prompt_editor" not in st.session_state:
+        st.session_state.prompt_editor = PromptEditor()
+
     # Initialize LLM client
     if "llm_client" not in st.session_state:
         try:
@@ -60,7 +71,7 @@ def render_chat_interface(portfolio_data: pd.DataFrame):
         st.session_state.function_handler = PortfolioFunctionHandler(portfolio_data)
 
     # Update function handler with latest portfolio data
-    st.session_state.function_handler.portfolio_data = portfolio_data
+    st.session_state.function_handler.update_portfolio_data(portfolio_data)
     
     # Display chat messages
     for message in st.session_state.chat_messages:
@@ -94,12 +105,29 @@ def render_chat_interface(portfolio_data: pd.DataFrame):
                     })
                     
                 except Exception as e:
-                    error_msg = f"Sorry, I encountered an error: {str(e)}"
-                    st.error(error_msg)
+                    error_message = str(e)
+
+                    # Create user-friendly error message with suggestions
+                    if "🚨" in error_message or "❌" in error_message or "⏱️" in error_message:
+                        # Error message already formatted
+                        formatted_error = error_message
+                    else:
+                        # Add formatting
+                        formatted_error = f"❌ **Error:** {error_message}"
+
+                    # Add helpful suggestion
+                    suggestion = get_error_suggestion(error_message)
+                    full_error_message = f"{formatted_error}\n\n{suggestion}"
+
+                    st.error(full_error_message)
                     st.session_state.chat_messages.append({
-                        "role": "assistant", 
-                        "content": error_msg
+                        "role": "assistant",
+                        "content": full_error_message
                     })
+
+                    # Show specific help for overload errors
+                    if "529" in error_message or "overloaded" in error_message.lower():
+                        st.info("💡 **Quick Fix:** Use the model selector above to switch to OpenAI GPT-4 while Anthropic recovers.")
     
     # Add some example queries
     with st.expander("💡 Example Questions"):
@@ -124,6 +152,32 @@ def render_chat_interface(portfolio_data: pd.DataFrame):
         - "Which assets make up more than 5% of my portfolio?"
         - "Show me assets with deposit activity"
         """)
+
+    # Add detailed cost analysis
+    render_detailed_cost_analysis()
+
+    # Add prompt editor section
+    st.markdown("---")
+    with st.expander("🎭 Customize AI Behavior & Prompts"):
+        st.session_state.prompt_editor.render_prompt_editor()
+
+    # Add API status and error help
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        with st.expander("🔍 API Status Monitor"):
+            try:
+                if hasattr(st.session_state, 'api_status_checker') and st.session_state.api_status_checker:
+                    st.session_state.api_status_checker.render_status_widget()
+                else:
+                    st.warning("API status checker not initialized. Please refresh the page.")
+            except Exception as e:
+                st.error(f"Error loading API status: {str(e)}")
+                st.info("Try refreshing the page to fix this issue.")
+
+    with col2:
+        render_error_help()
 
 
 def _get_ai_response(

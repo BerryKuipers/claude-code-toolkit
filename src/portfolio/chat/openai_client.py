@@ -61,6 +61,17 @@ class OpenAIClient(BaseLLMClient):
             ChatCompletion response from OpenAI
         """
         try:
+            # Get custom system prompt if available
+            try:
+                import streamlit as st
+                if "prompt_editor" in st.session_state:
+                    custom_system_prompt = st.session_state.prompt_editor.get_active_system_prompt()
+                    # Replace or update system message if custom prompt exists
+                    if custom_system_prompt and messages and messages[0].get("role") == "system":
+                        messages[0]["content"] = custom_system_prompt
+            except Exception:
+                pass  # Continue with default prompts if custom prompts fail
+
             # Prepare the request parameters
             params = {
                 "model": self.model_id,
@@ -84,17 +95,37 @@ class OpenAIClient(BaseLLMClient):
             # Make the API call
             response = self.client.chat.completions.create(**params)
             
-            # Log token usage
+            # Log token usage and track costs
             if hasattr(response, 'usage') and response.usage:
-                logger.info(f"OpenAI API usage - Prompt: {response.usage.prompt_tokens}, "
-                           f"Completion: {response.usage.completion_tokens}, "
-                           f"Total: {response.usage.total_tokens}")
-            
+                prompt_tokens = response.usage.prompt_tokens
+                completion_tokens = response.usage.completion_tokens
+                total_tokens = response.usage.total_tokens
+
+                logger.info(f"OpenAI API usage - Prompt: {prompt_tokens}, "
+                           f"Completion: {completion_tokens}, "
+                           f"Total: {total_tokens}")
+
+                # Track usage for cost monitoring
+                query_type = "function_call" if functions else "chat"
+                self.track_usage(prompt_tokens, completion_tokens, query_type)
+
             return response
             
         except Exception as e:
+            error_msg = str(e)
             logger.error(f"Error in OpenAI chat completion: {e}")
-            raise
+
+            # Handle specific error types
+            if "401" in error_msg or "authentication" in error_msg.lower():
+                raise Exception("❌ Authentication failed. Please check your OpenAI API key in the .env file.")
+            elif "rate_limit" in error_msg.lower() or "429" in error_msg:
+                raise Exception("⏱️ Rate limit exceeded. Please wait a moment before trying again.")
+            elif "quota" in error_msg.lower() or "billing" in error_msg.lower():
+                raise Exception("💳 OpenAI quota exceeded. Please check your billing and usage limits.")
+            elif "503" in error_msg or "502" in error_msg:
+                raise Exception("🚨 OpenAI servers are temporarily unavailable. Please try again in a few minutes.")
+            else:
+                raise Exception(f"❌ OpenAI API error: {error_msg}")
     
     def get_response_content(self, response: ChatCompletion) -> str:
         """Extract text content from chat completion response."""

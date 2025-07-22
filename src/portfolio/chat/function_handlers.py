@@ -5,6 +5,8 @@ import logging
 from typing import Dict, List, Any, Optional
 import pandas as pd
 from ..ai_explanations import generate_coin_explanation
+from .data_verification import PortfolioDataVerifier
+from ..predictions import PredictionEngine
 
 logger = logging.getLogger(__name__)
 
@@ -14,12 +16,14 @@ class PortfolioFunctionHandler:
     
     def __init__(self, portfolio_data: pd.DataFrame):
         """Initialize with portfolio data.
-        
+
         Args:
             portfolio_data: DataFrame containing portfolio information
         """
         self.portfolio_data = portfolio_data
         self.functions = self._define_functions()
+        self.verifier = PortfolioDataVerifier(portfolio_data)
+        self.prediction_engine = PredictionEngine()
     
     def _define_functions(self) -> List[Dict[str, Any]]:
         """Define available functions for OpenAI function calling."""
@@ -118,23 +122,80 @@ class PortfolioFunctionHandler:
                     },
                     "required": []
                 }
+            },
+            {
+                "name": "get_technical_analysis",
+                "description": "Get technical analysis including signals, support/resistance, and momentum indicators",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "asset": {
+                            "type": "string",
+                            "description": "Asset symbol for analysis (e.g., 'BTC', 'ETH')"
+                        }
+                    },
+                    "required": ["asset"]
+                }
+            },
+            {
+                "name": "get_risk_assessment",
+                "description": "Get comprehensive risk assessment for portfolio or specific asset",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "asset": {
+                            "type": "string",
+                            "description": "Optional asset symbol for single asset risk assessment"
+                        }
+                    },
+                    "required": []
+                }
+            },
+            {
+                "name": "get_price_prediction",
+                "description": "Get price predictions and forecasts for assets",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "asset": {
+                            "type": "string",
+                            "description": "Asset symbol for price prediction (e.g., 'BTC', 'ETH')"
+                        }
+                    },
+                    "required": ["asset"]
+                }
+            },
+            {
+                "name": "get_portfolio_optimization",
+                "description": "Get portfolio optimization recommendations and rebalancing suggestions",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "target_risk": {
+                            "type": "string",
+                            "description": "Target risk level: 'low', 'medium', 'high'",
+                            "default": "medium"
+                        }
+                    },
+                    "required": []
+                }
             }
         ]
     
     def handle_function_call(self, function_name: str, arguments: str) -> str:
-        """Handle a function call and return the result.
-        
+        """Handle a function call and return the result with data verification.
+
         Args:
             function_name: Name of the function to call
             arguments: JSON string of function arguments
-            
+
         Returns:
-            JSON string containing the function result
+            JSON string containing the verified function result
         """
         try:
             # Parse arguments
             args = json.loads(arguments) if arguments else {}
-            
+
             # Route to appropriate handler
             if function_name == "get_portfolio_summary":
                 result = self._get_portfolio_summary()
@@ -148,11 +209,40 @@ class PortfolioFunctionHandler:
                 result = self._get_portfolio_allocation(**args)
             elif function_name == "get_transfer_analysis":
                 result = self._get_transfer_analysis(**args)
+            elif function_name == "get_technical_analysis":
+                result = self._get_technical_analysis(**args)
+            elif function_name == "get_risk_assessment":
+                result = self._get_risk_assessment(**args)
+            elif function_name == "get_price_prediction":
+                result = self._get_price_prediction(**args)
+            elif function_name == "get_portfolio_optimization":
+                result = self._get_portfolio_optimization(**args)
             else:
                 result = {"error": f"Unknown function: {function_name}"}
-            
-            return json.dumps(result, default=str)
-            
+
+            result_json = json.dumps(result, default=str)
+
+            # Verify the result against actual portfolio data
+            is_valid, verified_result, error_msg = self.verifier.verify_function_result(
+                function_name, arguments, result_json
+            )
+
+            if not is_valid:
+                logger.error(f"Data verification failed for {function_name}: {error_msg}")
+                # Return error instead of potentially hallucinated data
+                return json.dumps({
+                    "error": f"Data verification failed: {error_msg}",
+                    "verification_status": "failed",
+                    "original_result": result
+                })
+
+            # Add verification status to successful results
+            if isinstance(result, dict) and "error" not in result:
+                result["verification_status"] = "verified"
+                return json.dumps(result, default=str)
+
+            return verified_result
+
         except Exception as e:
             logger.error(f"Error handling function call {function_name}: {e}")
             return json.dumps({"error": f"Function call failed: {str(e)}"})
@@ -329,3 +419,265 @@ class PortfolioFunctionHandler:
     def get_available_functions(self) -> List[Dict[str, Any]]:
         """Get list of available functions for OpenAI."""
         return self.functions
+
+    def update_portfolio_data(self, portfolio_data: pd.DataFrame):
+        """Update portfolio data and refresh verifier.
+
+        Args:
+            portfolio_data: Updated DataFrame containing portfolio information
+        """
+        self.portfolio_data = portfolio_data
+        self.verifier = PortfolioDataVerifier(portfolio_data)
+
+    def get_verification_stats(self) -> Dict[str, Any]:
+        """Get data verification statistics."""
+        return self.verifier.get_verification_stats()
+
+    def _get_technical_analysis(self, asset: str) -> Dict[str, Any]:
+        """Get technical analysis for a specific asset."""
+        try:
+            asset = asset.upper().strip()
+
+            # Check if asset exists in portfolio
+            asset_data = self.portfolio_data[self.portfolio_data["Asset"] == asset]
+            if asset_data.empty:
+                return {"error": f"Asset {asset} not found in portfolio"}
+
+            # Get comprehensive analysis from prediction engine
+            analysis = self.prediction_engine.get_comprehensive_analysis(self.portfolio_data, asset)
+
+            if "error" in analysis:
+                return analysis
+
+            # Extract technical analysis portion
+            technical_analysis = analysis.get("technical_analysis", {})
+            predictions = analysis.get("predictions", {})
+
+            return {
+                "asset": asset,
+                "technical_signals": technical_analysis.get("technical_signals", {}),
+                "support_resistance": technical_analysis.get("support_resistance", {}),
+                "momentum_indicators": technical_analysis.get("momentum_indicators", {}),
+                "volatility_analysis": technical_analysis.get("volatility_analysis", {}),
+                "trend_analysis": technical_analysis.get("trend_analysis", {}),
+                "price_predictions": predictions.get("price_targets", {}),
+                "short_term_outlook": predictions.get("short_term_outlook", {}),
+                "confidence_level": predictions.get("confidence_level", {}),
+                "analysis_timestamp": analysis.get("timestamp"),
+                "verification_status": "verified"
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting technical analysis for {asset}: {e}")
+            return {"error": f"Technical analysis failed: {str(e)}"}
+
+    def _get_risk_assessment(self, asset: Optional[str] = None) -> Dict[str, Any]:
+        """Get risk assessment for portfolio or specific asset."""
+        try:
+            if asset:
+                # Single asset risk assessment
+                asset = asset.upper().strip()
+                analysis = self.prediction_engine.get_comprehensive_analysis(self.portfolio_data, asset)
+
+                if "error" in analysis:
+                    return analysis
+
+                return {
+                    "analysis_type": "single_asset",
+                    "asset": asset,
+                    "risk_analysis": analysis.get("risk_analysis", {}),
+                    "recommendations": analysis.get("action_recommendations", []),
+                    "analysis_timestamp": analysis.get("timestamp"),
+                    "verification_status": "verified"
+                }
+            else:
+                # Portfolio-wide risk assessment
+                analysis = self.prediction_engine.get_comprehensive_analysis(self.portfolio_data)
+
+                if "error" in analysis:
+                    return analysis
+
+                portfolio_risk = analysis.get("portfolio_risk", {})
+
+                return {
+                    "analysis_type": "portfolio",
+                    "overall_risk_score": portfolio_risk.get("overall_risk_score", {}),
+                    "concentration_risk": portfolio_risk.get("concentration_risk", {}),
+                    "volatility_risk": portfolio_risk.get("volatility_risk", {}),
+                    "loss_risk": portfolio_risk.get("loss_risk", {}),
+                    "liquidity_risk": portfolio_risk.get("liquidity_risk", {}),
+                    "position_sizing_risk": portfolio_risk.get("position_sizing_risk", {}),
+                    "risk_recommendations": portfolio_risk.get("risk_recommendations", []),
+                    "portfolio_metrics": portfolio_risk.get("portfolio_metrics", {}),
+                    "analysis_timestamp": analysis.get("timestamp"),
+                    "verification_status": "verified"
+                }
+
+        except Exception as e:
+            logger.error(f"Error getting risk assessment: {e}")
+            return {"error": f"Risk assessment failed: {str(e)}"}
+
+    def _get_price_prediction(self, asset: str) -> Dict[str, Any]:
+        """Get price predictions for a specific asset."""
+        try:
+            asset = asset.upper().strip()
+
+            # Check if asset exists in portfolio
+            asset_data = self.portfolio_data[self.portfolio_data["Asset"] == asset]
+            if asset_data.empty:
+                return {"error": f"Asset {asset} not found in portfolio"}
+
+            # Get comprehensive analysis from prediction engine
+            analysis = self.prediction_engine.get_comprehensive_analysis(self.portfolio_data, asset)
+
+            if "error" in analysis:
+                return analysis
+
+            predictions = analysis.get("predictions", {})
+            technical_analysis = analysis.get("technical_analysis", {})
+
+            return {
+                "asset": asset,
+                "current_price_eur": technical_analysis.get("current_price_eur", 0),
+                "price_targets": predictions.get("price_targets", {}),
+                "support_resistance": predictions.get("support_resistance", {}),
+                "short_term_outlook": predictions.get("short_term_outlook", {}),
+                "risk_reward_ratio": predictions.get("risk_reward_ratio", {}),
+                "confidence_level": predictions.get("confidence_level", {}),
+                "technical_signals": technical_analysis.get("technical_signals", {}),
+                "momentum_indicators": technical_analysis.get("momentum_indicators", {}),
+                "analysis_timestamp": analysis.get("timestamp"),
+                "disclaimer": "Predictions are based on technical analysis and historical data. Crypto markets are highly volatile and unpredictable.",
+                "verification_status": "verified"
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting price prediction for {asset}: {e}")
+            return {"error": f"Price prediction failed: {str(e)}"}
+
+    def _get_portfolio_optimization(self, target_risk: str = "medium") -> Dict[str, Any]:
+        """Get portfolio optimization recommendations."""
+        try:
+            # Get comprehensive portfolio analysis
+            analysis = self.prediction_engine.get_comprehensive_analysis(self.portfolio_data)
+
+            if "error" in analysis:
+                return analysis
+
+            portfolio_risk = analysis.get("portfolio_risk", {})
+            portfolio_technical = analysis.get("portfolio_technical", {})
+            top_assets = analysis.get("top_assets_analysis", {})
+
+            # Generate optimization recommendations based on target risk
+            optimization_recs = self._generate_optimization_recommendations(
+                portfolio_risk, portfolio_technical, top_assets, target_risk
+            )
+
+            return {
+                "target_risk_level": target_risk,
+                "current_risk_level": portfolio_risk.get("overall_risk_score", {}).get("risk_level", "UNKNOWN"),
+                "optimization_needed": self._assess_optimization_need(portfolio_risk, target_risk),
+                "rebalancing_recommendations": optimization_recs.get("rebalancing", []),
+                "position_adjustments": optimization_recs.get("position_adjustments", []),
+                "diversification_suggestions": optimization_recs.get("diversification", []),
+                "risk_management_actions": optimization_recs.get("risk_management", []),
+                "portfolio_metrics": portfolio_risk.get("portfolio_metrics", {}),
+                "concentration_analysis": portfolio_risk.get("concentration_risk", {}),
+                "analysis_timestamp": analysis.get("timestamp"),
+                "verification_status": "verified"
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting portfolio optimization: {e}")
+            return {"error": f"Portfolio optimization failed: {str(e)}"}
+
+    def _generate_optimization_recommendations(
+        self,
+        portfolio_risk: Dict,
+        portfolio_technical: Dict,
+        top_assets: Dict,
+        target_risk: str
+    ) -> Dict[str, List[str]]:
+        """Generate specific optimization recommendations."""
+        recommendations = {
+            "rebalancing": [],
+            "position_adjustments": [],
+            "diversification": [],
+            "risk_management": []
+        }
+
+        # Risk-based recommendations
+        current_risk = portfolio_risk.get("overall_risk_score", {}).get("risk_level", "MEDIUM")
+        concentration_risk = portfolio_risk.get("concentration_risk", {})
+
+        # Concentration recommendations
+        if concentration_risk.get("risk_level") in ["HIGH", "VERY_HIGH"]:
+            max_position = concentration_risk.get("max_single_position_pct", 0)
+            recommendations["rebalancing"].append(
+                f"Reduce largest position from {max_position:.1f}% to under 20%"
+            )
+
+        # Position adjustment recommendations
+        largest_positions = top_assets.get("largest_positions", [])[:3]
+        for position in largest_positions:
+            if position.get("allocation_pct", 0) > 25:
+                recommendations["position_adjustments"].append(
+                    f"Consider reducing {position['asset']} position (currently {position['allocation_pct']:.1f}%)"
+                )
+
+        # Performance-based recommendations
+        top_performers = top_assets.get("top_performers", [])[:2]
+        worst_performers = top_assets.get("worst_performers", [])[:2]
+
+        for performer in top_performers:
+            if performer.get("return_pct", 0) > 100:
+                recommendations["risk_management"].append(
+                    f"Consider taking profits on {performer['asset']} (+{performer['return_pct']:.1f}%)"
+                )
+
+        for performer in worst_performers:
+            if performer.get("return_pct", 0) < -30:
+                recommendations["risk_management"].append(
+                    f"Review {performer['asset']} position ({performer['return_pct']:.1f}%) - consider stop-loss"
+                )
+
+        # Target risk adjustments
+        if target_risk == "low" and current_risk in ["HIGH", "VERY_HIGH"]:
+            recommendations["risk_management"].extend([
+                "Reduce position sizes to lower overall portfolio risk",
+                "Focus on major liquid assets (BTC, ETH) for stability",
+                "Implement strict stop-loss levels"
+            ])
+        elif target_risk == "high" and current_risk in ["LOW", "VERY_LOW"]:
+            recommendations["diversification"].extend([
+                "Consider adding exposure to higher-growth altcoins",
+                "Increase position sizes in conviction plays",
+                "Explore emerging sector opportunities"
+            ])
+
+        # Diversification recommendations
+        total_positions = portfolio_technical.get("total_positions", 0)
+        if total_positions < 5:
+            recommendations["diversification"].append("Consider adding more positions for better diversification")
+        elif total_positions > 15:
+            recommendations["diversification"].append("Consider consolidating smaller positions")
+
+        return recommendations
+
+    def _assess_optimization_need(self, portfolio_risk: Dict, target_risk: str) -> bool:
+        """Assess if portfolio optimization is needed."""
+        current_risk = portfolio_risk.get("overall_risk_score", {}).get("risk_level", "MEDIUM")
+        concentration_risk = portfolio_risk.get("concentration_risk", {}).get("risk_level", "LOW")
+
+        # Map target risk to acceptable current risk levels
+        risk_mapping = {
+            "low": ["LOW", "VERY_LOW"],
+            "medium": ["LOW", "MEDIUM", "HIGH"],
+            "high": ["MEDIUM", "HIGH", "VERY_HIGH"]
+        }
+
+        acceptable_risks = risk_mapping.get(target_risk, ["MEDIUM"])
+
+        # Optimization needed if current risk doesn't match target or concentration is too high
+        return (current_risk not in acceptable_risks or
+                concentration_risk in ["HIGH", "VERY_HIGH"])

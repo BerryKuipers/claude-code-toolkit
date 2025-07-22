@@ -47,13 +47,22 @@ class AnthropicClient(BaseLLMClient):
             Claude Message response
         """
         try:
+            # Get custom system prompt if available
+            custom_system_prompt = None
+            try:
+                import streamlit as st
+                if "prompt_editor" in st.session_state:
+                    custom_system_prompt = st.session_state.prompt_editor.get_active_system_prompt()
+            except Exception:
+                pass  # Continue with default prompts if custom prompts fail
+
             # Separate system message from conversation messages
             system_message = ""
             conversation_messages = []
-            
+
             for msg in messages:
                 if msg["role"] == "system":
-                    system_message = msg["content"]
+                    system_message = custom_system_prompt or msg["content"]
                 else:
                     conversation_messages.append({
                         "role": msg["role"],
@@ -86,16 +95,33 @@ class AnthropicClient(BaseLLMClient):
             # Make the API call
             response = self.client.messages.create(**params)
             
-            # Log token usage
+            # Log token usage and track costs
             if hasattr(response, 'usage') and response.usage:
-                logger.info(f"Claude API usage - Input: {response.usage.input_tokens}, "
-                           f"Output: {response.usage.output_tokens}")
-            
+                input_tokens = response.usage.input_tokens
+                output_tokens = response.usage.output_tokens
+
+                logger.info(f"Claude API usage - Input: {input_tokens}, "
+                           f"Output: {output_tokens}")
+
+                # Track usage for cost monitoring
+                query_type = "function_call" if functions else "chat"
+                self.track_usage(input_tokens, output_tokens, query_type)
+
             return response
             
         except Exception as e:
+            error_msg = str(e)
             logger.error(f"Error in Claude chat completion: {e}")
-            raise
+
+            # Handle specific error types
+            if "529" in error_msg or "overloaded" in error_msg.lower():
+                raise Exception("🚨 Anthropic servers are currently overloaded. Please try again in a few minutes or switch to OpenAI GPT-4 in the model selector.")
+            elif "401" in error_msg or "authentication" in error_msg.lower():
+                raise Exception("❌ Authentication failed. Please check your Anthropic API key in the .env file.")
+            elif "rate_limit" in error_msg.lower() or "429" in error_msg:
+                raise Exception("⏱️ Rate limit exceeded. Please wait a moment before trying again.")
+            else:
+                raise Exception(f"❌ Claude API error: {error_msg}")
     
     def get_response_content(self, response: Message) -> str:
         """Extract text content from Claude response."""
@@ -235,5 +261,15 @@ class AnthropicClient(BaseLLMClient):
                 return self.get_response_content(response)
                 
         except Exception as e:
+            error_msg = str(e)
             logger.error(f"Error in Claude function calling conversation: {e}")
-            return f"I apologize, but I encountered an error processing your request: {str(e)}"
+
+            # Handle specific error types with user-friendly messages
+            if "529" in error_msg or "overloaded" in error_msg.lower():
+                return "🚨 **Anthropic servers are currently overloaded.** Please try again in a few minutes or switch to OpenAI GPT-4 using the model selector above."
+            elif "401" in error_msg or "authentication" in error_msg.lower():
+                return "❌ **Authentication failed.** Please check your Anthropic API key in the .env file."
+            elif "rate_limit" in error_msg.lower() or "429" in error_msg:
+                return "⏱️ **Rate limit exceeded.** Please wait a moment before trying again."
+            else:
+                return f"❌ **Claude API error:** {error_msg}\n\n💡 **Tip:** Try switching to OpenAI GPT-4 using the model selector if this persists."
