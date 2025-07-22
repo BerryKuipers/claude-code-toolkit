@@ -17,20 +17,33 @@ from python_bitvavo_api.bitvavo import Bitvavo
 
 # Set up logging
 def setup_logging():
-    """Set up comprehensive logging to file and console."""
-    log_dir = os.path.join(os.path.dirname(__file__), 'logs')
-    os.makedirs(log_dir, exist_ok=True)
+    """Set up comprehensive logging to file and console with fallback for permission issues."""
+    handlers = [logging.StreamHandler()]  # Always include console logging
 
-    log_file = os.path.join(log_dir, f'dashboard_{datetime.now().strftime("%Y%m%d")}.log')
+    # Try to set up file logging, but fall back gracefully if permissions fail
+    try:
+        log_dir = os.path.join(os.path.dirname(__file__), 'logs')
+        os.makedirs(log_dir, exist_ok=True)
+
+        log_file = os.path.join(log_dir, f'dashboard_{datetime.now().strftime("%Y%m%d")}.log')
+
+        # Test if we can write to the log file
+        with open(log_file, 'a', encoding='utf-8') as f:
+            f.write(f"# Log started at {datetime.now()}\n")
+
+        handlers.append(logging.FileHandler(log_file, encoding='utf-8'))
+        print(f"✅ Logging to file: {log_file}")
+
+    except (PermissionError, OSError) as e:
+        print(f"⚠️  Warning: Could not set up file logging: {e}")
+        print("📝 Continuing with console logging only")
 
     # Configure logging
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(log_file, encoding='utf-8'),
-            logging.StreamHandler()
-        ]
+        handlers=handlers,
+        force=True  # Override any existing logging configuration
     )
 
     return logging.getLogger(__name__)

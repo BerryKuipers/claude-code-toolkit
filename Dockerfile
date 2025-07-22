@@ -34,8 +34,8 @@ ENV PYTHONUNBUFFERED=1 \
     STREAMLIT_SERVER_HEADLESS=true \
     STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 
-# Create non-root user for security
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+# Install gosu for user switching (handles PUID/PGID)
+RUN apt-get update && apt-get install -y gosu && rm -rf /var/lib/apt/lists/*
 
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y \
@@ -49,14 +49,17 @@ COPY --from=builder /opt/venv /opt/venv
 WORKDIR /app
 
 # Copy application code
-COPY --chown=appuser:appuser . .
+COPY . .
 
-# Create necessary directories with proper permissions
-RUN mkdir -p /app/logs /app/data /app/config && \
-    chown -R appuser:appuser /app
+# Create necessary directories
+RUN mkdir -p /app/logs /app/data /app/config
 
 # Create volume mount points
 VOLUME ["/app/logs", "/app/data", "/app/config"]
+
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Expose port
 EXPOSE 8503
@@ -65,8 +68,8 @@ EXPOSE 8503
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8503/_stcore/health || exit 1
 
-# Switch to non-root user
-USER appuser
+# Use entrypoint script to handle PUID/PGID
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 # Default command
 CMD ["python", "-m", "streamlit", "run", "dashboard.py", "--server.port=8503", "--server.address=0.0.0.0", "--server.headless=true"]
