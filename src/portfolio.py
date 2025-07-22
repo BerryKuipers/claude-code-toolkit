@@ -15,9 +15,9 @@ import sys
 import time
 from collections import deque
 from dataclasses import dataclass
-from decimal import Decimal, getcontext
 from datetime import datetime, timezone
-from typing import Deque, Dict, List, Tuple, Optional
+from decimal import Decimal, getcontext
+from typing import Deque, Dict, List, Optional, Tuple
 
 try:
     from bitvavo import Bitvavo  # type: ignore
@@ -59,6 +59,7 @@ pytest-mock>=3.0"""
 # ---------------------------------------------------------------------------
 getcontext().prec = 36
 
+
 # ---------------------------------------------------------------------------
 # Custom exception hierarchy
 # ---------------------------------------------------------------------------
@@ -79,14 +80,15 @@ class RateLimitExceededError(BitvavoAPIException):
 # ---------------------------------------------------------------------------
 @dataclass
 class PurchaseLot:
-    amount: Decimal      # crypto units
-    cost_eur: Decimal    # total € incl. fees
-    timestamp: int       # ms since epoch (for completeness)
+    amount: Decimal  # crypto units
+    cost_eur: Decimal  # total € incl. fees
+    timestamp: int  # ms since epoch (for completeness)
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _decimal(value: str | float | int | Decimal) -> Decimal:
     """Coerce *value* into a Decimal without rounding."""
@@ -105,6 +107,7 @@ def _check_rate_limit(client: "Bitvavo", threshold: int = 10) -> None:
 # ---------------------------------------------------------------------------
 # API wrappers
 # ---------------------------------------------------------------------------
+
 
 def sync_time(client: "Bitvavo") -> None:
     """Synchronise local clock offset to avoid 304 errors."""
@@ -146,7 +149,10 @@ def fetch_trade_history(client: "Bitvavo", asset: str) -> List[Dict[str, str]]:
 # FIFO core
 # ---------------------------------------------------------------------------
 
-def calculate_pnl(trades: List[Dict[str, str]], current_price: Decimal) -> Dict[str, Decimal]:
+
+def calculate_pnl(
+    trades: List[Dict[str, str]], current_price: Decimal
+) -> Dict[str, Decimal]:
     """Process *trades* (chronological list) under FIFO and return P&L metrics."""
     lots: Deque[PurchaseLot] = deque()
     realised_eur = Decimal("0")
@@ -198,7 +204,12 @@ def calculate_pnl(trades: List[Dict[str, str]], current_price: Decimal) -> Dict[
 # CLI report generator
 # ---------------------------------------------------------------------------
 
-def generate_report(client: "Bitvavo", assets: List[str], price_override: Dict[str, Decimal] | None = None) -> None:
+
+def generate_report(
+    client: "Bitvavo",
+    assets: List[str],
+    price_override: Dict[str, Decimal] | None = None,
+) -> None:
     headers = [
         "Asset",
         "Amount",
@@ -209,7 +220,9 @@ def generate_report(client: "Bitvavo", assets: List[str], price_override: Dict[s
         "PnL %",
     ]
     rows: List[Tuple] = []
-    totals = {k: Decimal("0") for k in ("cost", "value", "realised", "unrealised", "buys")}
+    totals = {
+        k: Decimal("0") for k in ("cost", "value", "realised", "unrealised", "buys")
+    }
     for asset in assets:
         trades = fetch_trade_history(client, asset)
         if not trades:
@@ -266,7 +279,10 @@ def generate_report(client: "Bitvavo", assets: List[str], price_override: Dict[s
 # Embedded tests
 # ---------------------------------------------------------------------------
 
-def _make_trade(side: str, amount: str, price: str, fee: str = "0", ts: int | None = None) -> Dict[str, str]:
+
+def _make_trade(
+    side: str, amount: str, price: str, fee: str = "0", ts: int | None = None
+) -> Dict[str, str]:
     return {
         "id": "x",
         "timestamp": str(ts or int(time.time() * 1000)),
@@ -278,7 +294,9 @@ def _make_trade(side: str, amount: str, price: str, fee: str = "0", ts: int | No
         "feeCurrency": "EUR",
     }
 
+
 # --- pure FIFO unit tests ---------------------------------------------------
+
 
 def test_single_buy_no_sell():
     trades = [_make_trade("buy", "2", "10", "0.1")]
@@ -315,7 +333,9 @@ def test_complex_sell_across_lots():
     assert pnl["unrealised_eur"] == Decimal("17.5")  # nosec B101
     assert pnl["total_buys_eur"] == Decimal("340")  # nosec B101 # 1*100 + 2*120
 
+
 # --- pytest‑mock demo (no live API calls) -----------------------------------
+
 
 def test_generate_report_with_override(mocker):
     # Craft a dummy Bitvavo client with just the methods we need
@@ -336,11 +356,14 @@ def test_generate_report_with_override(mocker):
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def _parse_price_override(s: str) -> Dict[str, Decimal]:
     mapping: Dict[str, Decimal] = {}
     for part in s.split(","):
         if "=" not in part:
-            raise argparse.ArgumentTypeError("Override must be ASSET=PRICE,ASSET=PRICE...")
+            raise argparse.ArgumentTypeError(
+                "Override must be ASSET=PRICE,ASSET=PRICE..."
+            )
         asset, price = part.split("=", 1)
         mapping[asset.strip().upper()] = _decimal(price.strip())
     return mapping
@@ -348,8 +371,16 @@ def _parse_price_override(s: str) -> Dict[str, Decimal]:
 
 def _parse_args(argv: List[str]) -> argparse.Namespace:  # pragma: no cover
     p = argparse.ArgumentParser(description="Bitvavo FIFO P&L reporter")
-    p.add_argument("--assets", type=lambda s: [a.strip().upper() for a in s.split(",") if a.strip()], help="Comma‑separated list of asset tickers")
-    p.add_argument("--override", type=_parse_price_override, help="Override live prices (ASSET=PRICE,...)")
+    p.add_argument(
+        "--assets",
+        type=lambda s: [a.strip().upper() for a in s.split(",") if a.strip()],
+        help="Comma‑separated list of asset tickers",
+    )
+    p.add_argument(
+        "--override",
+        type=_parse_price_override,
+        help="Override live prices (ASSET=PRICE,...)",
+    )
     p.add_argument("--show-readme", action="store_true")
     p.add_argument("--show-requirements", action="store_true")
     p.add_argument("--run-tests", action="store_true")
@@ -366,6 +397,7 @@ def main() -> None:  # pragma: no cover
         return
     if args.run_tests:
         import pytest  # type: ignore
+
         sys.exit(pytest.main([__file__]))
     api_key = os.getenv("BITVAVO_API_KEY")
     api_secret = os.getenv("BITVAVO_API_SECRET")
@@ -378,7 +410,11 @@ def main() -> None:  # pragma: no cover
         assets = args.assets
     else:
         balances = client.balance({})  # type: ignore[arg-type]
-        assets = [b["symbol"] for b in balances if _decimal(b["available"]) + _decimal(b["inOrder"]) > 0]
+        assets = [
+            b["symbol"]
+            for b in balances
+            if _decimal(b["available"]) + _decimal(b["inOrder"]) > 0
+        ]
         assets = [a.split("-")[0].upper() for a in assets]
     if not assets:
         sys.exit("No assets found.")

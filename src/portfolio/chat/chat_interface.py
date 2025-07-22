@@ -1,15 +1,20 @@
 """Streamlit chat interface for portfolio AI assistant."""
 
 import logging
-from typing import List, Dict, Any
-import streamlit as st
+from typing import Any, Dict, List
+
 import pandas as pd
+import streamlit as st
+
+from .api_status import get_error_suggestion, render_error_help
 from .base_llm_client import LLMClientFactory, LLMProvider
+from .cost_tracker import (CostTracker, render_cost_footer,
+                           render_detailed_cost_analysis)
 from .function_handlers import PortfolioFunctionHandler
-from .model_selector import render_model_selector, show_model_switch_success, render_model_status_indicator
-from .cost_tracker import CostTracker, render_cost_footer, render_detailed_cost_analysis
+from .model_selector import (render_model_selector,
+                             render_model_status_indicator,
+                             show_model_switch_success)
 from .prompt_editor import PromptEditor
-from .api_status import render_error_help, get_error_suggestion
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +50,7 @@ def render_chat_interface(portfolio_data: pd.DataFrame):
         st.session_state.chat_messages = [
             {
                 "role": "assistant",
-                "content": "Hi! I'm your portfolio AI assistant. Ask me anything about your crypto portfolio - performance, allocations, specific coins, or get detailed explanations of your positions!"
+                "content": "Hi! I'm your portfolio AI assistant. Ask me anything about your crypto portfolio - performance, allocations, specific coins, or get detailed explanations of your positions!",
             }
         ]
 
@@ -63,7 +68,9 @@ def render_chat_interface(portfolio_data: pd.DataFrame):
             st.session_state.llm_client = LLMClientFactory.create_client(selected_model)
         except ValueError as e:
             st.error(f"❌ AI model configuration error: {e}")
-            st.info("Please check your API keys in the .env file to use the AI chat feature.")
+            st.info(
+                "Please check your API keys in the .env file to use the AI chat feature."
+            )
             return
 
     if "function_handler" not in st.session_state:
@@ -71,21 +78,21 @@ def render_chat_interface(portfolio_data: pd.DataFrame):
 
     # Update function handler with latest portfolio data
     st.session_state.function_handler.update_portfolio_data(portfolio_data)
-    
+
     # Display chat messages
     for message in st.session_state.chat_messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
-    
+
     # Chat input
     if prompt := st.chat_input("Ask about your portfolio..."):
         # Add user message to chat
         st.session_state.chat_messages.append({"role": "user", "content": prompt})
-        
+
         # Display user message
         with st.chat_message("user"):
             st.markdown(prompt)
-        
+
         # Generate AI response
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
@@ -93,21 +100,24 @@ def render_chat_interface(portfolio_data: pd.DataFrame):
                     response_content = _get_ai_response(
                         prompt,
                         st.session_state.llm_client,
-                        st.session_state.function_handler
+                        st.session_state.function_handler,
                     )
                     st.markdown(response_content)
-                    
+
                     # Add assistant response to chat
-                    st.session_state.chat_messages.append({
-                        "role": "assistant", 
-                        "content": response_content
-                    })
-                    
+                    st.session_state.chat_messages.append(
+                        {"role": "assistant", "content": response_content}
+                    )
+
                 except Exception as e:
                     error_message = str(e)
 
                     # Create user-friendly error message with suggestions
-                    if "🚨" in error_message or "❌" in error_message or "⏱️" in error_message:
+                    if (
+                        "🚨" in error_message
+                        or "❌" in error_message
+                        or "⏱️" in error_message
+                    ):
                         # Error message already formatted
                         formatted_error = error_message
                     else:
@@ -119,18 +129,20 @@ def render_chat_interface(portfolio_data: pd.DataFrame):
                     full_error_message = f"{formatted_error}\n\n{suggestion}"
 
                     st.error(full_error_message)
-                    st.session_state.chat_messages.append({
-                        "role": "assistant",
-                        "content": full_error_message
-                    })
+                    st.session_state.chat_messages.append(
+                        {"role": "assistant", "content": full_error_message}
+                    )
 
                     # Show specific help for overload errors
                     if "529" in error_message or "overloaded" in error_message.lower():
-                        st.info("💡 **Quick Fix:** Use the model selector above to switch to OpenAI GPT-4 while Anthropic recovers.")
-    
+                        st.info(
+                            "💡 **Quick Fix:** Use the model selector above to switch to OpenAI GPT-4 while Anthropic recovers."
+                        )
+
     # Add some example queries
     with st.expander("💡 Example Questions"):
-        st.markdown("""
+        st.markdown(
+            """
         **Portfolio Overview:**
         - "What's my total portfolio value?"
         - "How many profitable positions do I have?"
@@ -150,7 +162,8 @@ def render_chat_interface(portfolio_data: pd.DataFrame):
         - "How much profit have I made on BTC?"
         - "Which assets make up more than 5% of my portfolio?"
         - "Show me assets with deposit activity"
-        """)
+        """
+        )
 
     # Add detailed cost analysis
     render_detailed_cost_analysis()
@@ -167,10 +180,15 @@ def render_chat_interface(portfolio_data: pd.DataFrame):
     with col1:
         with st.expander("🔍 API Status Monitor"):
             try:
-                if hasattr(st.session_state, 'api_status_checker') and st.session_state.api_status_checker:
+                if (
+                    hasattr(st.session_state, "api_status_checker")
+                    and st.session_state.api_status_checker
+                ):
                     st.session_state.api_status_checker.render_status_widget()
                 else:
-                    st.warning("API status checker not initialized. Please refresh the page.")
+                    st.warning(
+                        "API status checker not initialized. Please refresh the page."
+                    )
             except Exception as e:
                 st.error(f"Error loading API status: {str(e)}")
                 st.info("Try refreshing the page to fix this issue.")
@@ -180,9 +198,7 @@ def render_chat_interface(portfolio_data: pd.DataFrame):
 
 
 def _get_ai_response(
-    user_message: str,
-    llm_client,
-    function_handler: PortfolioFunctionHandler
+    user_message: str, llm_client, function_handler: PortfolioFunctionHandler
 ) -> str:
     """Get AI response with function calling support.
 
@@ -197,14 +213,8 @@ def _get_ai_response(
     try:
         # Prepare messages with model-specific system prompt
         messages = [
-            {
-                "role": "system",
-                "content": _get_system_prompt(llm_client.provider)
-            },
-            {
-                "role": "user",
-                "content": user_message
-            }
+            {"role": "system", "content": _get_system_prompt(llm_client.provider)},
+            {"role": "user", "content": user_message},
         ]
 
         # Get available functions
@@ -217,7 +227,7 @@ def _get_ai_response(
             return llm_client.get_response_content(response)
 
         # Use provider-specific function calling if available
-        if hasattr(llm_client, 'handle_function_calling_conversation'):
+        if hasattr(llm_client, "handle_function_calling_conversation"):
             # Claude-style function calling
             return llm_client.handle_function_calling_conversation(
                 messages, functions, function_handler
@@ -230,16 +240,18 @@ def _get_ai_response(
 
     except Exception as e:
         logger.error(f"Error getting AI response: {e}")
-        return f"I apologize, but I encountered an error processing your request: {str(e)}"
+        return (
+            f"I apologize, but I encountered an error processing your request: {str(e)}"
+        )
 
 
-def _handle_openai_function_calling(messages, functions, llm_client, function_handler) -> str:
+def _handle_openai_function_calling(
+    messages, functions, llm_client, function_handler
+) -> str:
     """Handle OpenAI-style function calling."""
     # Make initial API call
     response = llm_client.chat_completion(
-        messages=messages,
-        functions=functions,
-        function_call="auto"
+        messages=messages, functions=functions, function_call="auto"
     )
 
     # Check if function calls were made
@@ -253,29 +265,34 @@ def _handle_openai_function_calling(messages, functions, llm_client, function_ha
 
             # Execute function
             function_result = function_handler.handle_function_call(
-                function_name,
-                function_args
+                function_name, function_args
             )
 
             # Add function result to messages
-            messages.append({
-                "role": "assistant",
-                "content": None,
-                "tool_calls": [{
-                    "id": func_call["id"],
-                    "type": "function",
-                    "function": {
-                        "name": function_name,
-                        "arguments": function_args
-                    }
-                }]
-            })
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": [
+                        {
+                            "id": func_call["id"],
+                            "type": "function",
+                            "function": {
+                                "name": function_name,
+                                "arguments": function_args,
+                            },
+                        }
+                    ],
+                }
+            )
 
-            messages.append({
-                "role": "tool",
-                "tool_call_id": func_call["id"],
-                "content": function_result
-            })
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": func_call["id"],
+                    "content": function_result,
+                }
+            )
 
         # Get final response with function results
         final_response = llm_client.chat_completion(messages=messages)
@@ -317,7 +334,9 @@ Format monetary amounts clearly (e.g., €1,234.56) and percentages with appropr
 
     # Add provider-specific optimizations
     if provider == LLMProvider.ANTHROPIC:
-        return base_prompt + """
+        return (
+            base_prompt
+            + """
 
 Claude-specific instructions:
 - Provide detailed analytical reasoning for your recommendations
@@ -325,9 +344,12 @@ Claude-specific instructions:
 - Be thorough in your explanations while remaining concise
 - Consider risk factors and market context in your analysis
 - Offer actionable insights based on the portfolio data"""
+        )
 
     elif provider == LLMProvider.OPENAI:
-        return base_prompt + """
+        return (
+            base_prompt
+            + """
 
 OpenAI-specific instructions:
 - Focus on clear, direct responses
@@ -335,6 +357,7 @@ OpenAI-specific instructions:
 - Provide step-by-step reasoning when appropriate
 - Balance detail with brevity
 - Emphasize practical recommendations"""
+        )
 
     else:
         return base_prompt
@@ -345,7 +368,7 @@ def clear_chat_history():
     if "chat_messages" in st.session_state:
         st.session_state.chat_messages = [
             {
-                "role": "assistant", 
-                "content": "Chat history cleared! How can I help you with your portfolio?"
+                "role": "assistant",
+                "content": "Chat history cleared! How can I help you with your portfolio?",
             }
         ]

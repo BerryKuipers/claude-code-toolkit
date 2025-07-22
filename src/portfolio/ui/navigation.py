@@ -4,15 +4,17 @@ This module provides a sticky navigation bar that allows users to quickly
 jump between different sections of the dashboard.
 """
 
-import streamlit as st
 from typing import Dict, List, Optional
+
+import streamlit as st
 
 
 def render_sticky_nav():
     """Render simplified navigation bar at the top of the page."""
 
     # Sticky navigation CSS
-    st.markdown("""
+    st.markdown(
+        """
     <style>
     .sticky-nav {
         position: fixed;
@@ -86,7 +88,9 @@ def render_sticky_nav():
         background: #ef4444;
     }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     # Get status indicators
     portfolio_status = _get_portfolio_status()
@@ -107,14 +111,26 @@ def render_sticky_nav():
 
                 with subcol1:
                     try:
-                        status_color = "🟢" if portfolio_status['class'] == "" else "🟡" if portfolio_status['class'] == "warning" else "🔴"
-                        st.caption(f"{status_color} Portfolio: {portfolio_status['text']}")
+                        status_color = (
+                            "🟢"
+                            if portfolio_status["class"] == ""
+                            else (
+                                "🟡" if portfolio_status["class"] == "warning" else "🔴"
+                            )
+                        )
+                        st.caption(
+                            f"{status_color} Portfolio: {portfolio_status['text']}"
+                        )
                     except:
                         st.caption("🟡 Portfolio: Loading...")
 
                 with subcol2:
                     try:
-                        ai_color = "🟢" if ai_status['class'] == "" else "🟡" if ai_status['class'] == "warning" else "🔴"
+                        ai_color = (
+                            "🟢"
+                            if ai_status["class"] == ""
+                            else "🟡" if ai_status["class"] == "warning" else "🔴"
+                        )
                         st.caption(f"{ai_color} AI: {ai_status['text']}")
                     except:
                         st.caption("🟡 AI: Loading...")
@@ -146,7 +162,10 @@ def _get_portfolio_status() -> Dict[str, str]:
     """Get portfolio status indicator."""
     try:
         # Check if we have portfolio data
-        if hasattr(st.session_state, 'portfolio_data') and not st.session_state.portfolio_data.empty:
+        if (
+            hasattr(st.session_state, "portfolio_data")
+            and not st.session_state.portfolio_data.empty
+        ):
             return {"class": "", "text": "Live"}
         else:
             return {"class": "warning", "text": "Loading"}
@@ -158,12 +177,16 @@ def _get_ai_status() -> Dict[str, str]:
     """Get AI status indicator."""
     try:
         # Check the selected model from session state
-        selected_model = st.session_state.get("selected_model", "claude-3-5-sonnet-20241022")
+        selected_model = st.session_state.get(
+            "selected_model", "claude-3-5-sonnet-20241022"
+        )
 
         # Determine provider from model name
         if "gpt" in selected_model.lower() or "openai" in selected_model.lower():
             display_name = "OpenAI"
-        elif "claude" in selected_model.lower() or "anthropic" in selected_model.lower():
+        elif (
+            "claude" in selected_model.lower() or "anthropic" in selected_model.lower()
+        ):
             display_name = "Claude"
         else:
             display_name = "AI"
@@ -190,7 +213,8 @@ def _get_cost_status() -> Dict[str, str]:
 def render_quick_actions():
     """Render simple navigation links using HTML anchors."""
     # Use HTML links that scroll to sections instead of buttons
-    st.markdown("""
+    st.markdown(
+        """
     <div style="display: flex; gap: 20px; margin: 10px 0; justify-content: center;">
         <a href="#portfolio-overview" style="
             text-decoration: none;
@@ -245,4 +269,6 @@ def render_quick_actions():
             ⚙️ Settings
         </a>
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )

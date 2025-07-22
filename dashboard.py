@@ -4,19 +4,22 @@ Streamlit dashboard for crypto portfolio analysis.
 Run this file directly with: streamlit run dashboard.py
 """
 
+import logging
 import os
 import sys
-import logging
+from datetime import datetime
 from decimal import Decimal
 from typing import Dict, List, Optional
-from datetime import datetime
 
-import streamlit as st
 import pandas as pd
+import streamlit as st
 from python_bitvavo_api.bitvavo import Bitvavo
 
 # Import performance optimizations
-from src.portfolio.ui.performance import apply_global_optimizations, PerformanceOptimizer, render_optimized_dataframe
+from src.portfolio.ui.performance import (PerformanceOptimizer,
+                                          apply_global_optimizations,
+                                          render_optimized_dataframe)
+
 
 # Set up logging
 def setup_logging():
@@ -25,16 +28,18 @@ def setup_logging():
 
     # Try to set up file logging, but fall back gracefully if permissions fail
     try:
-        log_dir = os.path.join(os.path.dirname(__file__), 'logs')
+        log_dir = os.path.join(os.path.dirname(__file__), "logs")
         os.makedirs(log_dir, exist_ok=True)
 
-        log_file = os.path.join(log_dir, f'dashboard_{datetime.now().strftime("%Y%m%d")}.log')
+        log_file = os.path.join(
+            log_dir, f'dashboard_{datetime.now().strftime("%Y%m%d")}.log'
+        )
 
         # Test if we can write to the log file
-        with open(log_file, 'a', encoding='utf-8') as f:
+        with open(log_file, "a", encoding="utf-8") as f:
             f.write(f"# Log started at {datetime.now()}\n")
 
-        handlers.append(logging.FileHandler(log_file, encoding='utf-8'))
+        handlers.append(logging.FileHandler(log_file, encoding="utf-8"))
         print(f"✅ Logging to file: {log_file}")
 
     except (PermissionError, OSError) as e:
@@ -44,53 +49,50 @@ def setup_logging():
     # Configure logging
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=handlers,
-        force=True  # Override any existing logging configuration
+        force=True,  # Override any existing logging configuration
     )
 
     return logging.getLogger(__name__)
 
+
 # Initialize logger
 logger = setup_logging()
+
 
 # Load environment variables from .env file
 def load_env_file():
     """Load environment variables from .env file."""
-    env_file = os.path.join(os.path.dirname(__file__), '.env')
+    env_file = os.path.join(os.path.dirname(__file__), ".env")
     if os.path.exists(env_file):
-        with open(env_file, 'r') as f:
+        with open(env_file, "r") as f:
             for line in f:
                 line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, value = line.split('=', 1)
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
                     os.environ[key.strip()] = value.strip()
+
 
 # Load environment variables
 load_env_file()
 
 # Add the src directory to the Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
-from src.portfolio.core import (
-    sync_time,
-    fetch_trade_history,
-    calculate_pnl,
-    analyze_transfers,
-    calculate_discrepancy_breakdown,
-    TransferSummary,
-    get_current_price,
-    get_portfolio_assets,
-    _decimal,
-    BitvavoAPIException,
-    InvalidAPIKeyError,
-    RateLimitExceededError,
-)
-from src.portfolio.ai_explanations import generate_coin_explanation, get_position_summary
+from src.portfolio.ai_explanations import (generate_coin_explanation,
+                                           get_position_summary)
 from src.portfolio.chat import render_chat_interface
-from src.portfolio.chat.cost_tracker import render_cost_footer, CostTracker
 from src.portfolio.chat.api_status import APIStatusChecker
-from src.portfolio.ui import render_sticky_nav, add_section_anchor, render_quick_actions
+from src.portfolio.chat.cost_tracker import CostTracker, render_cost_footer
+from src.portfolio.core import (BitvavoAPIException, InvalidAPIKeyError,
+                                RateLimitExceededError, TransferSummary,
+                                _decimal, analyze_transfers,
+                                calculate_discrepancy_breakdown, calculate_pnl,
+                                fetch_trade_history, get_current_price,
+                                get_portfolio_assets, sync_time)
+from src.portfolio.ui import (add_section_anchor, render_quick_actions,
+                              render_sticky_nav)
 
 
 def init_bitvavo_client() -> Optional[Bitvavo]:
@@ -104,7 +106,9 @@ def init_bitvavo_client() -> Optional[Bitvavo]:
     logger.info(f"API Secret found: {'Yes' if api_secret else 'No'}")
 
     if not api_key or not api_secret:
-        error_msg = "⚠️ Please set BITVAVO_API_KEY and BITVAVO_API_SECRET environment variables"
+        error_msg = (
+            "⚠️ Please set BITVAVO_API_KEY and BITVAVO_API_SECRET environment variables"
+        )
         logger.error(error_msg)
         st.error(error_msg)
         st.info("Add these to your .env file or system environment")
@@ -157,7 +161,11 @@ def get_current_prices(assets: List[str]) -> Dict[str, float]:
 
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes
-def get_portfolio_data(assets: List[str], price_overrides: Dict[str, float], current_prices: Dict[str, float]) -> pd.DataFrame:
+def get_portfolio_data(
+    assets: List[str],
+    price_overrides: Dict[str, float],
+    current_prices: Dict[str, float],
+) -> pd.DataFrame:
     """Fetch and calculate portfolio data with caching."""
     logger.info(f"Getting portfolio data for {len(assets)} assets: {assets}")
     logger.info(f"Price overrides: {price_overrides}")
@@ -170,8 +178,10 @@ def get_portfolio_data(assets: List[str], price_overrides: Dict[str, float], cur
 
     # Get actual account balances for comparison
     try:
-        actual_balances = {b['symbol']: float(b['available']) + float(b['inOrder'])
-                          for b in client.balance({})}
+        actual_balances = {
+            b["symbol"]: float(b["available"]) + float(b["inOrder"])
+            for b in client.balance({})
+        }
         logger.info(f"Retrieved actual balances for {len(actual_balances)} assets")
     except Exception as exc:
         logger.error(f"Failed to get actual balances: {exc}")
@@ -208,14 +218,14 @@ def get_portfolio_data(assets: List[str], price_overrides: Dict[str, float], cur
 
             pnl = calculate_pnl(trades, price_eur)
             invested = pnl["total_buys_eur"]
-            
+
             # Calculate total return percentage
             total_return_pct = (
                 ((pnl["value_eur"] + pnl["realised_eur"]) - invested) / invested * 100
                 if invested != 0
                 else Decimal("0")
             )
-            
+
             # Get actual balance for comparison
             actual_amount = _decimal(str(actual_balances.get(asset, 0.0)))
             fifo_amount = pnl["amount"]  # This is already a Decimal from calculate_pnl
@@ -227,7 +237,9 @@ def get_portfolio_data(assets: List[str], price_overrides: Dict[str, float], cur
             try:
                 logger.info(f"Analyzing transfers for {asset}")
                 transfer_summary = analyze_transfers(client, asset)
-                logger.info(f"Transfer analysis for {asset}: {transfer_summary.deposit_count} deposits, {transfer_summary.withdrawal_count} withdrawals")
+                logger.info(
+                    f"Transfer analysis for {asset}: {transfer_summary.deposit_count} deposits, {transfer_summary.withdrawal_count} withdrawals"
+                )
             except Exception as exc:
                 logger.warning(f"Failed to analyze transfers for {asset}: {exc}")
                 # Create empty transfer summary if analysis fails
@@ -237,7 +249,7 @@ def get_portfolio_data(assets: List[str], price_overrides: Dict[str, float], cur
                     net_transfers=_decimal("0"),
                     deposit_count=0,
                     withdrawal_count=0,
-                    potential_rewards=_decimal("0")
+                    potential_rewards=_decimal("0"),
                 )
 
             # Calculate discrepancy breakdown
@@ -245,33 +257,43 @@ def get_portfolio_data(assets: List[str], price_overrides: Dict[str, float], cur
                 fifo_amount, actual_amount, transfer_summary
             )
 
-            data.append({
-                "Asset": asset,
-                "FIFO Amount": float(fifo_amount),
-                "Actual Amount": float(actual_amount),
-                "Amount Diff": float(actual_amount - fifo_amount),
-                "Cost €": float(pnl["cost_eur"]),
-                "FIFO Value €": float(pnl["value_eur"]),
-                "Actual Value €": actual_value_eur,
-                "Realised €": float(pnl["realised_eur"]),
-                "Unrealised €": float(pnl["unrealised_eur"]),
-                "Total Return %": float(total_return_pct),
-                "Current Price €": float(price_eur),
-                "Total Invested €": float(invested),  # Add the correct total investment amount
-                # Transfer data
-                "Net Transfers": float(transfer_summary.net_transfers),
-                "Total Deposits": float(transfer_summary.total_deposits),
-                "Total Withdrawals": float(transfer_summary.total_withdrawals),
-                "Deposit Count": transfer_summary.deposit_count,
-                "Withdrawal Count": transfer_summary.withdrawal_count,
-                "Potential Rewards": float(transfer_summary.potential_rewards),
-                # Discrepancy breakdown
-                "Transfer Explained": float(discrepancy_breakdown["transfer_explained"]),
-                "Rewards Explained": float(discrepancy_breakdown["rewards_explained"]),
-                "Unexplained Diff": float(discrepancy_breakdown["unexplained"]),
-                "Explanation %": float(discrepancy_breakdown["explanation_percentage"]),
-            })
-            
+            data.append(
+                {
+                    "Asset": asset,
+                    "FIFO Amount": float(fifo_amount),
+                    "Actual Amount": float(actual_amount),
+                    "Amount Diff": float(actual_amount - fifo_amount),
+                    "Cost €": float(pnl["cost_eur"]),
+                    "FIFO Value €": float(pnl["value_eur"]),
+                    "Actual Value €": actual_value_eur,
+                    "Realised €": float(pnl["realised_eur"]),
+                    "Unrealised €": float(pnl["unrealised_eur"]),
+                    "Total Return %": float(total_return_pct),
+                    "Current Price €": float(price_eur),
+                    "Total Invested €": float(
+                        invested
+                    ),  # Add the correct total investment amount
+                    # Transfer data
+                    "Net Transfers": float(transfer_summary.net_transfers),
+                    "Total Deposits": float(transfer_summary.total_deposits),
+                    "Total Withdrawals": float(transfer_summary.total_withdrawals),
+                    "Deposit Count": transfer_summary.deposit_count,
+                    "Withdrawal Count": transfer_summary.withdrawal_count,
+                    "Potential Rewards": float(transfer_summary.potential_rewards),
+                    # Discrepancy breakdown
+                    "Transfer Explained": float(
+                        discrepancy_breakdown["transfer_explained"]
+                    ),
+                    "Rewards Explained": float(
+                        discrepancy_breakdown["rewards_explained"]
+                    ),
+                    "Unexplained Diff": float(discrepancy_breakdown["unexplained"]),
+                    "Explanation %": float(
+                        discrepancy_breakdown["explanation_percentage"]
+                    ),
+                }
+            )
+
         except (BitvavoAPIException, InvalidAPIKeyError, RateLimitExceededError) as exc:
             error_msg = f"API error processing {asset}: {exc}"
             logger.error(error_msg)
@@ -330,7 +352,14 @@ def create_pnl_chart(df: pd.DataFrame) -> None:
         return
 
     # Create tabs for different visualizations
-    tab1, tab2, tab3, tab4 = st.tabs(["📊 P&L Overview", "🥧 Portfolio Allocation", "📈 Top Performers", "🔄 Transfer Analysis"])
+    tab1, tab2, tab3, tab4 = st.tabs(
+        [
+            "📊 P&L Overview",
+            "🥧 Portfolio Allocation",
+            "📈 Top Performers",
+            "🔄 Transfer Analysis",
+        ]
+    )
 
     with tab1:
         st.markdown("**💰 Profit & Loss by Asset**")
@@ -343,11 +372,13 @@ def create_pnl_chart(df: pd.DataFrame) -> None:
             chart_df = chart_df.sort_values("Unrealised €", ascending=True)
 
             # Create the chart data
-            chart_data = pd.DataFrame({
-                "Asset": chart_df["Asset"],
-                "Unrealised P&L €": chart_df["Unrealised €"],
-                "Realised P&L €": chart_df["Realised €"],
-            })
+            chart_data = pd.DataFrame(
+                {
+                    "Asset": chart_df["Asset"],
+                    "Unrealised P&L €": chart_df["Unrealised €"],
+                    "Realised P&L €": chart_df["Realised €"],
+                }
+            )
 
             st.bar_chart(chart_data.set_index("Asset"), height=400)
         else:
@@ -366,18 +397,21 @@ def create_pnl_chart(df: pd.DataFrame) -> None:
             # Create pie chart using plotly
             try:
                 import plotly.express as px
+
                 fig = px.pie(
                     portfolio_df,
                     values="Actual Value €",
                     names="Asset",
                     title="Portfolio Allocation by Value",
-                    height=500
+                    height=500,
                 )
-                fig.update_traces(textposition='inside', textinfo='percent+label')
+                fig.update_traces(textposition="inside", textinfo="percent+label")
                 st.plotly_chart(fig, use_container_width=True)
             except ImportError:
                 # Fallback to simple bar chart if plotly not available
-                st.bar_chart(portfolio_df.set_index("Asset")["Actual Value €"], height=400)
+                st.bar_chart(
+                    portfolio_df.set_index("Asset")["Actual Value €"], height=400
+                )
         else:
             st.info("No portfolio data to display")
 
@@ -401,7 +435,7 @@ def create_pnl_chart(df: pd.DataFrame) -> None:
                         row["Asset"],
                         f"€{row['Actual Value €']:.0f}",
                         f"{row['Total Return %']:.1f}%",
-                        delta_color=delta_color
+                        delta_color=delta_color,
                     )
 
             with col2:
@@ -413,7 +447,7 @@ def create_pnl_chart(df: pd.DataFrame) -> None:
                         row["Asset"],
                         f"€{row['Actual Value €']:.0f}",
                         f"{row['Total Return %']:.1f}%",
-                        delta_color=delta_color
+                        delta_color=delta_color,
                     )
         else:
             st.info("No performance data to display")
@@ -422,14 +456,18 @@ def create_pnl_chart(df: pd.DataFrame) -> None:
         st.markdown("**🔄 Transfer Flow Analysis**")
 
         # Check if we have transfer data
-        has_transfer_data = any([
-            "Net Transfers" in df.columns,
-            "Total Deposits" in df.columns,
-            "Total Withdrawals" in df.columns
-        ])
+        has_transfer_data = any(
+            [
+                "Net Transfers" in df.columns,
+                "Total Deposits" in df.columns,
+                "Total Withdrawals" in df.columns,
+            ]
+        )
 
         if not has_transfer_data:
-            st.info("Transfer analysis data not available. This feature requires deposit/withdrawal history.")
+            st.info(
+                "Transfer analysis data not available. This feature requires deposit/withdrawal history."
+            )
             return
 
         # Create transfer flow chart
@@ -437,14 +475,18 @@ def create_pnl_chart(df: pd.DataFrame) -> None:
         if not transfer_data.empty:
             try:
                 import plotly.express as px
+
                 fig_transfers = px.bar(
                     transfer_data,
                     x="Asset",
                     y=["Total Deposits", "Total Withdrawals"],
                     title="Deposits vs Withdrawals by Asset",
                     barmode="group",
-                    color_discrete_map={"Total Deposits": "green", "Total Withdrawals": "red"},
-                    height=400
+                    color_discrete_map={
+                        "Total Deposits": "green",
+                        "Total Withdrawals": "red",
+                    },
+                    height=400,
                 )
                 fig_transfers.update_layout(
                     xaxis_title="Asset",
@@ -453,7 +495,11 @@ def create_pnl_chart(df: pd.DataFrame) -> None:
                 st.plotly_chart(fig_transfers, use_container_width=True)
             except ImportError:
                 # Fallback without plotly
-                st.bar_chart(transfer_data.set_index("Asset")[["Total Deposits", "Total Withdrawals"]])
+                st.bar_chart(
+                    transfer_data.set_index("Asset")[
+                        ["Total Deposits", "Total Withdrawals"]
+                    ]
+                )
         else:
             st.info("No transfer activity detected for visualization.")
 
@@ -463,8 +509,13 @@ def create_pnl_chart(df: pd.DataFrame) -> None:
         if not discrepancy_data.empty:
             try:
                 import plotly.express as px
+
                 # Prepare data for stacked bar chart
-                explanation_cols = ["Transfer Explained", "Rewards Explained", "Unexplained Diff"]
+                explanation_cols = [
+                    "Transfer Explained",
+                    "Rewards Explained",
+                    "Unexplained Diff",
+                ]
                 fig_discrepancy = px.bar(
                     discrepancy_data,
                     x="Asset",
@@ -474,9 +525,9 @@ def create_pnl_chart(df: pd.DataFrame) -> None:
                     color_discrete_map={
                         "Transfer Explained": "lightblue",
                         "Rewards Explained": "lightgreen",
-                        "Unexplained Diff": "orange"
+                        "Unexplained Diff": "orange",
                     },
-                    height=400
+                    height=400,
                 )
                 fig_discrepancy.update_layout(
                     xaxis_title="Asset",
@@ -491,11 +542,13 @@ def create_pnl_chart(df: pd.DataFrame) -> None:
 
         # Transfer activity summary table
         st.markdown("**📊 Transfer Activity Summary**")
-        activity_data = df[["Asset", "Deposit Count", "Withdrawal Count", "Potential Rewards"]].copy()
+        activity_data = df[
+            ["Asset", "Deposit Count", "Withdrawal Count", "Potential Rewards"]
+        ].copy()
         activity_data = activity_data[
-            (activity_data["Deposit Count"] > 0) |
-            (activity_data["Withdrawal Count"] > 0) |
-            (activity_data["Potential Rewards"] > 0)
+            (activity_data["Deposit Count"] > 0)
+            | (activity_data["Withdrawal Count"] > 0)
+            | (activity_data["Potential Rewards"] > 0)
         ]
 
         if not activity_data.empty:
@@ -505,10 +558,16 @@ def create_pnl_chart(df: pd.DataFrame) -> None:
                 hide_index=True,
                 column_config={
                     "Asset": st.column_config.TextColumn("Asset", width="small"),
-                    "Deposit Count": st.column_config.NumberColumn("Deposits", format="%d", width="small"),
-                    "Withdrawal Count": st.column_config.NumberColumn("Withdrawals", format="%d", width="small"),
-                    "Potential Rewards": st.column_config.NumberColumn("Est. Rewards", format="%.6f", width="small"),
-                }
+                    "Deposit Count": st.column_config.NumberColumn(
+                        "Deposits", format="%d", width="small"
+                    ),
+                    "Withdrawal Count": st.column_config.NumberColumn(
+                        "Withdrawals", format="%d", width="small"
+                    ),
+                    "Potential Rewards": st.column_config.NumberColumn(
+                        "Est. Rewards", format="%.6f", width="small"
+                    ),
+                },
             )
         else:
             st.info("No transfer activity detected.")
@@ -523,7 +582,7 @@ def main():
         page_title="Crypto Portfolio Dashboard",
         page_icon="📈",
         layout="wide",
-        initial_sidebar_state="expanded"
+        initial_sidebar_state="expanded",
     )
 
     # Initialize session state objects FIRST
@@ -546,7 +605,8 @@ def main():
     render_quick_actions()
 
     # Add mobile-responsive CSS
-    st.markdown("""
+    st.markdown(
+        """
     <style>
     /* Mobile-responsive adjustments */
     @media (max-width: 768px) {
@@ -575,36 +635,40 @@ def main():
         overflow: hidden;
     }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     # Portfolio section header (title now in sticky nav)
     st.markdown("*Real-time portfolio analysis with FIFO accounting*")
-    
+
     # Sidebar for controls
     st.sidebar.header("🎛️ Controls")
-    st.sidebar.caption("💡 Note: Changing settings will refresh the dashboard to update data")
-    
+    st.sidebar.caption(
+        "💡 Note: Changing settings will refresh the dashboard to update data"
+    )
+
     # Get available assets
     available_assets = get_available_assets()
-    
+
     if not available_assets:
         st.error("❌ No assets found or API connection failed")
         st.info("Make sure your API credentials are set and you have crypto balances")
         return
-    
+
     # Asset selection
     selected_assets = st.sidebar.multiselect(
         "Select Assets",
         options=available_assets,
         default=available_assets,
         help="Choose which assets to include in the analysis",
-        key="asset_selector"  # Stable key to reduce unnecessary reruns
+        key="asset_selector",  # Stable key to reduce unnecessary reruns
     )
-    
+
     if not selected_assets:
         st.warning("⚠️ Please select at least one asset")
         return
-    
+
     # Price overrides section
     st.sidebar.subheader("💰 Price Overrides")
     st.sidebar.markdown("*Override live prices for what-if scenarios*")
@@ -633,18 +697,18 @@ def main():
             step=0.01,
             format="%.2f",
             help=help_text,
-            key=f"price_override_{asset}"  # Unique key to prevent conflicts
+            key=f"price_override_{asset}",  # Unique key to prevent conflicts
         )
 
         # Only consider it an override if it's different from current price
         if override_value != current_price and override_value > 0:
             price_overrides[asset] = override_value
-    
+
     # Refresh button
     if st.sidebar.button("🔄 Refresh Data", type="primary", key="refresh_data_btn"):
         st.cache_data.clear()
         st.rerun()
-    
+
     # Get portfolio data using cached prices
     with st.spinner("Fetching portfolio data..."):
         df = get_portfolio_data(selected_assets, price_overrides, current_prices)
@@ -657,10 +721,13 @@ def main():
     st.subheader("📊 Portfolio Overview")
 
     # Add column explanations
-    with st.expander("📋 Column Explanations - Click to understand what each column means"):
+    with st.expander(
+        "📋 Column Explanations - Click to understand what each column means"
+    ):
         col1, col2 = st.columns(2)
         with col1:
-            st.markdown("""
+            st.markdown(
+                """
             **📊 Holdings & Values:**
             - **FIFO Amt**: Amount calculated from trade history
             - **Actual Amt**: Your real current balance on Bitvavo
@@ -668,9 +735,11 @@ def main():
             - **Cost €**: Total money you spent on this coin
             - **FIFO €**: Value based on FIFO calculation
             - **Actual €**: Value based on your real holdings
-            """)
+            """
+            )
         with col2:
-            st.markdown("""
+            st.markdown(
+                """
             **💰 Profit & Loss:**
             - **Realised €**: Profit/loss from completed trades
             - **Unrealised €**: Profit/loss if you sell NOW
@@ -678,22 +747,26 @@ def main():
               - ❌ **Negative = Loss** if sold now
             - **Return %**: Overall performance percentage
             - **Price €**: Current market price per coin
-            """)
+            """
+            )
 
         # Add a third section for transfer analysis
         st.markdown("**🔄 Transfer & Discrepancy Analysis:**")
         col3, col4 = st.columns(2)
         with col3:
-            st.markdown("""
+            st.markdown(
+                """
             **📥 Deposits & Withdrawals:**
             - **Net Transfers**: Deposits minus withdrawals
             - **Total Deposits**: Amount deposited from external sources
             - **Total Withdrawals**: Amount withdrawn to external wallets
             - **Deposit Count**: Number of deposit transactions
             - **Withdrawal Count**: Number of withdrawal transactions
-            """)
+            """
+            )
         with col4:
-            st.markdown("""
+            st.markdown(
+                """
             **🎁 Rewards & Explanations:**
             - **Potential Rewards**: Estimated staking rewards/airdrops
             - **Transfer Explained**: Difference explained by transfers
@@ -705,10 +778,12 @@ def main():
             - 🟢 **Green border**: Assets in profit (positive return %)
             - 🔴 **Red border**: Assets at loss (negative return %)
             - ⚫ **Gray border**: Break-even assets (0% return)
-            """)
+            """
+            )
 
     # Add custom CSS for profit/loss row styling
-    st.markdown("""
+    st.markdown(
+        """
     <style>
     /* Custom styling for profit/loss indicators */
     .profit-row {
@@ -723,7 +798,9 @@ def main():
         border-left: 4px solid #666666 !important;
     }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     # Create a styled dataframe with profit/loss indicators
     def style_profit_loss(row):
@@ -734,30 +811,44 @@ def main():
         if current_value < 1.0:
             if total_return > 0:
                 # Tiny profit - very light green
-                return ['background: linear-gradient(90deg, rgba(0, 255, 0, 0.03) 0%, rgba(0, 255, 0, 0.01) 100%); border-left: 3px solid #88cc88;'] * len(row)
+                return [
+                    "background: linear-gradient(90deg, rgba(0, 255, 0, 0.03) 0%, rgba(0, 255, 0, 0.01) 100%); border-left: 3px solid #88cc88;"
+                ] * len(row)
             elif total_return < 0:
                 # Tiny loss - very light red
-                return ['background: linear-gradient(90deg, rgba(255, 0, 0, 0.03) 0%, rgba(255, 0, 0, 0.01) 100%); border-left: 3px solid #cc8888;'] * len(row)
+                return [
+                    "background: linear-gradient(90deg, rgba(255, 0, 0, 0.03) 0%, rgba(255, 0, 0, 0.01) 100%); border-left: 3px solid #cc8888;"
+                ] * len(row)
             else:
                 # Tiny position - very light gray
-                return ['background: linear-gradient(90deg, rgba(128, 128, 128, 0.03) 0%, rgba(128, 128, 128, 0.01) 100%); border-left: 3px solid #999999;'] * len(row)
+                return [
+                    "background: linear-gradient(90deg, rgba(128, 128, 128, 0.03) 0%, rgba(128, 128, 128, 0.01) 100%); border-left: 3px solid #999999;"
+                ] * len(row)
 
         # For normal positions, use standard styling
         if total_return > 5:
             # Strong profit - bright green
-            return ['background: linear-gradient(90deg, rgba(0, 255, 0, 0.15) 0%, rgba(0, 255, 0, 0.08) 100%); border-left: 6px solid #00ff00;'] * len(row)
+            return [
+                "background: linear-gradient(90deg, rgba(0, 255, 0, 0.15) 0%, rgba(0, 255, 0, 0.08) 100%); border-left: 6px solid #00ff00;"
+            ] * len(row)
         elif total_return > 0:
             # Moderate profit - light green
-            return ['background: linear-gradient(90deg, rgba(0, 255, 0, 0.08) 0%, rgba(0, 255, 0, 0.03) 100%); border-left: 4px solid #00cc00;'] * len(row)
+            return [
+                "background: linear-gradient(90deg, rgba(0, 255, 0, 0.08) 0%, rgba(0, 255, 0, 0.03) 100%); border-left: 4px solid #00cc00;"
+            ] * len(row)
         elif total_return < -5:
             # Strong loss - bright red
-            return ['background: linear-gradient(90deg, rgba(255, 0, 0, 0.15) 0%, rgba(255, 0, 0, 0.08) 100%); border-left: 6px solid #ff0000;'] * len(row)
+            return [
+                "background: linear-gradient(90deg, rgba(255, 0, 0, 0.15) 0%, rgba(255, 0, 0, 0.08) 100%); border-left: 6px solid #ff0000;"
+            ] * len(row)
         elif total_return < 0:
             # Moderate loss - light red
-            return ['background: linear-gradient(90deg, rgba(255, 0, 0, 0.08) 0%, rgba(255, 0, 0, 0.03) 100%); border-left: 4px solid #cc0000;'] * len(row)
+            return [
+                "background: linear-gradient(90deg, rgba(255, 0, 0, 0.08) 0%, rgba(255, 0, 0, 0.03) 100%); border-left: 4px solid #cc0000;"
+            ] * len(row)
         else:
             # Break-even - neutral
-            return ['border-left: 4px solid #666666;'] * len(row)
+            return ["border-left: 4px solid #666666;"] * len(row)
 
     # Add profit/loss indicator column with better logic
     def get_profit_indicator(row):
@@ -770,7 +861,7 @@ def main():
             if return_pct > 0:
                 return "🔸 Tiny Profit"  # Small position with profit
             elif return_pct < 0:
-                return "🔹 Tiny Loss"   # Small position with loss
+                return "🔹 Tiny Loss"  # Small position with loss
             else:
                 return "⚪ Tiny Position"  # Small position break-even
 
@@ -792,12 +883,14 @@ def main():
 
     # Add the indicator column
     df_with_indicators = df.copy()
-    df_with_indicators['P&L Status'] = df_with_indicators.apply(get_profit_indicator, axis=1)
+    df_with_indicators["P&L Status"] = df_with_indicators.apply(
+        get_profit_indicator, axis=1
+    )
 
     # Reorder columns to put P&L Status after Asset
     cols = df_with_indicators.columns.tolist()
-    cols.remove('P&L Status')
-    cols.insert(1, 'P&L Status')  # Insert after Asset column
+    cols.remove("P&L Status")
+    cols.insert(1, "P&L Status")  # Insert after Asset column
     df_with_indicators = df_with_indicators[cols]
 
     # Apply styling and display the table
@@ -812,29 +905,131 @@ def main():
         selection_mode="single-row",
         column_config={
             "Asset": st.column_config.TextColumn("Asset", width="small"),
-            "P&L Status": st.column_config.TextColumn("P&L Status", width="medium", help="Visual profit/loss indicator"),
-            "FIFO Amount": st.column_config.NumberColumn("FIFO Amt", format="%.6f", width="small", help="Amount calculated from trade history"),
-            "Actual Amount": st.column_config.NumberColumn("Actual Amt", format="%.6f", width="small", help="Your real current balance on Bitvavo"),
-            "Amount Diff": st.column_config.NumberColumn("Diff", format="%.6f", width="small", help="Difference between FIFO and actual amounts"),
-            "Cost €": st.column_config.NumberColumn("Cost €", format="€%.0f", width="small", help="Total money you spent on this coin"),
-            "FIFO Value €": st.column_config.NumberColumn("FIFO €", format="€%.0f", width="small", help="Value based on FIFO calculation"),
-            "Actual Value €": st.column_config.NumberColumn("Actual €", format="€%.0f", width="small", help="Value based on your real holdings"),
-            "Realised €": st.column_config.NumberColumn("Realised €", format="€%.0f", width="small", help="Profit/loss from completed trades"),
-            "Unrealised €": st.column_config.NumberColumn("Unrealised €", format="€%.0f", width="small", help="Profit/loss if you sell NOW - Positive=Profit, Negative=Loss"),
-            "Total Return %": st.column_config.NumberColumn("Return % 📊", format="%.1f%%", width="small", help="Overall performance percentage - 🟢 Green = Profit, 🔴 Red = Loss, 🟡 Yellow = Break-even"),
-            "Current Price €": st.column_config.NumberColumn("Price €", format="€%.2f", width="small", help="Current market price per coin"),
+            "P&L Status": st.column_config.TextColumn(
+                "P&L Status", width="medium", help="Visual profit/loss indicator"
+            ),
+            "FIFO Amount": st.column_config.NumberColumn(
+                "FIFO Amt",
+                format="%.6f",
+                width="small",
+                help="Amount calculated from trade history",
+            ),
+            "Actual Amount": st.column_config.NumberColumn(
+                "Actual Amt",
+                format="%.6f",
+                width="small",
+                help="Your real current balance on Bitvavo",
+            ),
+            "Amount Diff": st.column_config.NumberColumn(
+                "Diff",
+                format="%.6f",
+                width="small",
+                help="Difference between FIFO and actual amounts",
+            ),
+            "Cost €": st.column_config.NumberColumn(
+                "Cost €",
+                format="€%.0f",
+                width="small",
+                help="Total money you spent on this coin",
+            ),
+            "FIFO Value €": st.column_config.NumberColumn(
+                "FIFO €",
+                format="€%.0f",
+                width="small",
+                help="Value based on FIFO calculation",
+            ),
+            "Actual Value €": st.column_config.NumberColumn(
+                "Actual €",
+                format="€%.0f",
+                width="small",
+                help="Value based on your real holdings",
+            ),
+            "Realised €": st.column_config.NumberColumn(
+                "Realised €",
+                format="€%.0f",
+                width="small",
+                help="Profit/loss from completed trades",
+            ),
+            "Unrealised €": st.column_config.NumberColumn(
+                "Unrealised €",
+                format="€%.0f",
+                width="small",
+                help="Profit/loss if you sell NOW - Positive=Profit, Negative=Loss",
+            ),
+            "Total Return %": st.column_config.NumberColumn(
+                "Return % 📊",
+                format="%.1f%%",
+                width="small",
+                help="Overall performance percentage - 🟢 Green = Profit, 🔴 Red = Loss, 🟡 Yellow = Break-even",
+            ),
+            "Current Price €": st.column_config.NumberColumn(
+                "Price €",
+                format="€%.2f",
+                width="small",
+                help="Current market price per coin",
+            ),
             # Transfer columns
-            "Net Transfers": st.column_config.NumberColumn("Net Transfers", format="%.6f", width="small", help="Net amount transferred (deposits - withdrawals)"),
-            "Total Deposits": st.column_config.NumberColumn("Deposits", format="%.6f", width="small", help="Total amount deposited from external sources"),
-            "Total Withdrawals": st.column_config.NumberColumn("Withdrawals", format="%.6f", width="small", help="Total amount withdrawn to external wallets"),
-            "Deposit Count": st.column_config.NumberColumn("Dep#", format="%d", width="small", help="Number of deposit transactions"),
-            "Withdrawal Count": st.column_config.NumberColumn("With#", format="%d", width="small", help="Number of withdrawal transactions"),
-            "Potential Rewards": st.column_config.NumberColumn("Rewards", format="%.6f", width="small", help="Estimated staking rewards/airdrops"),
-            "Transfer Explained": st.column_config.NumberColumn("Trans Exp", format="%.6f", width="small", help="Amount difference explained by transfers"),
-            "Rewards Explained": st.column_config.NumberColumn("Rew Exp", format="%.6f", width="small", help="Amount difference explained by rewards"),
-            "Unexplained Diff": st.column_config.NumberColumn("Unexplained", format="%.6f", width="small", help="Remaining unexplained discrepancy"),
-            "Explanation %": st.column_config.NumberColumn("Expl %", format="%.1f%%", width="small", help="Percentage of discrepancy explained"),
-        }
+            "Net Transfers": st.column_config.NumberColumn(
+                "Net Transfers",
+                format="%.6f",
+                width="small",
+                help="Net amount transferred (deposits - withdrawals)",
+            ),
+            "Total Deposits": st.column_config.NumberColumn(
+                "Deposits",
+                format="%.6f",
+                width="small",
+                help="Total amount deposited from external sources",
+            ),
+            "Total Withdrawals": st.column_config.NumberColumn(
+                "Withdrawals",
+                format="%.6f",
+                width="small",
+                help="Total amount withdrawn to external wallets",
+            ),
+            "Deposit Count": st.column_config.NumberColumn(
+                "Dep#",
+                format="%d",
+                width="small",
+                help="Number of deposit transactions",
+            ),
+            "Withdrawal Count": st.column_config.NumberColumn(
+                "With#",
+                format="%d",
+                width="small",
+                help="Number of withdrawal transactions",
+            ),
+            "Potential Rewards": st.column_config.NumberColumn(
+                "Rewards",
+                format="%.6f",
+                width="small",
+                help="Estimated staking rewards/airdrops",
+            ),
+            "Transfer Explained": st.column_config.NumberColumn(
+                "Trans Exp",
+                format="%.6f",
+                width="small",
+                help="Amount difference explained by transfers",
+            ),
+            "Rewards Explained": st.column_config.NumberColumn(
+                "Rew Exp",
+                format="%.6f",
+                width="small",
+                help="Amount difference explained by rewards",
+            ),
+            "Unexplained Diff": st.column_config.NumberColumn(
+                "Unexplained",
+                format="%.6f",
+                width="small",
+                help="Remaining unexplained discrepancy",
+            ),
+            "Explanation %": st.column_config.NumberColumn(
+                "Expl %",
+                format="%.1f%%",
+                width="small",
+                help="Percentage of discrepancy explained",
+            ),
+        },
     )
 
     # Display natural language explanation for selected coin
@@ -853,7 +1048,9 @@ def main():
             st.error(f"Error generating explanation: {str(e)}")
     else:
         # Show instruction when no row is selected
-        st.info("💡 **Click on any row above to see a detailed natural language explanation of that coin position**")
+        st.info(
+            "💡 **Click on any row above to see a detailed natural language explanation of that coin position**"
+        )
 
     # Calculate and display totals
     fifo_totals = {
@@ -865,7 +1062,13 @@ def main():
     }
 
     total_invested = df["Cost €"].sum() + abs(df["Realised €"].sum())
-    fifo_return = ((fifo_totals["FIFO Value"] + fifo_totals["Total Realised"]) - total_invested) / total_invested * 100 if total_invested > 0 else 0
+    fifo_return = (
+        ((fifo_totals["FIFO Value"] + fifo_totals["Total Realised"]) - total_invested)
+        / total_invested
+        * 100
+        if total_invested > 0
+        else 0
+    )
 
     # Portfolio Summary Section
     st.subheader("💼 Portfolio Summary")
@@ -877,17 +1080,22 @@ def main():
         st.metric("Total Cost", f"€{fifo_totals['Total Cost']:.0f}")
         st.metric("Realised P&L", f"€{fifo_totals['Total Realised']:.0f}")
     with col_b:
-        st.metric("Actual Value", f"€{fifo_totals['Actual Value']:.0f}",
-                 delta=f"€{fifo_totals['Actual Value'] - fifo_totals['FIFO Value']:.0f}")
+        st.metric(
+            "Actual Value",
+            f"€{fifo_totals['Actual Value']:.0f}",
+            delta=f"€{fifo_totals['Actual Value'] - fifo_totals['FIFO Value']:.0f}",
+        )
         st.metric("Unrealised P&L", f"€{fifo_totals['Total Unrealised']:.0f}")
         st.metric("📈 FIFO Return", f"{fifo_return:.1f}%")
 
     # Show discrepancy warning if significant differences
-    value_diff = abs(fifo_totals['Actual Value'] - fifo_totals['FIFO Value'])
+    value_diff = abs(fifo_totals["Actual Value"] - fifo_totals["FIFO Value"])
     if value_diff > 100:  # More than €100 difference
-        st.warning(f"⚠️ **Significant discrepancy detected!** "
-                  f"Your actual portfolio value differs from FIFO calculation by €{value_diff:.0f}. "
-                  f"This may be due to deposits/withdrawals not captured in trade history.")
+        st.warning(
+            f"⚠️ **Significant discrepancy detected!** "
+            f"Your actual portfolio value differs from FIFO calculation by €{value_diff:.0f}. "
+            f"This may be due to deposits/withdrawals not captured in trade history."
+        )
 
     # Transfer Analysis Section
     st.subheader("🔄 Transfer & Discrepancy Analysis")
@@ -927,19 +1135,37 @@ def main():
     # Show explanation percentage
     total_amount_diff = df["Amount Diff"].sum()
     if abs(total_amount_diff) > 0:
-        explanation_pct = abs(total_transfer_explained + total_rewards_explained) / abs(total_amount_diff) * 100
+        explanation_pct = (
+            abs(total_transfer_explained + total_rewards_explained)
+            / abs(total_amount_diff)
+            * 100
+        )
         if explanation_pct > 80:
-            st.success(f"✅ **{explanation_pct:.1f}%** of discrepancies explained by transfers and rewards!")
+            st.success(
+                f"✅ **{explanation_pct:.1f}%** of discrepancies explained by transfers and rewards!"
+            )
         elif explanation_pct > 50:
-            st.info(f"ℹ️ **{explanation_pct:.1f}%** of discrepancies explained by transfers and rewards.")
+            st.info(
+                f"ℹ️ **{explanation_pct:.1f}%** of discrepancies explained by transfers and rewards."
+            )
         else:
-            st.warning(f"⚠️ Only **{explanation_pct:.1f}%** of discrepancies explained. Remaining differences may be due to missing data.")
+            st.warning(
+                f"⚠️ Only **{explanation_pct:.1f}%** of discrepancies explained. Remaining differences may be due to missing data."
+            )
 
     # Assets with significant unexplained differences
     unexplained_assets = df[abs(df["Unexplained Diff"]) > 0.001].copy()
     if not unexplained_assets.empty:
         st.markdown("**🔍 Assets with Unexplained Discrepancies:**")
-        unexplained_display = unexplained_assets[["Asset", "Amount Diff", "Transfer Explained", "Rewards Explained", "Unexplained Diff"]].copy()
+        unexplained_display = unexplained_assets[
+            [
+                "Asset",
+                "Amount Diff",
+                "Transfer Explained",
+                "Rewards Explained",
+                "Unexplained Diff",
+            ]
+        ].copy()
         st.dataframe(unexplained_display, use_container_width=True, hide_index=True)
 
     # P&L Visualization Section
@@ -959,12 +1185,16 @@ def main():
             best_performer = df.loc[df["Total Return %"].idxmax()]
             worst_performer = df.loc[df["Total Return %"].idxmin()]
 
-            st.metric("🚀 Best Performer",
-                     f"{best_performer['Asset']}",
-                     f"{best_performer['Total Return %']:.1f}%")
-            st.metric("📉 Worst Performer",
-                     f"{worst_performer['Asset']}",
-                     f"{worst_performer['Total Return %']:.1f}%")
+            st.metric(
+                "🚀 Best Performer",
+                f"{best_performer['Asset']}",
+                f"{best_performer['Total Return %']:.1f}%",
+            )
+            st.metric(
+                "📉 Worst Performer",
+                f"{worst_performer['Asset']}",
+                f"{worst_performer['Total Return %']:.1f}%",
+            )
 
         with met_col2:
             st.markdown("**🎯 Portfolio Composition**")
@@ -972,17 +1202,23 @@ def main():
             total_actual_value = df["Actual Value €"].sum()
             if total_actual_value > 0:
                 largest_holding = df.loc[df["Actual Value €"].idxmax()]
-                largest_pct = (largest_holding["Actual Value €"] / total_actual_value) * 100
-                st.metric("💎 Largest Holding",
-                         f"{largest_holding['Asset']}",
-                         f"{largest_pct:.1f}% of portfolio")
+                largest_pct = (
+                    largest_holding["Actual Value €"] / total_actual_value
+                ) * 100
+                st.metric(
+                    "💎 Largest Holding",
+                    f"{largest_holding['Asset']}",
+                    f"{largest_pct:.1f}% of portfolio",
+                )
 
                 # Count of profitable positions
                 profitable_count = len(df[df["Total Return %"] > 0])
                 total_positions = len(df)
-                st.metric("📈 Profitable Positions",
-                         f"{profitable_count}/{total_positions}",
-                         f"{(profitable_count/total_positions*100):.0f}%")
+                st.metric(
+                    "📈 Profitable Positions",
+                    f"{profitable_count}/{total_positions}",
+                    f"{(profitable_count/total_positions*100):.0f}%",
+                )
 
         # Show price overrides if any
         if price_overrides:
@@ -1002,7 +1238,8 @@ def main():
     # Analysis section
     add_section_anchor("analysis", "📊 Portfolio Analysis")
     with st.expander("ℹ️ What do these metrics mean?"):
-        st.markdown("""
+        st.markdown(
+            """
         **FIFO vs Actual Values:**
         - **FIFO Amount**: Holdings calculated from your trade history using First-In-First-Out accounting
         - **Actual Amount**: Your real current balance on Bitvavo
@@ -1021,7 +1258,8 @@ def main():
         - Withdrawals from other exchanges
         - Staking rewards or airdrops
         - Manual transfers between accounts
-        """)
+        """
+        )
 
     # Footer
     st.markdown("---")
