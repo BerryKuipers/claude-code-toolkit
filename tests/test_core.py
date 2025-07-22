@@ -221,10 +221,10 @@ class TestAPIHelpers:
         """Test getting current price."""
         mock_client = mocker.MagicMock()
         mock_client.getRemainingLimit.return_value = 100
-        mock_client.tickerPrice.return_value = [{"price": "45000.50"}]
-        
+        mock_client.tickerPrice.return_value = {"price": "45000.50"}
+
         price = get_current_price(mock_client, "BTC")
-        
+
         assert price == Decimal("45000.50")
         mock_client.tickerPrice.assert_called_once_with({"market": "BTC-EUR"})
     
