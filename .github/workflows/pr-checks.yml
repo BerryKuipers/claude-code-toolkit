@@ -5,6 +5,11 @@ on:
     branches: [ development, main ]
     types: [opened, synchronize, reopened, ready_for_review]
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 jobs:
   pr-validation:
     name: 🛡️ PR Validation
@@ -20,7 +25,7 @@ jobs:
     - name: 🐍 Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: "3.11"
+        python-version: "3.13"
         
     - name: 📦 Install dependencies
       run: |
@@ -36,6 +41,7 @@ jobs:
         ANTHROPIC_API_KEY: "test_anthropic_key"
       run: |
         # Run tests with focus on changed files
+        export PYTHONPATH="${PYTHONPATH}:$(pwd)"
         pytest tests/ -v --tb=short
         
     - name: 🔍 Quick lint check
@@ -50,6 +56,7 @@ jobs:
         OPENAI_API_KEY: "test_openai_key"
         ANTHROPIC_API_KEY: "test_anthropic_key"
       run: |
+        export PYTHONPATH="${PYTHONPATH}:$(pwd)"
         pytest tests/ --cov=src --cov-report=term --cov-fail-under=70
         
     - name: 🚀 Validate dashboard startup
