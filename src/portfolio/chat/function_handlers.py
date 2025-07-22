@@ -258,7 +258,11 @@ class PortfolioFunctionHandler:
         total_unrealised = self.portfolio_data["Unrealised €"].sum()
         
         # Calculate total return
-        total_invested = total_cost + abs(total_realised)
+        # TODO: Fix portfolio calculation - current formula is flawed
+        # total_cost represents cost basis of currently held assets only
+        # Adding abs(total_realised) doesn't properly account for cost of sold assets
+        # Need to track total capital invested across all historical trades
+        total_invested = total_cost  # Use current cost basis as approximation
         total_return_pct = ((total_actual_value + total_realised) - total_invested) / total_invested * 100 if total_invested > 0 else 0
         
         # Count positions

@@ -4,8 +4,10 @@ This module provides functions to generate human-readable explanations
 of cryptocurrency positions, including profit/loss analysis and transfer details.
 """
 
-from typing import Dict, Any, Optional
-from decimal import Decimal
+from typing import Dict, Any
+
+# Constants
+FLOAT_EQUALITY_THRESHOLD = 1e-6  # Threshold for float comparison
 
 
 def generate_coin_explanation(asset_data: Dict[str, Any], include_transfers: bool = True) -> str:
@@ -62,7 +64,7 @@ def generate_coin_explanation(asset_data: Dict[str, Any], include_transfers: boo
         direction = "break-even"
     
     # Handle different scenarios based on transfers and amount differences
-    if abs(amount_diff) < 0.000001:  # No significant difference between FIFO and actual
+    if abs(amount_diff) < FLOAT_EQUALITY_THRESHOLD:  # No significant difference between FIFO and actual
         # Standard trading position
         if fifo_amount > 0:
             avg_price = cost_eur / fifo_amount

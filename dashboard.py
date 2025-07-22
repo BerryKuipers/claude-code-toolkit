@@ -843,7 +843,6 @@ def main():
         # Generate natural language explanation
         try:
             explanation = generate_coin_explanation(selected_asset.to_dict())
-            position_summary = get_position_summary(selected_asset.to_dict())
 
             # Display the explanation in an info box
             st.info(f"💡 **{selected_asset['Asset']} Analysis**\n\n{explanation}")

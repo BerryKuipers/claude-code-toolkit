@@ -1,6 +1,5 @@
 """Streamlit chat interface for portfolio AI assistant."""
 
-import json
 import logging
 from typing import List, Dict, Any
 import streamlit as st
