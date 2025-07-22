@@ -40,11 +40,11 @@ def setup_logging():
             f.write(f"# Log started at {datetime.now()}\n")
 
         handlers.append(logging.FileHandler(log_file, encoding="utf-8"))
-        print(f"✅ Logging to file: {log_file}")
+        print(f"[OK] Logging to file: {log_file}")
 
     except (PermissionError, OSError) as e:
-        print(f"⚠️  Warning: Could not set up file logging: {e}")
-        print("📝 Continuing with console logging only")
+        print(f"[WARN] Warning: Could not set up file logging: {e}")
+        print("[INFO] Continuing with console logging only")
 
     # Configure logging
     logging.basicConfig(
