@@ -83,6 +83,8 @@ from src.portfolio.core import (
     InvalidAPIKeyError,
     RateLimitExceededError,
 )
+from src.portfolio.ai_explanations import generate_coin_explanation, get_position_summary
+from src.portfolio.chat import render_chat_interface
 
 
 def init_bitvavo_client() -> Optional[Bitvavo]:
@@ -704,11 +706,13 @@ def main():
     # Apply styling and display the table
     styled_df = df.style.apply(style_profit_loss, axis=1)
 
-    # Display the main table with mobile-friendly formatting and profit/loss styling
-    st.dataframe(
+    # Display the main table with mobile-friendly formatting, profit/loss styling, and row selection
+    selected_rows = st.dataframe(
         styled_df,
         use_container_width=True,
         hide_index=True,
+        on_select="rerun",
+        selection_mode="single-row",
         column_config={
             "Asset": st.column_config.TextColumn("Asset", width="small"),
             "FIFO Amount": st.column_config.NumberColumn("FIFO Amt", format="%.6f", width="small", help="Amount calculated from trade history"),
@@ -734,6 +738,25 @@ def main():
             "Explanation %": st.column_config.NumberColumn("Expl %", format="%.1f%%", width="small", help="Percentage of discrepancy explained"),
         }
     )
+
+    # Display natural language explanation for selected coin
+    if selected_rows and len(selected_rows.selection.rows) > 0:
+        selected_idx = selected_rows.selection.rows[0]
+        selected_asset = df.iloc[selected_idx]
+
+        # Generate natural language explanation
+        try:
+            explanation = generate_coin_explanation(selected_asset.to_dict())
+            position_summary = get_position_summary(selected_asset.to_dict())
+
+            # Display the explanation in an info box
+            st.info(f"💡 **{selected_asset['Asset']} Analysis**\n\n{explanation}")
+
+        except Exception as e:
+            st.error(f"Error generating explanation: {str(e)}")
+    else:
+        # Show instruction when no row is selected
+        st.info("💡 **Click on any row above to see a detailed natural language explanation of that coin position**")
 
     # Calculate and display totals
     fifo_totals = {
@@ -869,6 +892,10 @@ def main():
             st.subheader("⚙️ Active Price Overrides")
             for asset, price in price_overrides.items():
                 st.info(f"{asset}: €{price:.2f}")
+
+    # AI Chat Interface Section
+    st.markdown("---")
+    render_chat_interface(df)
 
     # Explanation section
     with st.expander("ℹ️ What do these metrics mean?"):
