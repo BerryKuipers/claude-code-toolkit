@@ -257,6 +257,7 @@ def get_portfolio_data(assets: List[str], price_overrides: Dict[str, float], cur
                 "Unrealised €": float(pnl["unrealised_eur"]),
                 "Total Return %": float(total_return_pct),
                 "Current Price €": float(price_eur),
+                "Total Invested €": float(invested),  # Add the correct total investment amount
                 # Transfer data
                 "Net Transfers": float(transfer_summary.net_transfers),
                 "Total Deposits": float(transfer_summary.total_deposits),
@@ -315,7 +316,8 @@ def get_available_assets() -> List[str]:
                 trades = fetch_trade_history(client, asset)
                 if trades:  # Only include assets with actual trades
                     assets_with_trades.append(asset)
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Error processing asset {asset}: {e}")
                 continue  # Skip assets that cause errors
         return assets_with_trades
     except BitvavoAPIException:

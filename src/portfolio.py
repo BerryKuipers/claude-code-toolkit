@@ -283,24 +283,24 @@ def _make_trade(side: str, amount: str, price: str, fee: str = "0", ts: int | No
 def test_single_buy_no_sell():
     trades = [_make_trade("buy", "2", "10", "0.1")]
     pnl = calculate_pnl(trades, Decimal("12"))
-    assert pnl["unrealised_eur"] == Decimal("3.9")
-    assert pnl["total_buys_eur"] == Decimal("20.1")
+    assert pnl["unrealised_eur"] == Decimal("3.9")  # nosec B101
+    assert pnl["total_buys_eur"] == Decimal("20.1")  # nosec B101
 
 
 def test_partial_sell():
     trades = [_make_trade("buy", "2", "10"), _make_trade("sell", "1", "15")]
     pnl = calculate_pnl(trades, Decimal("14"))
-    assert pnl["realised_eur"] == Decimal("5")
-    assert pnl["unrealised_eur"] == Decimal("4")
-    assert pnl["total_buys_eur"] == Decimal("20")
+    assert pnl["realised_eur"] == Decimal("5")  # nosec B101
+    assert pnl["unrealised_eur"] == Decimal("4")  # nosec B101
+    assert pnl["total_buys_eur"] == Decimal("20")  # nosec B101
 
 
 def test_full_lot_sell():
     trades = [_make_trade("buy", "1", "100", "1"), _make_trade("sell", "1", "150", "1")]
     pnl = calculate_pnl(trades, Decimal("140"))
-    assert pnl["amount"] == 0
-    assert pnl["realised_eur"] == Decimal("49")
-    assert pnl["total_buys_eur"] == Decimal("101")
+    assert pnl["amount"] == 0  # nosec B101
+    assert pnl["realised_eur"] == Decimal("49")  # nosec B101
+    assert pnl["total_buys_eur"] == Decimal("101")  # nosec B101
 
 
 def test_complex_sell_across_lots():
@@ -310,10 +310,10 @@ def test_complex_sell_across_lots():
         _make_trade("sell", "1.5", "130"),
     ]
     pnl = calculate_pnl(trades, Decimal("125"))
-    assert pnl["amount"] == Decimal("1.5")
-    assert pnl["realised_eur"] == Decimal("35")
-    assert pnl["unrealised_eur"] == Decimal("17.5")
-    assert pnl["total_buys_eur"] == Decimal("340")  # 1*100 + 2*120
+    assert pnl["amount"] == Decimal("1.5")  # nosec B101
+    assert pnl["realised_eur"] == Decimal("35")  # nosec B101
+    assert pnl["unrealised_eur"] == Decimal("17.5")  # nosec B101
+    assert pnl["total_buys_eur"] == Decimal("340")  # nosec B101 # 1*100 + 2*120
 
 # --- pytest‑mock demo (no live API calls) -----------------------------------
 

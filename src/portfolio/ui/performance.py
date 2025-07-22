@@ -10,7 +10,7 @@ import logging
 from typing import Dict, Any, Optional, Callable
 from datetime import datetime, timedelta
 import hashlib
-import pickle
+import pickle  # nosec B403 - Used for caching, not security-sensitive
 import functools
 
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ class PerformanceOptimizer:
             @functools.wraps(func)
             def wrapper(*args, **kwargs):
                 # Generate cache key with function arguments
-                args_hash = hashlib.md5(str(args + tuple(kwargs.items())).encode()).hexdigest()[:8]
+                args_hash = hashlib.md5(str(args + tuple(kwargs.items())).encode(), usedforsecurity=False).hexdigest()[:8]
                 full_cache_key = f"{cache_key}_{args_hash}"
                 
                 # Check if cached result exists and is still valid

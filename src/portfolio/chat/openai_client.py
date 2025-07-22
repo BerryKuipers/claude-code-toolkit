@@ -69,7 +69,8 @@ class OpenAIClient(BaseLLMClient):
                     # Replace or update system message if custom prompt exists
                     if custom_system_prompt and messages and messages[0].get("role") == "system":
                         messages[0]["content"] = custom_system_prompt
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to load custom system prompt: {e}")
                 pass  # Continue with default prompts if custom prompts fail
 
             # Prepare the request parameters

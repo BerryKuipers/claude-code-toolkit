@@ -5,11 +5,14 @@ price overrides, and visualization of portfolio performance over time.
 """
 
 import os
+import logging
 from decimal import Decimal
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 
 import streamlit as st
+
+logger = logging.getLogger(__name__)
 import pandas as pd
 from python_bitvavo_api.bitvavo import Bitvavo
 
@@ -75,7 +78,8 @@ def get_current_prices(assets: List[str]) -> Dict[str, float]:
             price_eur = get_current_price(client, asset)
             if price_eur > 0:
                 prices[asset] = float(price_eur)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Error getting price for asset {asset}: {e}")
             pass  # Skip assets with errors
 
     return prices

@@ -53,7 +53,8 @@ class AnthropicClient(BaseLLMClient):
                 import streamlit as st
                 if "prompt_editor" in st.session_state:
                     custom_system_prompt = st.session_state.prompt_editor.get_active_system_prompt()
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to load custom system prompt: {e}")
                 pass  # Continue with default prompts if custom prompts fail
 
             # Separate system message from conversation messages
