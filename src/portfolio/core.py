@@ -259,7 +259,7 @@ def get_portfolio_assets(client: "Bitvavo") -> List[str]:
                         symbol = b["symbol"].split("-")[0].upper()
                         if symbol not in assets and symbol != "EUR":  # Skip EUR itself
                             assets.append(symbol)
-            except Exception:  # nosec B110
+            except Exception:  # nosec B112
                 # Skip problematic balance entries
                 continue
 
