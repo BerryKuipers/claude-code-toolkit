@@ -31,9 +31,10 @@ services:
       - LOG_LEVEL=INFO
       - TZ=Europe/Amsterdam
 
-      - PUID: 1027
-      - PGID: 100
-      - UMASK: 002
+      # User and group permissions for NAS compatibility
+      - PUID=1027
+      - PGID=100
+      - UMASK=002
     
     # Port mapping
     ports:
