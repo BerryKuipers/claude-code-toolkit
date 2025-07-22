@@ -6,27 +6,29 @@ from typing import Dict, List, Any, Optional
 import tiktoken
 from openai import OpenAI
 from openai.types.chat import ChatCompletion
+from .base_llm_client import BaseLLMClient, ModelInfo
 
 logger = logging.getLogger(__name__)
 
 
-class OpenAIClient:
-    """Wrapper for OpenAI API with portfolio-specific functionality."""
-    
-    def __init__(self):
+class OpenAIClient(BaseLLMClient):
+    """OpenAI client implementation."""
+
+    def __init__(self, model_info: ModelInfo):
         """Initialize OpenAI client with configuration from environment."""
+        super().__init__(model_info)
+
         self.api_key = os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY environment variable is required")
-        
+
         self.client = OpenAI(api_key=self.api_key)
-        self.model = os.getenv("OPENAI_MODEL", "gpt-4-turbo-preview")
         self.max_tokens = int(os.getenv("OPENAI_MAX_TOKENS", "1000"))
         self.temperature = float(os.getenv("OPENAI_TEMPERATURE", "0.1"))
-        
+
         # Initialize tokenizer for token counting
         try:
-            self.tokenizer = tiktoken.encoding_for_model(self.model)
+            self.tokenizer = tiktoken.encoding_for_model(self.model_id)
         except KeyError:
             # Fallback to cl100k_base for newer models
             self.tokenizer = tiktoken.get_encoding("cl100k_base")
@@ -44,7 +46,9 @@ class OpenAIClient:
         self,
         messages: List[Dict[str, str]],
         functions: Optional[List[Dict[str, Any]]] = None,
-        function_call: Optional[str] = None
+        function_call: Optional[str] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None
     ) -> ChatCompletion:
         """Create a chat completion with optional function calling.
         
@@ -59,10 +63,10 @@ class OpenAIClient:
         try:
             # Prepare the request parameters
             params = {
-                "model": self.model,
+                "model": self.model_id,
                 "messages": messages,
-                "max_tokens": self.max_tokens,
-                "temperature": self.temperature,
+                "max_tokens": max_tokens or self.max_tokens,
+                "temperature": temperature if temperature is not None else self.temperature,
             }
             
             # Add function calling parameters if provided
