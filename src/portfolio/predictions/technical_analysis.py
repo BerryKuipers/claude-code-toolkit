@@ -11,41 +11,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 
+from ..utils import safe_float_conversion
+
 logger = logging.getLogger(__name__)
-
-
-def _safe_float_conversion(value: Any, default: float = 0.0) -> float:
-    """Safely convert a value to float, handling strings and other types.
-
-    Args:
-        value: Value to convert to float
-        default: Default value if conversion fails
-
-    Returns:
-        Float value or default if conversion fails
-    """
-    if value is None:
-        return default
-
-    try:
-        # Handle string values that might have currency symbols or formatting
-        if isinstance(value, str):
-            # Remove common currency symbols, percentage signs, and whitespace
-            cleaned_value = (
-                value.replace("€", "")
-                .replace("$", "")
-                .replace("%", "")
-                .replace(",", "")
-                .strip()
-            )
-            if cleaned_value == "" or cleaned_value == "-":
-                return default
-            return float(cleaned_value)
-
-        # Handle numeric types
-        return float(value)
-    except (ValueError, TypeError):
-        return default
 
 
 class TechnicalAnalyzer:
@@ -78,17 +46,17 @@ class TechnicalAnalyzer:
             # Basic technical indicators based on available data
             analysis = {
                 "asset": asset,
-                "current_price_eur": _safe_float_conversion(
+                "current_price_eur": safe_float_conversion(
                     asset_row.get("Current Price €", 0)
                 ),
-                "position_size": _safe_float_conversion(
+                "position_size": safe_float_conversion(
                     asset_row.get("Actual Amount", 0)
                 ),
-                "cost_basis": _safe_float_conversion(asset_row.get("Cost €", 0)),
-                "unrealized_pnl": _safe_float_conversion(
+                "cost_basis": safe_float_conversion(asset_row.get("Cost €", 0)),
+                "unrealized_pnl": safe_float_conversion(
                     asset_row.get("Unrealised €", 0)
                 ),
-                "return_percentage": _safe_float_conversion(
+                "return_percentage": safe_float_conversion(
                     asset_row.get("Total Return %", 0)
                 ),
                 "technical_signals": self._generate_technical_signals(asset_row),
@@ -106,10 +74,10 @@ class TechnicalAnalyzer:
 
     def _generate_technical_signals(self, asset_row: pd.Series) -> Dict[str, Any]:
         """Generate technical trading signals based on available data."""
-        current_price = _safe_float_conversion(asset_row.get("Current Price €", 0))
-        cost_basis = _safe_float_conversion(asset_row.get("Cost €", 0))
-        actual_amount = _safe_float_conversion(asset_row.get("Actual Amount", 0))
-        return_pct = _safe_float_conversion(asset_row.get("Total Return %", 0))
+        current_price = safe_float_conversion(asset_row.get("Current Price €", 0))
+        cost_basis = safe_float_conversion(asset_row.get("Cost €", 0))
+        actual_amount = safe_float_conversion(asset_row.get("Actual Amount", 0))
+        return_pct = safe_float_conversion(asset_row.get("Total Return %", 0))
 
         if actual_amount == 0 or cost_basis == 0:
             return {"signal": "NEUTRAL", "strength": 0, "reason": "No position"}
@@ -172,9 +140,9 @@ class TechnicalAnalyzer:
 
     def _calculate_support_resistance(self, asset_row: pd.Series) -> Dict[str, Any]:
         """Calculate support and resistance levels based on cost basis and current performance."""
-        current_price = _safe_float_conversion(asset_row.get("Current Price €", 0))
-        cost_basis = _safe_float_conversion(asset_row.get("Cost €", 0))
-        actual_amount = _safe_float_conversion(asset_row.get("Actual Amount", 0))
+        current_price = safe_float_conversion(asset_row.get("Current Price €", 0))
+        cost_basis = safe_float_conversion(asset_row.get("Cost €", 0))
+        actual_amount = safe_float_conversion(asset_row.get("Actual Amount", 0))
 
         if actual_amount == 0 or cost_basis == 0:
             return {"support": 0, "resistance": 0, "analysis": "Insufficient data"}
@@ -219,8 +187,8 @@ class TechnicalAnalyzer:
 
     def _calculate_momentum_indicators(self, asset_row: pd.Series) -> Dict[str, Any]:
         """Calculate momentum indicators based on return performance."""
-        return_pct = _safe_float_conversion(asset_row.get("Total Return %", 0))
-        unrealized = _safe_float_conversion(asset_row.get("Unrealised €", 0))
+        return_pct = safe_float_conversion(asset_row.get("Total Return %", 0))
+        unrealized = safe_float_conversion(asset_row.get("Unrealised €", 0))
 
         # Simple momentum classification
         if return_pct > 30:
@@ -264,8 +232,8 @@ class TechnicalAnalyzer:
 
     def _analyze_volatility(self, asset_row: pd.Series) -> Dict[str, Any]:
         """Analyze volatility based on available data."""
-        return_pct = _safe_float_conversion(asset_row.get("Total Return %", 0))
-        current_price = _safe_float_conversion(asset_row.get("Current Price €", 0))
+        return_pct = safe_float_conversion(asset_row.get("Total Return %", 0))
+        current_price = safe_float_conversion(asset_row.get("Current Price €", 0))
 
         # Estimate volatility based on return magnitude
         volatility_estimate = abs(return_pct) / 10  # Simple heuristic
@@ -312,8 +280,8 @@ class TechnicalAnalyzer:
 
     def _analyze_trend(self, asset_row: pd.Series) -> Dict[str, Any]:
         """Analyze trend based on performance data."""
-        return_pct = _safe_float_conversion(asset_row.get("Total Return %", 0))
-        unrealized = _safe_float_conversion(asset_row.get("Unrealised €", 0))
+        return_pct = safe_float_conversion(asset_row.get("Total Return %", 0))
+        unrealized = safe_float_conversion(asset_row.get("Unrealised €", 0))
 
         # Trend classification based on returns
         if return_pct > 20:

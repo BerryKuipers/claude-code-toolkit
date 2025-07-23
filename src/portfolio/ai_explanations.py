@@ -6,42 +6,10 @@ of cryptocurrency positions, including profit/loss analysis and transfer details
 
 from typing import Any, Dict
 
+from .utils import safe_float_conversion
+
 # Constants
 FLOAT_EQUALITY_THRESHOLD = 1e-6  # Threshold for float comparison
-
-
-def _safe_float_conversion(value: Any, default: float = 0.0) -> float:
-    """Safely convert a value to float, handling strings and other types.
-
-    Args:
-        value: Value to convert to float
-        default: Default value if conversion fails
-
-    Returns:
-        Float value or default if conversion fails
-    """
-    if value is None:
-        return default
-
-    try:
-        # Handle string values that might have currency symbols or formatting
-        if isinstance(value, str):
-            # Remove common currency symbols, percentage signs, and whitespace
-            cleaned_value = (
-                value.replace("€", "")
-                .replace("$", "")
-                .replace("%", "")
-                .replace(",", "")
-                .strip()
-            )
-            if cleaned_value == "" or cleaned_value == "-":
-                return default
-            return float(cleaned_value)
-
-        # Handle numeric types
-        return float(value)
-    except (ValueError, TypeError):
-        return default
 
 
 def generate_coin_explanation(
@@ -74,17 +42,17 @@ def generate_coin_explanation(
     """
     # Safely extract and convert all values to appropriate types
     asset = str(asset_data.get("Asset", "Unknown"))
-    fifo_amount = _safe_float_conversion(asset_data.get("FIFO Amount"))
-    actual_amount = _safe_float_conversion(asset_data.get("Actual Amount"))
-    amount_diff = _safe_float_conversion(asset_data.get("Amount Diff"))
-    cost_eur = _safe_float_conversion(asset_data.get("Cost €"))
-    actual_value_eur = _safe_float_conversion(asset_data.get("Actual Value €"))
-    unrealised_eur = _safe_float_conversion(asset_data.get("Unrealised €"))
-    total_return_pct = _safe_float_conversion(asset_data.get("Total Return %"))
-    current_price = _safe_float_conversion(asset_data.get("Current Price €"))
-    net_transfers = _safe_float_conversion(asset_data.get("Net Transfers", 0))
-    total_deposits = _safe_float_conversion(asset_data.get("Total Deposits", 0))
-    total_withdrawals = _safe_float_conversion(asset_data.get("Total Withdrawals", 0))
+    fifo_amount = safe_float_conversion(asset_data.get("FIFO Amount"))
+    actual_amount = safe_float_conversion(asset_data.get("Actual Amount"))
+    amount_diff = safe_float_conversion(asset_data.get("Amount Diff"))
+    cost_eur = safe_float_conversion(asset_data.get("Cost €"))
+    actual_value_eur = safe_float_conversion(asset_data.get("Actual Value €"))
+    unrealised_eur = safe_float_conversion(asset_data.get("Unrealised €"))
+    total_return_pct = safe_float_conversion(asset_data.get("Total Return %"))
+    current_price = safe_float_conversion(asset_data.get("Current Price €"))
+    net_transfers = safe_float_conversion(asset_data.get("Net Transfers", 0))
+    total_deposits = safe_float_conversion(asset_data.get("Total Deposits", 0))
+    total_withdrawals = safe_float_conversion(asset_data.get("Total Withdrawals", 0))
 
     # Determine profit/loss status and emoji
     if unrealised_eur > 0:
@@ -206,7 +174,7 @@ def format_currency(amount: Any, currency: str = "€") -> str:
         Formatted currency string
     """
     # Safely convert to float
-    amount_float = _safe_float_conversion(amount, 0.0)
+    amount_float = safe_float_conversion(amount, 0.0)
 
     if abs(amount_float) >= 1000:
         return f"{currency}{amount_float:,.0f}"

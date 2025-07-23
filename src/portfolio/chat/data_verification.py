@@ -11,41 +11,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 
+from ..utils import safe_float_conversion
+
 logger = logging.getLogger(__name__)
-
-
-def _safe_float_conversion(value: Any, default: float = 0.0) -> float:
-    """Safely convert a value to float, handling strings and other types.
-
-    Args:
-        value: Value to convert to float
-        default: Default value if conversion fails
-
-    Returns:
-        Float value or default if conversion fails
-    """
-    if value is None:
-        return default
-
-    try:
-        # Handle string values that might have currency symbols or formatting
-        if isinstance(value, str):
-            # Remove common currency symbols, percentage signs, and whitespace
-            cleaned_value = (
-                value.replace("€", "")
-                .replace("$", "")
-                .replace("%", "")
-                .replace(",", "")
-                .strip()
-            )
-            if cleaned_value == "" or cleaned_value == "-":
-                return default
-            return float(cleaned_value)
-
-        # Handle numeric types
-        return float(value)
-    except (ValueError, TypeError):
-        return default
 
 
 class DataVerificationError(Exception):
@@ -121,9 +89,9 @@ class PortfolioDataVerifier:
         # Verify key metrics with tolerance for rounding
         tolerance = 0.01  # €0.01 tolerance
 
-        reported_value = _safe_float_conversion(result_data.get("total_value_eur", 0))
-        reported_cost = _safe_float_conversion(result_data.get("total_cost_eur", 0))
-        reported_unrealised = _safe_float_conversion(
+        reported_value = safe_float_conversion(result_data.get("total_value_eur", 0))
+        reported_cost = safe_float_conversion(result_data.get("total_cost_eur", 0))
+        reported_unrealised = safe_float_conversion(
             result_data.get("total_unrealised_eur", 0)
         )
 
@@ -263,23 +231,24 @@ class PortfolioDataVerifier:
         actual_unrealised = actual_row["Unrealised €"]
         actual_return_pct = actual_row["Total Return %"]
 
-        reported_amount = _safe_float_conversion(summary_data.get("actual_amount", 0))
-        reported_value = _safe_float_conversion(summary_data.get("actual_value_eur", 0))
-        reported_unrealised = _safe_float_conversion(
+        reported_amount = safe_float_conversion(summary_data.get("actual_amount", 0))
+        reported_value = safe_float_conversion(summary_data.get("actual_value_eur", 0))
+        reported_unrealised = safe_float_conversion(
             summary_data.get("unrealised_eur", 0)
         )
-        reported_return_pct = _safe_float_conversion(
+        reported_return_pct = safe_float_conversion(
             summary_data.get("total_return_pct", 0)
         )
 
+        actual_amount_float = safe_float_conversion(actual_amount)
         if (
-            abs(_safe_float_conversion(actual_amount) - reported_amount) > 0.000001
+            abs(actual_amount_float - reported_amount) > 0.000001
         ):  # Very small tolerance for crypto amounts
-            error_msg = f"{asset} amount mismatch: actual {_safe_float_conversion(actual_amount):.6f} vs reported {reported_amount:.6f}"
+            error_msg = f"{asset} amount mismatch: actual {actual_amount_float:.6f} vs reported {reported_amount:.6f}"
             logger.error(error_msg)
             return False, json.dumps(result_data), error_msg
 
-        if abs(_safe_float_conversion(actual_value) - reported_value) > tolerance:
+        if abs(safe_float_conversion(actual_value) - reported_value) > tolerance:
             error_msg = f"{asset} value mismatch: actual €{actual_value:.2f} vs reported €{reported_value:.2f}"
             logger.error(error_msg)
             return False, json.dumps(result_data), error_msg

@@ -3,10 +3,8 @@
 import pandas as pd
 import pytest
 
-from src.portfolio.predictions.technical_analysis import (
-    TechnicalAnalyzer,
-    _safe_float_conversion,
-)
+from src.portfolio.predictions.technical_analysis import TechnicalAnalyzer
+from src.portfolio.utils import safe_float_conversion
 
 
 class TestTechnicalAnalysisTypeSafety:
@@ -136,14 +134,14 @@ class TestSafeFloatConversionEdgeCases:
         ]
 
         for input_val, expected in test_cases:
-            result = _safe_float_conversion(input_val)
+            result = safe_float_conversion(input_val)
             assert result == expected, f"Failed for input: {input_val}"
 
     def test_conversion_with_custom_default(self):
         """Test conversion with custom default values."""
-        assert _safe_float_conversion(None, 5.0) == 5.0
-        assert _safe_float_conversion("", 10.0) == 10.0
-        assert _safe_float_conversion("invalid", -1.0) == -1.0
+        assert safe_float_conversion(None, 5.0) == 5.0
+        assert safe_float_conversion("", 10.0) == 10.0
+        assert safe_float_conversion("invalid", -1.0) == -1.0
 
 
 class TestDataFrameOperationsSafety:

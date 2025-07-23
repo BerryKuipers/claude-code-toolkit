@@ -5,12 +5,12 @@ import re
 import pytest
 
 from src.portfolio.ai_explanations import (
-    _safe_float_conversion,
     format_crypto_amount,
     format_currency,
     generate_coin_explanation,
     get_position_summary,
 )
+from src.portfolio.utils import safe_float_conversion
 
 
 class TestFormatCurrency:
@@ -284,42 +284,42 @@ class TestPriceFormattingRegression:
 
 
 class TestSafeFloatConversion:
-    """Test the _safe_float_conversion function for robust type handling."""
+    """Test the safe_float_conversion function for robust type handling."""
 
     def test_string_numbers(self):
         """Test conversion of string numbers."""
-        assert _safe_float_conversion("123.45") == 123.45
-        assert _safe_float_conversion("0.0001") == 0.0001
-        assert _safe_float_conversion("-50.25") == -50.25
+        assert safe_float_conversion("123.45") == 123.45
+        assert safe_float_conversion("0.0001") == 0.0001
+        assert safe_float_conversion("-50.25") == -50.25
 
     def test_string_with_currency_symbols(self):
         """Test conversion of strings with currency symbols."""
-        assert _safe_float_conversion("€123.45") == 123.45
-        assert _safe_float_conversion("$50.00") == 50.0
-        assert _safe_float_conversion("€0.00001234") == 0.00001234
+        assert safe_float_conversion("€123.45") == 123.45
+        assert safe_float_conversion("$50.00") == 50.0
+        assert safe_float_conversion("€0.00001234") == 0.00001234
 
     def test_string_with_formatting(self):
         """Test conversion of formatted strings."""
-        assert _safe_float_conversion("1,234.56") == 1234.56
-        assert _safe_float_conversion(" 123.45 ") == 123.45
+        assert safe_float_conversion("1,234.56") == 1234.56
+        assert safe_float_conversion(" 123.45 ") == 123.45
 
     def test_empty_and_invalid_strings(self):
         """Test conversion of empty and invalid strings."""
-        assert _safe_float_conversion("") == 0.0
-        assert _safe_float_conversion("-") == 0.0
-        assert _safe_float_conversion("invalid") == 0.0
-        assert _safe_float_conversion("€") == 0.0
+        assert safe_float_conversion("") == 0.0
+        assert safe_float_conversion("-") == 0.0
+        assert safe_float_conversion("invalid") == 0.0
+        assert safe_float_conversion("€") == 0.0
 
     def test_none_values(self):
         """Test conversion of None values."""
-        assert _safe_float_conversion(None) == 0.0
-        assert _safe_float_conversion(None, 5.0) == 5.0
+        assert safe_float_conversion(None) == 0.0
+        assert safe_float_conversion(None, 5.0) == 5.0
 
     def test_numeric_types(self):
         """Test conversion of numeric types."""
-        assert _safe_float_conversion(123.45) == 123.45
-        assert _safe_float_conversion(123) == 123.0
-        assert _safe_float_conversion(0) == 0.0
+        assert safe_float_conversion(123.45) == 123.45
+        assert safe_float_conversion(123) == 123.0
+        assert safe_float_conversion(0) == 0.0
 
 
 class TestStringInputBugFix:
