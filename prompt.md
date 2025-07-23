@@ -31,6 +31,8 @@
 ### Quality Standards
 - **No shortcuts**: Never use fake data, stubs, or placeholder code
 - **Genuine fixes only**: Always resolve underlying problems
+- **No simple scapegoats**: When complex architecture fails, debug and fix the root cause instead of falling back to simple solutions that abandon the planned architecture
+- **Preserve planned architecture**: If a SOLID/clean architecture approach was planned (like TabManager), persist through debugging rather than reverting to basic implementations
 - **Test coverage**: Write unit tests for complex logic
 - **Security first**: Protect API keys and user data
 - **Performance**: Optimize for real-time portfolio updates

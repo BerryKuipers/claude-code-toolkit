@@ -4,15 +4,12 @@ Tab management for the crypto portfolio dashboard.
 Clean, SOLID implementation of tab navigation and content rendering.
 """
 
-from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import pandas as pd
 import streamlit as st
 
-from ..ai_explanations import format_currency, generate_coin_explanation
-from ..chat import render_chat_interface
-from ..ui import add_section_anchor
+from ..ai_explanations import format_currency
 from ..ui.performance import PerformanceOptimizer
 
 
@@ -170,11 +167,38 @@ class AnalysisTab(BaseTab):
         """Render the Analysis tab content."""
         self._render_section_header("Portfolio Analysis", "📊")
 
+        if df.empty:
+            st.warning("No portfolio data available for analysis")
+            return
+
+        # Portfolio Analytics
+        self._render_portfolio_analytics(df)
+
         # Performance Monitor
         self._render_performance_monitor()
 
         # Analysis explanations
         self._render_analysis_explanations()
+
+    def _render_portfolio_analytics(self, df: pd.DataFrame):
+        """Render portfolio analytics and insights."""
+        st.markdown("### 📊 Portfolio Analytics")
+
+        # Basic analytics for now - can be enhanced later
+        if not df.empty:
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("**Asset Distribution**")
+                if "Actual Value €" in df.columns:
+                    asset_values = df.set_index("Asset")["Actual Value €"]
+                    st.bar_chart(asset_values)
+
+            with col2:
+                st.markdown("**Performance Overview**")
+                if "Unrealised €" in df.columns:
+                    performance = df.set_index("Asset")["Unrealised €"]
+                    st.bar_chart(performance)
 
     def _render_performance_monitor(self):
         """Render the performance monitoring section."""
@@ -218,8 +242,52 @@ class ChatTab(BaseTab):
         """Render the Chat tab content."""
         self._render_section_header("AI Portfolio Assistant", "🤖")
 
-        # AI Chat Interface
-        render_chat_interface(df)
+        # Info about sticky chat
+        st.info(
+            "💡 **The AI chat is now available at the bottom of every page!** "
+            "You can ask questions about your portfolio while viewing any tab. "
+            "Look for the expandable 'AI Portfolio Assistant' section below."
+        )
+
+        # Show some helpful information about the AI assistant
+        st.markdown("### 🤖 About Your AI Assistant")
+        st.markdown(
+            """
+            Your AI assistant can help you with:
+
+            **📊 Portfolio Analysis:**
+            - Total portfolio value and performance
+            - Asset allocation and diversification
+            - Profit/loss analysis for individual coins
+
+            **🔍 Detailed Insights:**
+            - Explain specific positions and their performance
+            - Analyze transfer activity and discrepancies
+            - Provide recommendations based on your data
+
+            **💡 Smart Queries:**
+            - "What's my best performing asset?"
+            - "Explain my Bitcoin position"
+            - "Which coins are losing money?"
+            - "Show me my portfolio allocation"
+            """
+        )
+
+        # Show current model info
+        st.markdown("### ⚙️ AI Model Information")
+        st.markdown(
+            """
+            The assistant uses advanced AI models to analyze your portfolio:
+            - **GPT-4**: For complex analysis and detailed explanations
+            - **Claude**: For large context and comprehensive insights
+            - **Function Calling**: Direct access to your portfolio data
+            """
+        )
+
+        st.markdown("---")
+        st.markdown(
+            "**💬 Start chatting by expanding the AI assistant section at the bottom of any page!**"
+        )
 
 
 class SettingsTab(BaseTab):

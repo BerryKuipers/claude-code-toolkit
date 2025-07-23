@@ -590,180 +590,19 @@ def create_pnl_chart(df: pd.DataFrame) -> None:
             st.info("No transfer activity detected.")
 
 
-def render_portfolio_tab(df, selected_assets, price_overrides, current_prices):
-    """Render the Portfolio tab content."""
-    st.subheader("📊 Portfolio Overview")
+def render_sticky_chat_interface(df: pd.DataFrame):
+    """Render a sticky chat interface at the bottom of the page."""
+    # Add some spacing before the chat
+    st.markdown("---")
 
-    # Add column explanations
+    # Create a collapsible chat section
     with st.expander(
-        "📋 Column Explanations - Click to understand what each column means"
+        "💬 AI Portfolio Assistant - Ask questions about your portfolio", expanded=False
     ):
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown(
-                """
-            **📊 Holdings & Values:**
-            - **FIFO Amt**: Amount calculated from trade history
-            - **Actual Amt**: Your real current balance on Bitvavo
-            - **Diff**: Difference between FIFO and actual amounts
-            - **Cost €**: Total money you spent on this coin
-            - **FIFO €**: Value based on FIFO calculation
-            - **Actual €**: Value based on your real holdings
-            """
-            )
-        with col2:
-            st.markdown(
-                """
-            **💰 Profit & Loss:**
-            - **Realised €**: Profit/loss from completed trades
-            - **Unrealised €**: Profit/loss if you sell NOW
-              - ✅ **Positive = Profit** if sold now
-              - ❌ **Negative = Loss** if sold now
-            - **Return %**: Overall performance percentage
-            - **Price €**: Current market price per coin
-            """
-            )
+        # Import here to avoid circular imports
+        from src.portfolio.chat import render_chat_interface
 
-        # Add a third section for transfer analysis
-        st.markdown("**🔄 Transfer & Discrepancy Analysis:**")
-        col3, col4 = st.columns(2)
-        with col3:
-            st.markdown(
-                """
-            **📥 Deposits & Withdrawals:**
-            - **Net Transfers**: Deposits minus withdrawals
-            - **Total Deposits**: Amount deposited from external sources
-            - **Total Withdrawals**: Amount withdrawn to external wallets
-            - **Deposit Count**: Number of deposit transactions
-            - **Withdrawal Count**: Number of withdrawal transactions
-            """
-            )
-        with col4:
-            st.markdown(
-                """
-            **🎁 Rewards & Explanations:**
-            - **Potential Rewards**: Estimated staking rewards/airdrops
-            - **Transfer Explained**: Difference explained by transfers
-            - **Rewards Explained**: Difference explained by rewards
-            - **Unexplained Diff**: Remaining unexplained discrepancy
-            - **Explanation %**: How much is explained (higher = better)
-
-            **🎨 Color Legend:**
-            - 🟢 **Green border**: Assets in profit (positive return %)
-            - 🔴 **Red border**: Assets at loss (negative return %)
-            - ⚫ **Gray border**: Break-even assets (0% return)
-            """
-            )
-
-    # Add custom CSS for profit/loss row styling
-    st.markdown(
-        """
-    <style>
-    /* Custom styling for profit/loss indicators */
-    .profit-row {
-        background: linear-gradient(90deg, rgba(0, 255, 0, 0.1) 0%, rgba(0, 255, 0, 0.05) 100%) !important;
-        border-left: 4px solid #00ff00 !important;
-    }
-    .loss-row {
-        background: linear-gradient(90deg, rgba(255, 0, 0, 0.1) 0%, rgba(255, 0, 0, 0.05) 100%) !important;
-        border-left: 4px solid #ff0000 !important;
-    }
-    .neutral-row {
-        border-left: 4px solid #666666 !important;
-    }
-    </style>
-    """,
-        unsafe_allow_html=True,
-    )
-
-
-def render_analysis_tab(df):
-    """Render the Analysis tab content."""
-    st.subheader("📊 Portfolio Analysis")
-
-    # Performance Monitor Section
-    PerformanceOptimizer.render_performance_monitor()
-
-    # Analysis section with explanations
-    with st.expander("ℹ️ What do these metrics mean?"):
-        st.markdown(
-            """
-        **FIFO vs Actual Values:**
-        - **FIFO Amount**: Holdings calculated from your trade history using First-In-First-Out accounting
-        - **Actual Amount**: Your real current balance on Bitvavo
-        - **Difference**: Shows deposits/withdrawals not captured in trade history
-
-        **Financial Metrics:**
-        - **Cost €**: Total amount invested (purchases minus sales)
-        - **FIFO Value €**: Value based on FIFO calculation from trades
-        - **Actual Value €**: Value based on your real current holdings
-        - **Realised €**: Profit/loss from completed trades
-        - **Unrealised €**: Current profit/loss on holdings
-        - **Total Return %**: Overall performance including both realised and unrealised gains
-
-        **Why might FIFO and Actual differ?**
-        - Direct deposits to Bitvavo (not through trades)
-        - Withdrawals from other exchanges
-        - Staking rewards or airdrops
-        - Manual transfers between accounts
-        """
-        )
-
-
-def render_chat_tab(df):
-    """Render the Chat tab content."""
-    st.subheader("🤖 AI Portfolio Assistant")
-
-    # AI Chat Interface
-    render_chat_interface(df)
-
-
-def render_settings_tab(selected_assets, current_prices):
-    """Render the Settings tab content."""
-    st.subheader("⚙️ Configuration & Settings")
-
-    # Price overrides section
-    st.markdown("### 💰 Price Overrides")
-    st.markdown("*Override live prices for what-if scenarios*")
-
-    price_overrides = {}
-    for asset in selected_assets:
-        # Use current price as default, or 0.0 if not available
-        current_price = current_prices.get(asset, 0.0)
-
-        # Show current price in the label if available with proper formatting
-        if current_price > 0:
-            # Use dynamic formatting for small prices
-            price_display = format_currency(current_price)
-
-            # Set appropriate step and format based on price magnitude
-            step_value, format_str = get_price_format_details(current_price)
-
-            label = f"{asset} Price (€) - Current: {price_display}"
-            help_text = (
-                f"Current live price: {price_display}. Modify to run what-if scenarios."
-            )
-        else:
-            label = f"{asset} Price (€) - No EUR pair"
-            help_text = f"No EUR trading pair available for {asset}"
-            step_value = 0.01
-            format_str = "%.2f"
-
-        override_value = st.number_input(
-            label,
-            min_value=0.0,
-            value=current_price,
-            step=step_value,
-            format=format_str,
-            help=help_text,
-            key=f"price_override_{asset}",  # Unique key to prevent conflicts
-        )
-
-        # Only consider it an override if it's different from current price
-        if override_value != current_price and override_value > 0:
-            price_overrides[asset] = override_value
-
-    return price_overrides
+        render_chat_interface(df)
 
 
 def main():
@@ -846,11 +685,39 @@ def main():
     )
 
     # Get available assets
-    available_assets = get_available_assets()
+    with st.spinner("Loading available assets..."):
+        # Clear cache if we have issues
+        if st.sidebar.button("🔄 Clear Cache & Reload"):
+            st.cache_data.clear()
+            st.rerun()
+
+        available_assets = get_available_assets()
+
+        # Temporary fallback for debugging
+        if not available_assets:
+            st.warning("⚠️ Using fallback asset list for debugging")
+            available_assets = ["BTC", "ETH", "XRP", "ADA", "DOT"]  # Common assets
 
     if not available_assets:
         st.error("❌ No assets found or API connection failed")
         st.info("Make sure your API credentials are set and you have crypto balances")
+
+        # Debug information
+        with st.expander("🔍 Debug Information"):
+            st.write("Checking Bitvavo client initialization...")
+            client = init_bitvavo_client()
+            if client:
+                st.success("✅ Bitvavo client initialized successfully")
+                try:
+                    # Try to get portfolio assets directly
+                    portfolio_assets = get_portfolio_assets(client)
+                    st.write(
+                        f"Found {len(portfolio_assets)} portfolio assets: {portfolio_assets}"
+                    )
+                except Exception as e:
+                    st.error(f"Error getting portfolio assets: {e}")
+            else:
+                st.error("❌ Failed to initialize Bitvavo client")
         return
 
     # Asset selection
@@ -927,6 +794,9 @@ def main():
     # Create and render tabs using our clean tab system
     tab_manager = TabManager()
     tab_manager.render_tabs(df, selected_assets, price_overrides, current_prices)
+
+    # Render sticky chat interface at the bottom (outside of tabs)
+    render_sticky_chat_interface(df)
 
     # Footer (outside of tabs)
     st.markdown("---")
