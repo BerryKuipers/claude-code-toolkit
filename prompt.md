@@ -222,6 +222,23 @@ git push origin feature/description
 .\scripts\resolve-pr-conversations.ps1 -PrNumber 3 -DryRun
 ```
 
+### GitHub Issue Auto-Linking
+**CRITICAL**: Always include closing keywords in PR descriptions to auto-close issues:
+- `Closes #<issue-number>`
+- `Fixes #<issue-number>`
+- `Resolves #<issue-number>`
+- `Implements #<issue-number>`
+
+**Example PR Description:**
+```markdown
+## 🚀 Overview
+This PR implements new portfolio features...
+
+[description content]
+
+Closes #5
+```
+
 ## 🔐 Security Guidelines
 
 ### API Key Management
@@ -267,6 +284,7 @@ crypto_insight/
 - [ ] Documentation updated
 - [ ] Performance acceptable
 - [ ] Security reviewed
+- [ ] **PR description includes closing keywords** (Closes #X, Fixes #X, etc.)
 
 ---
 

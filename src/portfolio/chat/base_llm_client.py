@@ -82,6 +82,25 @@ AVAILABLE_MODELS = {
         supports_function_calling=True,
         supports_vision=True,
     ),
+    "gpt-4o": ModelInfo(
+        provider=LLMProvider.OPENAI,
+        model_id="gpt-4o",
+        display_name="GPT-4o (OpenAI Default)",
+        description="OpenAI's latest flagship model with exceptional reasoning, function calling, and multimodal capabilities. Optimized for speed and intelligence.",
+        strengths=[
+            "Latest OpenAI technology",
+            "Excellent function calling",
+            "Fast response times",
+            "Superior reasoning capabilities",
+            "Multimodal support (text + vision)",
+            "Cost-effective for performance",
+        ],
+        cost_per_1k_input=0.005,
+        cost_per_1k_output=0.015,
+        context_window=128000,
+        supports_function_calling=True,
+        supports_vision=True,
+    ),
     "gpt-4-turbo": ModelInfo(
         provider=LLMProvider.OPENAI,
         model_id="gpt-4-turbo-preview",
@@ -100,23 +119,24 @@ AVAILABLE_MODELS = {
         supports_function_calling=True,
         supports_vision=True,
     ),
-    "gpt-3.5-turbo": ModelInfo(
+    "gpt-4o-mini": ModelInfo(
         provider=LLMProvider.OPENAI,
-        model_id="gpt-3.5-turbo",
-        display_name="GPT-3.5 Turbo (Budget)",
-        description="Fast and cost-effective model for basic portfolio queries and simple analysis.",
+        model_id="gpt-4o-mini",
+        display_name="GPT-4o Mini (Budget)",
+        description="OpenAI's efficient and cost-effective model with GPT-4 level intelligence at a fraction of the cost. Perfect for budget-conscious portfolio analysis.",
         strengths=[
+            "GPT-4 level intelligence",
             "Very cost-effective",
             "Fast responses",
-            "Good for simple queries",
-            "Reliable basic analysis",
-            "Low latency",
+            "Excellent function calling",
+            "Good reasoning capabilities",
+            "Latest training data",
         ],
-        cost_per_1k_input=0.0005,
-        cost_per_1k_output=0.0015,
-        context_window=16000,
+        cost_per_1k_input=0.00015,
+        cost_per_1k_output=0.0006,
+        context_window=128000,
         supports_function_calling=True,
-        supports_vision=False,
+        supports_vision=True,
     ),
 }
 
@@ -247,5 +267,32 @@ class LLMClientFactory:
 
     @staticmethod
     def get_default_model() -> str:
-        """Get the default model key."""
-        return "claude-sonnet-4"  # Claude Sonnet 4 as default
+        """Get the default model key based on available API keys.
+
+        Priority:
+        1. GPT-4o (if OpenAI API key available)
+        2. Claude Sonnet 4 (if Anthropic API key available)
+        3. Fallback to first available model
+        """
+        import os
+
+        # Check for OpenAI API key first (GPT-4o as preferred default)
+        if os.getenv("OPENAI_API_KEY"):
+            return "gpt-4o"
+
+        # Fallback to Claude Sonnet 4 if Anthropic key available
+        if os.getenv("ANTHROPIC_API_KEY"):
+            return "claude-sonnet-4"
+
+        # Final fallback to first available model
+        return list(AVAILABLE_MODELS.keys())[0]
+
+    @staticmethod
+    def get_recommended_openai_model() -> str:
+        """Get the recommended OpenAI model (GPT-4o)."""
+        return "gpt-4o"
+
+    @staticmethod
+    def get_recommended_anthropic_model() -> str:
+        """Get the recommended Anthropic model (Claude Sonnet 4)."""
+        return "claude-sonnet-4"

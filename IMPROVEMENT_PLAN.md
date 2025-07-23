@@ -76,13 +76,13 @@ Based on Research 03's analysis, here's a structured plan for improving the AI c
 ```python
 def select_optimal_model(query_type: str, context_size: int, cost_budget: float):
     if context_size > 100_000:  # Large trade history
-        return "claude-sonnet"
+        return "claude-sonnet-4"
     elif query_type == "function_call":
-        return "gpt-4o"  # Best function calling
+        return "gpt-4o"  # Best function calling (now default OpenAI model)
     elif cost_budget < 0.01:
-        return "gpt-3.5-turbo"  # Budget option
+        return "gpt-4o-mini"  # Budget option with GPT-4 intelligence
     else:
-        return "gpt-4o"  # Default choice
+        return "gpt-4o"  # Default OpenAI choice
 ```
 
 ### RAG Implementation

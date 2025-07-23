@@ -174,12 +174,14 @@ def get_model_recommendation_message(model_key: str) -> str:
 
     if model_key == "claude-sonnet-4":
         return "🎯 **Recommended Choice!** Claude Sonnet 4 offers the best balance of intelligence, speed, and cost for financial analysis."
+    elif model_key == "gpt-4o":
+        return "🚀 **OpenAI Default!** GPT-4o is OpenAI's latest flagship model with exceptional reasoning and function calling capabilities."
     elif model_key == "claude-opus-4":
         return "🚀 **Premium Choice!** Claude Opus 4 provides the highest level of intelligence for complex financial reasoning."
     elif model_key == "gpt-4-turbo":
         return "🔧 **Reliable Choice!** GPT-4 Turbo offers strong general capabilities with established performance."
-    elif model_key == "gpt-3.5-turbo":
-        return "💰 **Budget Choice!** GPT-3.5 Turbo is cost-effective for basic portfolio queries."
+    elif model_key == "gpt-4o-mini":
+        return "💰 **Budget Choice!** GPT-4o Mini offers GPT-4 level intelligence at a fraction of the cost."
     else:
         return "✅ **Good Choice!** This model will work well for your portfolio analysis needs."
 
