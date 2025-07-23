@@ -43,7 +43,7 @@ jobs:
         
     - name: 📏 Import sorting check (isort)
       run: |
-        isort --check-only --diff src/ tests/ dashboard.py
+        isort --check-only --diff --profile black src/ tests/ dashboard.py
         
     - name: 🔍 Lint with flake8
       run: |
