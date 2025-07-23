@@ -10,6 +10,7 @@ from src.portfolio.ai_explanations import (
     generate_coin_explanation,
     get_position_summary,
 )
+from src.portfolio.utils import safe_float_conversion
 
 
 class TestFormatCurrency:
@@ -280,3 +281,116 @@ class TestPriceFormattingRegression:
         # Should contain properly formatted small prices
         assert "€0.00005000" in explanation  # Average price
         assert "€0.00001200" in explanation  # Current price
+
+
+class TestSafeFloatConversion:
+    """Test the safe_float_conversion function for robust type handling."""
+
+    def test_string_numbers(self):
+        """Test conversion of string numbers."""
+        assert safe_float_conversion("123.45") == 123.45
+        assert safe_float_conversion("0.0001") == 0.0001
+        assert safe_float_conversion("-50.25") == -50.25
+
+    def test_string_with_currency_symbols(self):
+        """Test conversion of strings with currency symbols."""
+        assert safe_float_conversion("€123.45") == 123.45
+        assert safe_float_conversion("$50.00") == 50.0
+        assert safe_float_conversion("€0.00001234") == 0.00001234
+
+    def test_string_with_formatting(self):
+        """Test conversion of formatted strings."""
+        assert safe_float_conversion("1,234.56") == 1234.56
+        assert safe_float_conversion(" 123.45 ") == 123.45
+
+    def test_empty_and_invalid_strings(self):
+        """Test conversion of empty and invalid strings."""
+        assert safe_float_conversion("") == 0.0
+        assert safe_float_conversion("-") == 0.0
+        assert safe_float_conversion("invalid") == 0.0
+        assert safe_float_conversion("€") == 0.0
+
+    def test_none_values(self):
+        """Test conversion of None values."""
+        assert safe_float_conversion(None) == 0.0
+        assert safe_float_conversion(None, 5.0) == 5.0
+
+    def test_numeric_types(self):
+        """Test conversion of numeric types."""
+        assert safe_float_conversion(123.45) == 123.45
+        assert safe_float_conversion(123) == 123.0
+        assert safe_float_conversion(0) == 0.0
+
+
+class TestStringInputBugFix:
+    """Test the bug fix for string inputs causing abs() errors."""
+
+    def test_amount_diff_as_string_no_error(self):
+        """Test that Amount Diff as string doesn't cause abs() error."""
+        # This was the exact error case: abs() called on string Amount Diff
+        test_data = {
+            "Asset": "BTC",
+            "FIFO Amount": 1.5,
+            "Actual Amount": 1.6,
+            "Amount Diff": "0.1",  # String instead of float - caused original error
+            "Cost €": 50000.0,
+            "Actual Value €": 52000.0,
+            "Unrealised €": 2000.0,
+            "Total Return %": 4.0,
+            "Current Price €": 32500.0,
+            "Net Transfers": 0,
+            "Total Deposits": 0,
+            "Total Withdrawals": 0,
+        }
+
+        # Should not raise any exception
+        explanation = generate_coin_explanation(test_data)
+        assert "BTC" in explanation
+        assert isinstance(explanation, str)
+        assert len(explanation) > 0
+
+    def test_all_string_inputs(self):
+        """Test that all numeric fields as strings work correctly."""
+        test_data = {
+            "Asset": "ETH",
+            "FIFO Amount": "2.5",  # All numeric fields as strings
+            "Actual Amount": "2.7",
+            "Amount Diff": "0.2",
+            "Cost €": "5000.00",
+            "Actual Value €": "5400.00",
+            "Unrealised €": "400.00",
+            "Total Return %": "8.0",
+            "Current Price €": "€2000.00",  # With currency symbol
+            "Net Transfers": "0.2",
+            "Total Deposits": "0.2",
+            "Total Withdrawals": "0",
+        }
+
+        # Should not raise any exception
+        explanation = generate_coin_explanation(test_data)
+        assert "ETH" in explanation
+        assert isinstance(explanation, str)
+        assert len(explanation) > 0
+
+    def test_mixed_string_and_numeric_inputs(self):
+        """Test mixed string and numeric inputs."""
+        test_data = {
+            "Asset": "DOGE",
+            "FIFO Amount": 1000.0,  # Float
+            "Actual Amount": "1100.0",  # String
+            "Amount Diff": "100.0",  # String (the problematic field)
+            "Cost €": 100,  # Int
+            "Actual Value €": "110.00",  # String
+            "Unrealised €": 10.0,  # Float
+            "Total Return %": "10.0",  # String
+            "Current Price €": 0.1,  # Float
+            "Net Transfers": "100.0",  # String
+            "Total Deposits": 100.0,  # Float
+            "Total Withdrawals": "0",  # String
+        }
+
+        # Should not raise any exception
+        explanation = generate_coin_explanation(test_data)
+        assert "DOGE" in explanation
+        assert isinstance(explanation, str)
+        assert len(explanation) > 0
