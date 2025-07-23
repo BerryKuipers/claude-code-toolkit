@@ -16,11 +16,9 @@ import streamlit as st
 from python_bitvavo_api.bitvavo import Bitvavo
 
 # Import performance optimizations
-from src.portfolio.ui.performance import (
-    PerformanceOptimizer,
-    apply_global_optimizations,
-    render_optimized_dataframe,
-)
+from src.portfolio.ui.performance import (PerformanceOptimizer,
+                                          apply_global_optimizations,
+                                          render_optimized_dataframe)
 
 
 # Set up logging
@@ -82,28 +80,19 @@ load_env_file()
 # Add the src directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
-from src.portfolio.ai_explanations import (
-    generate_coin_explanation,
-    get_position_summary,
-)
+from src.portfolio.ai_explanations import (generate_coin_explanation,
+                                           get_position_summary)
 from src.portfolio.chat import render_chat_interface
 from src.portfolio.chat.api_status import APIStatusChecker
 from src.portfolio.chat.cost_tracker import CostTracker, render_cost_footer
-from src.portfolio.core import (
-    BitvavoAPIException,
-    InvalidAPIKeyError,
-    RateLimitExceededError,
-    TransferSummary,
-    _decimal,
-    analyze_transfers,
-    calculate_discrepancy_breakdown,
-    calculate_pnl,
-    fetch_trade_history,
-    get_current_price,
-    get_portfolio_assets,
-    sync_time,
-)
-from src.portfolio.ui import add_section_anchor, render_quick_actions, render_sticky_nav
+from src.portfolio.core import (BitvavoAPIException, InvalidAPIKeyError,
+                                RateLimitExceededError, TransferSummary,
+                                _decimal, analyze_transfers,
+                                calculate_discrepancy_breakdown, calculate_pnl,
+                                fetch_trade_history, get_current_price,
+                                get_portfolio_assets, sync_time)
+from src.portfolio.ui import (add_section_anchor, render_quick_actions,
+                              render_sticky_nav)
 
 
 def init_bitvavo_client() -> Optional[Bitvavo]:

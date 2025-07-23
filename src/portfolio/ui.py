@@ -17,34 +17,21 @@ import pandas as pd
 from python_bitvavo_api.bitvavo import Bitvavo
 
 try:
-    from .core import (
-        BitvavoAPIException,
-        InvalidAPIKeyError,
-        RateLimitExceededError,
-        _decimal,
-        calculate_pnl,
-        fetch_trade_history,
-        get_current_price,
-        get_portfolio_assets,
-        sync_time,
-    )
+    from .core import (BitvavoAPIException, InvalidAPIKeyError,
+                       RateLimitExceededError, _decimal, calculate_pnl,
+                       fetch_trade_history, get_current_price,
+                       get_portfolio_assets, sync_time)
 except ImportError:
     # When running directly with streamlit, use absolute imports
     import os
     import sys
 
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-    from src.portfolio.core import (
-        BitvavoAPIException,
-        InvalidAPIKeyError,
-        RateLimitExceededError,
-        _decimal,
-        calculate_pnl,
-        fetch_trade_history,
-        get_current_price,
-        get_portfolio_assets,
-        sync_time,
-    )
+    from src.portfolio.core import (BitvavoAPIException, InvalidAPIKeyError,
+                                    RateLimitExceededError, _decimal,
+                                    calculate_pnl, fetch_trade_history,
+                                    get_current_price, get_portfolio_assets,
+                                    sync_time)
 
 
 def init_bitvavo_client() -> Optional[Bitvavo]:

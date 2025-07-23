@@ -8,13 +8,12 @@ import streamlit as st
 
 from .api_status import get_error_suggestion, render_error_help
 from .base_llm_client import LLMClientFactory, LLMProvider
-from .cost_tracker import CostTracker, render_cost_footer, render_detailed_cost_analysis
+from .cost_tracker import (CostTracker, render_cost_footer,
+                           render_detailed_cost_analysis)
 from .function_handlers import PortfolioFunctionHandler
-from .model_selector import (
-    render_model_selector,
-    render_model_status_indicator,
-    show_model_switch_success,
-)
+from .model_selector import (render_model_selector,
+                             render_model_status_indicator,
+                             show_model_switch_success)
 from .prompt_editor import PromptEditor
 
 logger = logging.getLogger(__name__)
