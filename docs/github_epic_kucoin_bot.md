@@ -3,6 +3,27 @@
 ## Summary
 Develop an isolated trading bot system that operates on KuCoin subaccounts with strict budget controls, memory persistence, and future LLM integration capabilities. The system will start with a single bot and scale to support multiple bots with AI orchestration.
 
+## Background and Research Context
+
+Following extensive research on isolated trading bot architectures for Bitvavo and other exchanges, we concluded Bitvavo does not currently support subaccounts, making proper budget isolation unfeasible. Therefore, KuCoin was selected as the preferred exchange because it supports:
+- Multiple subaccounts per main account
+- API keys scoped to a specific subaccount
+- Internal transfers between sub and main account without blockchain fees
+- Trade-only API keys without withdrawal permission
+
+This approach provides fund isolation while allowing scalable multi-bot deployment in the future. The research also identified the following key considerations:
+
+### Research Highlights
+- Use Freqtrade for the core trading engine, running inside an ephemeral Docker container per bot
+- Trade only on the allocated KuCoin subaccount budget, never exceeding funds
+- LLM orchestration (optional in later phases) for strategy suggestion, implemented with function calling and strict rate-limiting to control API costs
+- Memory layer required for each bot to track trade history, PnL, fee awareness, and learning over time
+- Memory options considered: Redis (namespaced per bot), SQLite, or DuckDB. Redis preferred for simplicity and scalability
+- Risk management module needed to enforce stop-loss, max exposure, and prevent drawdown beyond allocated budget
+- Logs and monitoring for auditable actions, errors, and analysis
+
+We aim to start small, with a single bot trading on a KuCoin subaccount with a small budget (~€50–100), no LLM at first, but architected to scale to LLM integration and multiple bots later.
+
 ## Goals
 - Deploy an isolated trading bot that only operates within the allocated KuCoin subaccount budget
 - Architect the system for future scalability with multiple bots and optional LLM integration
