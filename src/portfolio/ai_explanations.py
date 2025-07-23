@@ -10,6 +10,38 @@ from typing import Any, Dict
 FLOAT_EQUALITY_THRESHOLD = 1e-6  # Threshold for float comparison
 
 
+def _safe_float_conversion(value: Any, default: float = 0.0) -> float:
+    """Safely convert a value to float, handling strings and other types.
+
+    Args:
+        value: Value to convert to float
+        default: Default value if conversion fails
+
+    Returns:
+        Float value or default if conversion fails
+    """
+    if value is None:
+        return default
+
+    try:
+        # Handle string values that might have currency symbols or formatting
+        if isinstance(value, str):
+            # Remove common currency symbols, percentage signs, and whitespace
+            cleaned_value = (value.replace('€', '')
+                           .replace('$', '')
+                           .replace('%', '')
+                           .replace(',', '')
+                           .strip())
+            if cleaned_value == '' or cleaned_value == '-':
+                return default
+            return float(cleaned_value)
+
+        # Handle numeric types
+        return float(value)
+    except (ValueError, TypeError):
+        return default
+
+
 def generate_coin_explanation(
     asset_data: Dict[str, Any], include_transfers: bool = True
 ) -> str:
@@ -38,18 +70,19 @@ def generate_coin_explanation(
     Returns:
         Natural language explanation string
     """
-    asset = asset_data["Asset"]
-    fifo_amount = asset_data["FIFO Amount"]
-    actual_amount = asset_data["Actual Amount"]
-    amount_diff = asset_data["Amount Diff"]
-    cost_eur = asset_data["Cost €"]
-    actual_value_eur = asset_data["Actual Value €"]
-    unrealised_eur = asset_data["Unrealised €"]
-    total_return_pct = asset_data["Total Return %"]
-    current_price = asset_data["Current Price €"]
-    net_transfers = asset_data.get("Net Transfers", 0)
-    total_deposits = asset_data.get("Total Deposits", 0)
-    total_withdrawals = asset_data.get("Total Withdrawals", 0)
+    # Safely extract and convert all values to appropriate types
+    asset = str(asset_data.get("Asset", "Unknown"))
+    fifo_amount = _safe_float_conversion(asset_data.get("FIFO Amount"))
+    actual_amount = _safe_float_conversion(asset_data.get("Actual Amount"))
+    amount_diff = _safe_float_conversion(asset_data.get("Amount Diff"))
+    cost_eur = _safe_float_conversion(asset_data.get("Cost €"))
+    actual_value_eur = _safe_float_conversion(asset_data.get("Actual Value €"))
+    unrealised_eur = _safe_float_conversion(asset_data.get("Unrealised €"))
+    total_return_pct = _safe_float_conversion(asset_data.get("Total Return %"))
+    current_price = _safe_float_conversion(asset_data.get("Current Price €"))
+    net_transfers = _safe_float_conversion(asset_data.get("Net Transfers", 0))
+    total_deposits = _safe_float_conversion(asset_data.get("Total Deposits", 0))
+    total_withdrawals = _safe_float_conversion(asset_data.get("Total Withdrawals", 0))
 
     # Determine profit/loss status and emoji
     if unrealised_eur > 0:
@@ -160,26 +193,29 @@ def get_position_summary(asset_data: Dict[str, Any]) -> str:
         return f"Break-even {asset} position"
 
 
-def format_currency(amount: float, currency: str = "€") -> str:
+def format_currency(amount: Any, currency: str = "€") -> str:
     """Format currency amount with appropriate precision.
 
     Args:
-        amount: Amount to format
+        amount: Amount to format (can be float, int, or string)
         currency: Currency symbol
 
     Returns:
         Formatted currency string
     """
-    if abs(amount) >= 1000:
-        return f"{currency}{amount:,.0f}"
-    elif abs(amount) >= 1:
-        return f"{currency}{amount:.2f}"
-    elif abs(amount) >= 0.01:
-        return f"{currency}{amount:.4f}"
-    elif abs(amount) >= 0.0001:
-        return f"{currency}{amount:.6f}"
+    # Safely convert to float
+    amount_float = _safe_float_conversion(amount, 0.0)
+
+    if abs(amount_float) >= 1000:
+        return f"{currency}{amount_float:,.0f}"
+    elif abs(amount_float) >= 1:
+        return f"{currency}{amount_float:.2f}"
+    elif abs(amount_float) >= 0.01:
+        return f"{currency}{amount_float:.4f}"
+    elif abs(amount_float) >= 0.0001:
+        return f"{currency}{amount_float:.6f}"
     else:
-        return f"{currency}{amount:.8f}"
+        return f"{currency}{amount_float:.8f}"
 
 
 def get_price_format_details(price: float) -> tuple[float, str]:

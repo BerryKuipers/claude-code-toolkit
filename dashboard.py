@@ -518,7 +518,12 @@ def create_pnl_chart(df: pd.DataFrame) -> None:
 
         # Discrepancy explanation chart
         st.markdown("**🔍 Discrepancy Explanation Breakdown**")
-        discrepancy_data = df[abs(df["Amount Diff"]) > 0.000001].copy()
+        # Safely handle Amount Diff column that might contain strings
+        try:
+            discrepancy_data = df[abs(pd.to_numeric(df["Amount Diff"], errors='coerce').fillna(0)) > 0.000001].copy()
+        except (TypeError, ValueError):
+            # Fallback if conversion fails
+            discrepancy_data = df[df["Amount Diff"] != 0].copy()
         if not discrepancy_data.empty:
             try:
                 import plotly.express as px
@@ -1155,7 +1160,12 @@ def main():
         st.metric("Still Unexplained", f"{total_unexplained:.6f}")
 
     # Show explanation percentage
-    total_amount_diff = df["Amount Diff"].sum()
+    # Safely handle Amount Diff column that might contain strings
+    try:
+        total_amount_diff = pd.to_numeric(df["Amount Diff"], errors='coerce').fillna(0).sum()
+    except (TypeError, ValueError):
+        total_amount_diff = 0
+
     if abs(total_amount_diff) > 0:
         explanation_pct = (
             abs(total_transfer_explained + total_rewards_explained)
@@ -1176,7 +1186,12 @@ def main():
             )
 
     # Assets with significant unexplained differences
-    unexplained_assets = df[abs(df["Unexplained Diff"]) > 0.001].copy()
+    # Safely handle Unexplained Diff column that might contain strings
+    try:
+        unexplained_assets = df[abs(pd.to_numeric(df["Unexplained Diff"], errors='coerce').fillna(0)) > 0.001].copy()
+    except (TypeError, ValueError):
+        # Fallback if conversion fails
+        unexplained_assets = df[df["Unexplained Diff"] != 0].copy()
     if not unexplained_assets.empty:
         st.markdown("**🔍 Assets with Unexplained Discrepancies:**")
         unexplained_display = unexplained_assets[
