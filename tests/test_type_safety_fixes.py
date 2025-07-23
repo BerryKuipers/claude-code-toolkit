@@ -3,7 +3,10 @@
 import pandas as pd
 import pytest
 
-from src.portfolio.predictions.technical_analysis import TechnicalAnalyzer, _safe_float_conversion
+from src.portfolio.predictions.technical_analysis import (
+    TechnicalAnalyzer,
+    _safe_float_conversion,
+)
 
 
 class TestTechnicalAnalysisTypeSafety:
@@ -16,20 +19,22 @@ class TestTechnicalAnalysisTypeSafety:
     def test_analyze_asset_technicals_with_string_inputs(self):
         """Test technical analysis with string inputs from DataFrame."""
         # Create test data with string values (simulating DataFrame conversion issues)
-        portfolio_data = pd.DataFrame([
-            {
-                "Asset": "BTC",
-                "Current Price €": "45000.00",  # String instead of float
-                "Actual Amount": "1.5",  # String instead of float
-                "Cost €": "50000.00",  # String instead of float
-                "Unrealised €": "-5000.00",  # String instead of float
-                "Total Return %": "-10.0",  # String instead of float
-            }
-        ])
+        portfolio_data = pd.DataFrame(
+            [
+                {
+                    "Asset": "BTC",
+                    "Current Price €": "45000.00",  # String instead of float
+                    "Actual Amount": "1.5",  # String instead of float
+                    "Cost €": "50000.00",  # String instead of float
+                    "Unrealised €": "-5000.00",  # String instead of float
+                    "Total Return %": "-10.0",  # String instead of float
+                }
+            ]
+        )
 
         # Should not raise any exception
         result = self.analyzer.analyze_asset_technicals("BTC", portfolio_data)
-        
+
         assert "error" not in result
         assert result["asset"] == "BTC"
         assert result["current_price_eur"] == 45000.0
@@ -40,19 +45,21 @@ class TestTechnicalAnalysisTypeSafety:
 
     def test_analyze_asset_technicals_with_currency_symbols(self):
         """Test technical analysis with currency symbols in strings."""
-        portfolio_data = pd.DataFrame([
-            {
-                "Asset": "ETH",
-                "Current Price €": "€3000.50",  # With currency symbol
-                "Actual Amount": "2.0",
-                "Cost €": "€5500.00",  # With currency symbol
-                "Unrealised €": "€500.00",  # With currency symbol
-                "Total Return %": "9.1%",  # With percentage symbol (should handle gracefully)
-            }
-        ])
+        portfolio_data = pd.DataFrame(
+            [
+                {
+                    "Asset": "ETH",
+                    "Current Price €": "€3000.50",  # With currency symbol
+                    "Actual Amount": "2.0",
+                    "Cost €": "€5500.00",  # With currency symbol
+                    "Unrealised €": "€500.00",  # With currency symbol
+                    "Total Return %": "9.1%",  # With percentage symbol (should handle gracefully)
+                }
+            ]
+        )
 
         result = self.analyzer.analyze_asset_technicals("ETH", portfolio_data)
-        
+
         assert "error" not in result
         assert result["current_price_eur"] == 3000.5
         assert result["cost_basis"] == 5500.0
@@ -60,19 +67,21 @@ class TestTechnicalAnalysisTypeSafety:
 
     def test_analyze_asset_technicals_with_empty_strings(self):
         """Test technical analysis with empty string values."""
-        portfolio_data = pd.DataFrame([
-            {
-                "Asset": "DOGE",
-                "Current Price €": "",  # Empty string
-                "Actual Amount": "1000.0",
-                "Cost €": "",  # Empty string
-                "Unrealised €": None,  # None value
-                "Total Return %": "-",  # Dash string
-            }
-        ])
+        portfolio_data = pd.DataFrame(
+            [
+                {
+                    "Asset": "DOGE",
+                    "Current Price €": "",  # Empty string
+                    "Actual Amount": "1000.0",
+                    "Cost €": "",  # Empty string
+                    "Unrealised €": None,  # None value
+                    "Total Return %": "-",  # Dash string
+                }
+            ]
+        )
 
         result = self.analyzer.analyze_asset_technicals("DOGE", portfolio_data)
-        
+
         assert "error" not in result
         assert result["current_price_eur"] == 0.0  # Default value
         assert result["cost_basis"] == 0.0  # Default value
@@ -82,15 +91,17 @@ class TestTechnicalAnalysisTypeSafety:
     def test_technical_signals_with_mixed_types(self):
         """Test technical signals generation with mixed data types."""
         # Create a Series with mixed types (simulating DataFrame row)
-        asset_row = pd.Series({
-            "Current Price €": 100.0,  # Float
-            "Cost €": "150.00",  # String
-            "Actual Amount": "2.5",  # String
-            "Total Return %": -33.33,  # Float
-        })
+        asset_row = pd.Series(
+            {
+                "Current Price €": 100.0,  # Float
+                "Cost €": "150.00",  # String
+                "Actual Amount": "2.5",  # String
+                "Total Return %": -33.33,  # Float
+            }
+        )
 
         result = self.analyzer._generate_technical_signals(asset_row)
-        
+
         assert isinstance(result, dict)
         assert "signal" in result
         assert "strength" in result
@@ -141,37 +152,47 @@ class TestDataFrameOperationsSafety:
     def test_abs_operations_on_mixed_dataframe(self):
         """Test abs() operations on DataFrame with mixed data types."""
         # Create DataFrame with mixed types that could cause abs() errors
-        df = pd.DataFrame({
-            "Amount Diff": ["0.1", 0.2, "€0.3", "", None, "-0.5"],
-            "Unexplained Diff": [0.1, "0.2", "€0.3", "", None, "-0.5"],
-            "Asset": ["BTC", "ETH", "DOGE", "ADA", "SOL", "LTC"]
-        })
+        df = pd.DataFrame(
+            {
+                "Amount Diff": ["0.1", 0.2, "€0.3", "", None, "-0.5"],
+                "Unexplained Diff": [0.1, "0.2", "€0.3", "", None, "-0.5"],
+                "Asset": ["BTC", "ETH", "DOGE", "ADA", "SOL", "LTC"],
+            }
+        )
 
         # Test safe filtering operations (like those in dashboard.py)
         try:
             # This should work with the fixes
-            filtered_df = df[abs(pd.to_numeric(df["Amount Diff"], errors='coerce').fillna(0)) > 0.000001]
+            filtered_df = df[
+                abs(pd.to_numeric(df["Amount Diff"], errors="coerce").fillna(0))
+                > 0.000001
+            ]
             assert isinstance(filtered_df, pd.DataFrame)
         except Exception as e:
             pytest.fail(f"Safe DataFrame filtering failed: {e}")
 
         try:
             # This should also work
-            filtered_df2 = df[abs(pd.to_numeric(df["Unexplained Diff"], errors='coerce').fillna(0)) > 0.001]
+            filtered_df2 = df[
+                abs(pd.to_numeric(df["Unexplained Diff"], errors="coerce").fillna(0))
+                > 0.001
+            ]
             assert isinstance(filtered_df2, pd.DataFrame)
         except Exception as e:
             pytest.fail(f"Safe DataFrame filtering failed: {e}")
 
     def test_sum_operations_on_mixed_dataframe(self):
         """Test sum() operations on DataFrame with mixed data types."""
-        df = pd.DataFrame({
-            "Amount Diff": ["0.1", 0.2, "€0.3", "", None, "-0.5"],
-            "Transfer Explained": [0.1, "0.2", 0.3, "", None, -0.5],
-        })
+        df = pd.DataFrame(
+            {
+                "Amount Diff": ["0.1", 0.2, "€0.3", "", None, "-0.5"],
+                "Transfer Explained": [0.1, "0.2", 0.3, "", None, -0.5],
+            }
+        )
 
         # Test safe sum operations
         try:
-            total = pd.to_numeric(df["Amount Diff"], errors='coerce').fillna(0).sum()
+            total = pd.to_numeric(df["Amount Diff"], errors="coerce").fillna(0).sum()
             assert isinstance(total, (int, float))
         except Exception as e:
             pytest.fail(f"Safe DataFrame sum failed: {e}")

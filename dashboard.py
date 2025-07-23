@@ -520,7 +520,10 @@ def create_pnl_chart(df: pd.DataFrame) -> None:
         st.markdown("**🔍 Discrepancy Explanation Breakdown**")
         # Safely handle Amount Diff column that might contain strings
         try:
-            discrepancy_data = df[abs(pd.to_numeric(df["Amount Diff"], errors='coerce').fillna(0)) > 0.000001].copy()
+            discrepancy_data = df[
+                abs(pd.to_numeric(df["Amount Diff"], errors="coerce").fillna(0))
+                > 0.000001
+            ].copy()
         except (TypeError, ValueError):
             # Fallback if conversion fails
             discrepancy_data = df[df["Amount Diff"] != 0].copy()
@@ -1162,7 +1165,9 @@ def main():
     # Show explanation percentage
     # Safely handle Amount Diff column that might contain strings
     try:
-        total_amount_diff = pd.to_numeric(df["Amount Diff"], errors='coerce').fillna(0).sum()
+        total_amount_diff = (
+            pd.to_numeric(df["Amount Diff"], errors="coerce").fillna(0).sum()
+        )
     except (TypeError, ValueError):
         total_amount_diff = 0
 
@@ -1188,7 +1193,10 @@ def main():
     # Assets with significant unexplained differences
     # Safely handle Unexplained Diff column that might contain strings
     try:
-        unexplained_assets = df[abs(pd.to_numeric(df["Unexplained Diff"], errors='coerce').fillna(0)) > 0.001].copy()
+        unexplained_assets = df[
+            abs(pd.to_numeric(df["Unexplained Diff"], errors="coerce").fillna(0))
+            > 0.001
+        ].copy()
     except (TypeError, ValueError):
         # Fallback if conversion fails
         unexplained_assets = df[df["Unexplained Diff"] != 0].copy()

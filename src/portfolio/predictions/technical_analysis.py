@@ -31,12 +31,14 @@ def _safe_float_conversion(value: Any, default: float = 0.0) -> float:
         # Handle string values that might have currency symbols or formatting
         if isinstance(value, str):
             # Remove common currency symbols, percentage signs, and whitespace
-            cleaned_value = (value.replace('€', '')
-                           .replace('$', '')
-                           .replace('%', '')
-                           .replace(',', '')
-                           .strip())
-            if cleaned_value == '' or cleaned_value == '-':
+            cleaned_value = (
+                value.replace("€", "")
+                .replace("$", "")
+                .replace("%", "")
+                .replace(",", "")
+                .strip()
+            )
+            if cleaned_value == "" or cleaned_value == "-":
                 return default
             return float(cleaned_value)
 
@@ -76,11 +78,19 @@ class TechnicalAnalyzer:
             # Basic technical indicators based on available data
             analysis = {
                 "asset": asset,
-                "current_price_eur": _safe_float_conversion(asset_row.get("Current Price €", 0)),
-                "position_size": _safe_float_conversion(asset_row.get("Actual Amount", 0)),
+                "current_price_eur": _safe_float_conversion(
+                    asset_row.get("Current Price €", 0)
+                ),
+                "position_size": _safe_float_conversion(
+                    asset_row.get("Actual Amount", 0)
+                ),
                 "cost_basis": _safe_float_conversion(asset_row.get("Cost €", 0)),
-                "unrealized_pnl": _safe_float_conversion(asset_row.get("Unrealised €", 0)),
-                "return_percentage": _safe_float_conversion(asset_row.get("Total Return %", 0)),
+                "unrealized_pnl": _safe_float_conversion(
+                    asset_row.get("Unrealised €", 0)
+                ),
+                "return_percentage": _safe_float_conversion(
+                    asset_row.get("Total Return %", 0)
+                ),
                 "technical_signals": self._generate_technical_signals(asset_row),
                 "support_resistance": self._calculate_support_resistance(asset_row),
                 "momentum_indicators": self._calculate_momentum_indicators(asset_row),

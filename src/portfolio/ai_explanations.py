@@ -27,12 +27,14 @@ def _safe_float_conversion(value: Any, default: float = 0.0) -> float:
         # Handle string values that might have currency symbols or formatting
         if isinstance(value, str):
             # Remove common currency symbols, percentage signs, and whitespace
-            cleaned_value = (value.replace('€', '')
-                           .replace('$', '')
-                           .replace('%', '')
-                           .replace(',', '')
-                           .strip())
-            if cleaned_value == '' or cleaned_value == '-':
+            cleaned_value = (
+                value.replace("€", "")
+                .replace("$", "")
+                .replace("%", "")
+                .replace(",", "")
+                .strip()
+            )
+            if cleaned_value == "" or cleaned_value == "-":
                 return default
             return float(cleaned_value)
 
