@@ -73,12 +73,8 @@ def generate_coin_explanation(
         if fifo_amount > 0:
             avg_price = cost_eur / fifo_amount
             explanation = f"{status_emoji} You own {actual_amount:.6f} {asset} "
-            explanation += (
-                f"purchased at an average price of €{avg_price:.2f} per coin. "
-            )
-            explanation += (
-                f"If you sell now at €{current_price:.2f}, you would {action_word} "
-            )
+            explanation += f"purchased at an average price of {format_currency(avg_price)} per coin. "
+            explanation += f"If you sell now at {format_currency(current_price)}, you would {action_word} "
             explanation += f"€{abs(unrealised_eur):.2f} ({total_return_pct:+.1f}%). "
             explanation += f"Your total investment of €{cost_eur:.2f} would become €{actual_value_eur:.2f}."
         else:
@@ -89,7 +85,9 @@ def generate_coin_explanation(
             # Mixed position: some from trading, some from deposits
             avg_price = cost_eur / fifo_amount
             explanation = f"{status_emoji} You own {actual_amount:.6f} {asset} with "
-            explanation += f"{fifo_amount:.6f} from trades (avg €{avg_price:.2f}) and "
+            explanation += (
+                f"{fifo_amount:.6f} from trades (avg {format_currency(avg_price)}) and "
+            )
             explanation += f"{amount_diff:.6f} from deposits/transfers. "
 
             if include_transfers and total_deposits > 0:
@@ -97,7 +95,7 @@ def generate_coin_explanation(
                     f"You've deposited {total_deposits:.6f} {asset} in total. "
                 )
 
-            explanation += f"If you sell now at €{current_price:.2f}, your traded coins would {action_word} "
+            explanation += f"If you sell now at {format_currency(current_price)}, your traded coins would {action_word} "
             explanation += f"€{abs(unrealised_eur):.2f} ({total_return_pct:+.1f}%). "
             explanation += f"Your total position is worth €{actual_value_eur:.2f}."
         else:
@@ -107,7 +105,7 @@ def generate_coin_explanation(
                 explanation += (
                     f"You've deposited {total_deposits:.6f} {asset} in total. "
                 )
-            explanation += f"Your position is currently worth €{actual_value_eur:.2f} at €{current_price:.2f} per coin."
+            explanation += f"Your position is currently worth €{actual_value_eur:.2f} at {format_currency(current_price)} per coin."
 
     else:  # Less actual than FIFO (withdrawals/transfers out)
         # Some coins were withdrawn
@@ -115,13 +113,13 @@ def generate_coin_explanation(
         if actual_amount > 0:
             avg_price = cost_eur / fifo_amount if fifo_amount > 0 else 0
             explanation = f"{status_emoji} You own {actual_amount:.6f} {asset} "
-            explanation += f"(originally had {fifo_amount:.6f} from trades at avg €{avg_price:.2f}). "
+            explanation += f"(originally had {fifo_amount:.6f} from trades at avg {format_currency(avg_price)}). "
             explanation += f"You've withdrawn {withdrawn_amount:.6f} {asset}. "
 
             if include_transfers and total_withdrawals > 0:
                 explanation += f"Total withdrawals: {total_withdrawals:.6f} {asset}. "
 
-            explanation += f"If you sell your remaining {actual_amount:.6f} now at €{current_price:.2f}, "
+            explanation += f"If you sell your remaining {actual_amount:.6f} now at {format_currency(current_price)}, "
             explanation += f"you would {action_word} €{abs(unrealised_eur):.2f} ({total_return_pct:+.1f}%). "
             explanation += f"Your remaining position is worth €{actual_value_eur:.2f}."
         else:
@@ -176,8 +174,12 @@ def format_currency(amount: float, currency: str = "€") -> str:
         return f"{currency}{amount:,.0f}"
     elif abs(amount) >= 1:
         return f"{currency}{amount:.2f}"
-    else:
+    elif abs(amount) >= 0.01:
         return f"{currency}{amount:.4f}"
+    elif abs(amount) >= 0.0001:
+        return f"{currency}{amount:.6f}"
+    else:
+        return f"{currency}{amount:.8f}"
 
 
 def format_crypto_amount(amount: float, asset: str) -> str:

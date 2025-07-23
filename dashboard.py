@@ -83,6 +83,7 @@ load_env_file()
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
 from src.portfolio.ai_explanations import (
+    format_currency,
     generate_coin_explanation,
     get_position_summary,
 )
@@ -693,20 +694,41 @@ def main():
         # Use current price as default, or 0.0 if not available
         current_price = current_prices.get(asset, 0.0)
 
-        # Show current price in the label if available
+        # Show current price in the label if available with proper formatting
         if current_price > 0:
-            label = f"{asset} Price (€) - Current: €{current_price:.2f}"
-            help_text = f"Current live price: €{current_price:.2f}. Modify to run what-if scenarios."
+            # Use dynamic formatting for small prices
+            price_display = format_currency(current_price)
+
+            # Set appropriate step and format based on price magnitude
+            if current_price >= 1:
+                step_value = 0.01
+                format_str = "%.2f"
+            elif current_price >= 0.01:
+                step_value = 0.0001
+                format_str = "%.4f"
+            elif current_price >= 0.0001:
+                step_value = 0.000001
+                format_str = "%.6f"
+            else:
+                step_value = 0.00000001
+                format_str = "%.8f"
+
+            label = f"{asset} Price (€) - Current: {price_display}"
+            help_text = (
+                f"Current live price: {price_display}. Modify to run what-if scenarios."
+            )
         else:
             label = f"{asset} Price (€) - No EUR pair"
             help_text = f"No EUR trading pair available for {asset}"
+            step_value = 0.01
+            format_str = "%.2f"
 
         override_value = st.sidebar.number_input(
             label,
             min_value=0.0,
             value=current_price,
-            step=0.01,
-            format="%.2f",
+            step=step_value,
+            format=format_str,
             help=help_text,
             key=f"price_override_{asset}",  # Unique key to prevent conflicts
         )
@@ -975,7 +997,7 @@ def main():
             ),
             "Current Price €": st.column_config.NumberColumn(
                 "Price €",
-                format="€%.2f",
+                format="€%.8f",
                 width="small",
                 help="Current market price per coin",
             ),
@@ -1235,7 +1257,7 @@ def main():
         if price_overrides:
             st.subheader("⚙️ Active Price Overrides")
             for asset, price in price_overrides.items():
-                st.info(f"{asset}: €{price:.2f}")
+                st.info(f"{asset}: {format_currency(price)}")
 
     # AI Chat Interface Section
     st.markdown("---")
