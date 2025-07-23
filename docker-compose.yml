@@ -41,6 +41,10 @@ services:
       - "8503:8503"
     
     # Volume mounts - Choose one option below:
+    # RECOMMENDED: Named volumes are the best practice for most users as they are:
+    # - Portable across different systems and platforms
+    # - Managed by Docker (automatic cleanup, backup-friendly)
+    # - Work without requiring specific host paths
     volumes:
       # Option 1: Named volumes (portable, recommended for most users)
       - crypto_data:/app/data

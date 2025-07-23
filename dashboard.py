@@ -282,6 +282,7 @@ def get_portfolio_data(
                     "Realised €": float(pnl["realised_eur"]),
                     "Unrealised €": float(pnl["unrealised_eur"]),
                     "Total Return %": float(total_return_pct),
+                    # Store price as numeric for sorting/filtering, format applied at display time
                     "Current Price €": float(price_eur),
                     "Total Invested €": float(
                         invested
@@ -920,9 +921,9 @@ def main():
     df_with_indicators = df_with_indicators[cols]
 
     # Apply styling and dynamic currency formatting
-    styled_df = df_with_indicators.style.apply(style_profit_loss, axis=1).format({
-        "Current Price €": format_currency
-    })
+    styled_df = df_with_indicators.style.apply(style_profit_loss, axis=1).format(
+        {"Current Price €": format_currency}
+    )
 
     # Display the main table with mobile-friendly formatting, profit/loss styling, and row selection
     selected_rows = st.dataframe(
