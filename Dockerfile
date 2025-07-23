@@ -34,11 +34,9 @@ ENV PYTHONUNBUFFERED=1 \
     STREAMLIT_SERVER_HEADLESS=true \
     STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 
-# Install gosu for user switching (handles PUID/PGID)
-RUN apt-get update && apt-get install -y gosu && rm -rf /var/lib/apt/lists/*
-
-# Install runtime dependencies only
-RUN apt-get update && apt-get install -y \
+# Install runtime dependencies and gosu in a single layer
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gosu \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -71,5 +69,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Use entrypoint script to handle PUID/PGID
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
-# Default command
-CMD ["python", "-m", "streamlit", "run", "dashboard.py", "--server.port=8503", "--server.address=0.0.0.0", "--server.headless=true"]
+# Default command (environment variables handle configuration)
+CMD ["python", "-m", "streamlit", "run", "dashboard.py"]
