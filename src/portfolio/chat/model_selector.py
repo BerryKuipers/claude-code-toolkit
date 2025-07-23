@@ -4,8 +4,7 @@ from typing import Dict, Optional
 
 import streamlit as st
 
-from .base_llm_client import (AVAILABLE_MODELS, LLMClientFactory, LLMProvider,
-                              ModelInfo)
+from .base_llm_client import AVAILABLE_MODELS, LLMClientFactory, LLMProvider, ModelInfo
 
 
 def render_model_selector() -> str:

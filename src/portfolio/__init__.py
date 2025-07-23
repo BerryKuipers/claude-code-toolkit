@@ -14,12 +14,21 @@ Features:
 __version__ = "1.0.0"
 __author__ = "Crypto Insight"
 
-from .core import (BitvavoAPIException, InvalidAPIKeyError, PurchaseLot,
-                   RateLimitExceededError, TransferSummary, analyze_transfers,
-                   calculate_discrepancy_breakdown, calculate_pnl,
-                   fetch_deposit_history, fetch_trade_history,
-                   fetch_withdrawal_history, reconcile_portfolio_balances,
-                   sync_time)
+from .core import (
+    BitvavoAPIException,
+    InvalidAPIKeyError,
+    PurchaseLot,
+    RateLimitExceededError,
+    TransferSummary,
+    analyze_transfers,
+    calculate_discrepancy_breakdown,
+    calculate_pnl,
+    fetch_deposit_history,
+    fetch_trade_history,
+    fetch_withdrawal_history,
+    reconcile_portfolio_balances,
+    sync_time,
+)
 
 __all__ = [
     "PurchaseLot",

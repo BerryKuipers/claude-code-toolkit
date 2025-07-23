@@ -11,11 +11,19 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.portfolio.core import (BitvavoAPIException, InvalidAPIKeyError,
-                                PurchaseLot, RateLimitExceededError,
-                                _check_rate_limit, _decimal, calculate_pnl,
-                                fetch_trade_history, get_current_price,
-                                get_portfolio_assets, sync_time)
+from src.portfolio.core import (
+    BitvavoAPIException,
+    InvalidAPIKeyError,
+    PurchaseLot,
+    RateLimitExceededError,
+    _check_rate_limit,
+    _decimal,
+    calculate_pnl,
+    fetch_trade_history,
+    get_current_price,
+    get_portfolio_assets,
+    sync_time,
+)
 
 
 def _make_trade(
