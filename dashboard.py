@@ -282,7 +282,7 @@ def get_portfolio_data(
                     "Realised €": float(pnl["realised_eur"]),
                     "Unrealised €": float(pnl["unrealised_eur"]),
                     "Total Return %": float(total_return_pct),
-                    "Current Price €": format_currency(float(price_eur)),
+                    "Current Price €": float(price_eur),
                     "Total Invested €": float(
                         invested
                     ),  # Add the correct total investment amount
@@ -919,8 +919,10 @@ def main():
     cols.insert(1, "P&L Status")  # Insert after Asset column
     df_with_indicators = df_with_indicators[cols]
 
-    # Apply styling and display the table
-    styled_df = df_with_indicators.style.apply(style_profit_loss, axis=1)
+    # Apply styling and dynamic currency formatting
+    styled_df = df_with_indicators.style.apply(style_profit_loss, axis=1).format({
+        "Current Price €": format_currency
+    })
 
     # Display the main table with mobile-friendly formatting, profit/loss styling, and row selection
     selected_rows = st.dataframe(
@@ -988,10 +990,10 @@ def main():
                 width="small",
                 help="Overall performance percentage - 🟢 Green = Profit, 🔴 Red = Loss, 🟡 Yellow = Break-even",
             ),
-            "Current Price €": st.column_config.TextColumn(
+            "Current Price €": st.column_config.NumberColumn(
                 "Price €",
                 width="small",
-                help="Current market price per coin",
+                help="Current market price per coin - Click header to sort by price",
             ),
             # Transfer columns
             "Net Transfers": st.column_config.NumberColumn(
