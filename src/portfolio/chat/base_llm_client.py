@@ -271,33 +271,36 @@ class LLMClientFactory:
         """Get the default model key based on available API keys.
 
         Priority:
-        1. GPT-4o (if OpenAI API key available and model exists)
-        2. Claude Sonnet 4 (if Anthropic API key available and model exists)
+        1. Recommended OpenAI model (if OpenAI API key available and model exists)
+        2. Recommended Anthropic model (if Anthropic API key available and model exists)
         3. First model with available API key
         4. Final fallback to first available model
         """
-        # Check for OpenAI API key first (GPT-4o as preferred default)
-        if os.getenv("OPENAI_API_KEY") and "gpt-4o" in AVAILABLE_MODELS:
-            return "gpt-4o"
+        # Check for API keys once to avoid repeated os.getenv calls
+        openai_key_present = bool(os.getenv("OPENAI_API_KEY"))
+        anthropic_key_present = bool(os.getenv("ANTHROPIC_API_KEY"))
 
-        # Fallback to Claude Sonnet 4 if Anthropic key available
-        if os.getenv("ANTHROPIC_API_KEY") and "claude-sonnet-4" in AVAILABLE_MODELS:
-            return "claude-sonnet-4"
+        # Use class methods to get recommended models and avoid hardcoding strings
+        recommended_openai_model = LLMClientFactory.get_recommended_openai_model()
+        recommended_anthropic_model = LLMClientFactory.get_recommended_anthropic_model()
 
-        # Find first model with available API key
-        for model_key in AVAILABLE_MODELS:
-            model_info = AVAILABLE_MODELS[model_key]
-            if (
-                model_info.provider == LLMProvider.OPENAI
-                and os.getenv("OPENAI_API_KEY")
-            ) or (
-                model_info.provider == LLMProvider.ANTHROPIC
-                and os.getenv("ANTHROPIC_API_KEY")
+        # 1. Primary: Recommended OpenAI model
+        if openai_key_present and recommended_openai_model in AVAILABLE_MODELS:
+            return recommended_openai_model
+
+        # 2. Secondary: Recommended Anthropic model
+        if anthropic_key_present and recommended_anthropic_model in AVAILABLE_MODELS:
+            return recommended_anthropic_model
+
+        # 3. Tertiary: Find first model with an available API key
+        for model_key, model_info in AVAILABLE_MODELS.items():
+            if (model_info.provider == LLMProvider.OPENAI and openai_key_present) or (
+                model_info.provider == LLMProvider.ANTHROPIC and anthropic_key_present
             ):
                 return model_key
 
-        # Final fallback to first available model (may fail if no API keys)
-        return list(AVAILABLE_MODELS.keys())[0]
+        # 4. Final fallback to first available model (may fail if no API keys)
+        return next(iter(AVAILABLE_MODELS))
 
     @staticmethod
     def get_recommended_openai_model() -> str:
