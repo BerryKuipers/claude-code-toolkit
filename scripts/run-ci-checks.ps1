@@ -108,7 +108,7 @@ if ($Fix) {
 # Step 3: Import sorting check (isort)
 Write-Step "Checking import sorting with isort"
 if ($Fix) {
-    $isortResult = python -m isort src/ tests/ dashboard.py 2>&1
+    $isortResult = python -m isort --profile black src/ tests/ dashboard.py 2>&1
     if ($LASTEXITCODE -eq 0) {
         Write-Success "Imports sorted with isort"
     } else {
@@ -116,7 +116,7 @@ if ($Fix) {
         $failed = $true
     }
 } else {
-    $isortResult = python -m isort --check-only --diff src/ tests/ dashboard.py 2>&1
+    $isortResult = python -m isort --check-only --diff --profile black src/ tests/ dashboard.py 2>&1
     if ($LASTEXITCODE -eq 0) {
         Write-Success "Import sorting check passed"
     } else {

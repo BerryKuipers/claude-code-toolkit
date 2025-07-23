@@ -34,10 +34,18 @@ def load_env_file():
 # Load environment variables at module import
 load_env_file()
 
-from .core import (BitvavoAPIException, InvalidAPIKeyError,
-                   RateLimitExceededError, _check_rate_limit, _decimal,
-                   calculate_pnl, fetch_trade_history, get_current_price,
-                   get_portfolio_assets, sync_time)
+from .core import (
+    BitvavoAPIException,
+    InvalidAPIKeyError,
+    RateLimitExceededError,
+    _check_rate_limit,
+    _decimal,
+    calculate_pnl,
+    fetch_trade_history,
+    get_current_price,
+    get_portfolio_assets,
+    sync_time,
+)
 
 app = typer.Typer(
     name="portfolio",

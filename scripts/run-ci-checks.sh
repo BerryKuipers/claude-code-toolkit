@@ -71,14 +71,14 @@ fi
 # Step 3: Import sorting check (isort)
 write_step "Checking import sorting with isort"
 if [ "$FIX" = true ]; then
-    if python -m isort src/ tests/ dashboard.py; then
+    if python -m isort --profile black src/ tests/ dashboard.py; then
         write_success "Imports sorted with isort"
     else
         write_error "isort failed"
         failed=true
     fi
 else
-    if python -m isort --check-only --diff src/ tests/ dashboard.py; then
+    if python -m isort --check-only --diff --profile black src/ tests/ dashboard.py; then
         write_success "Import sorting check passed"
     else
         write_error "Import sorting check failed. Run with --fix to auto-sort"
