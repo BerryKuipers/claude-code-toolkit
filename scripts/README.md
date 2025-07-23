@@ -1,10 +1,79 @@
-# CI Check Scripts
+# Scripts Directory
 
-This directory contains scripts to run all CI checks locally before pushing to GitHub, preventing CI failures and saving time.
+This directory contains utility scripts for development, deployment, and GitHub workflow automation.
 
-## Scripts
+## 🚀 Quick Setup
 
-### `run-ci-checks.ps1` (PowerShell - Windows)
+Run the setup script to install all required tools:
+
+```bash
+./scripts/setup-dev-environment.sh
+```
+
+This installs:
+- PowerShell 7.4+ for cross-platform scripting
+- GitHub CLI for GitHub API access
+- Python development tools (black, isort, pytest, etc.)
+- Node.js tools (if npm is available)
+
+## 📋 Available Scripts
+
+### Development Environment
+- **`setup-dev-environment.sh`** - One-time setup of development tools
+
+### GitHub Workflow Automation
+- **`resolve-pr-conversations.ps1`** - PowerShell script to resolve PR conversations (requires GitHub CLI)
+- **`resolve-pr-conversations.sh`** - Bash script to resolve PR conversations (requires GitHub CLI + jq)
+- **`resolve-pr-conversations.py`** - Python script to resolve PR conversations (requires GITHUB_TOKEN env var)
+
+### CI/CD
+- **`run-ci-checks.ps1`** - PowerShell CI checks
+- **`run-ci-checks.sh`** - Bash CI checks
+- **`deploy.ps1`** - PowerShell deployment script
+- **`deploy.sh`** - Bash deployment script
+
+## 🔐 Authentication Setup
+
+### For Augment Environments
+Since Augment workspaces may not persist authentication, the Python script is recommended as it uses environment variables:
+
+```bash
+# Use the Python script with environment token
+python scripts/resolve-pr-conversations.py -o BerryKuipers -r crypto-insight -p 33 -d
+```
+
+### For Local Development
+Set up GitHub CLI authentication for full functionality:
+
+```bash
+gh auth login
+```
+
+## 🛠️ Usage Examples
+
+### Resolve PR Conversations
+
+**Dry run (preview only):**
+```bash
+# Python (recommended for Augment)
+python scripts/resolve-pr-conversations.py -o BerryKuipers -r crypto-insight -p 33 -d
+
+# PowerShell (requires gh auth)
+pwsh scripts/resolve-pr-conversations.ps1 -Owner "BerryKuipers" -Repo "crypto-insight" -PrNumber 33 -DryRun
+
+# Bash (requires gh auth)
+./scripts/resolve-pr-conversations.sh -o BerryKuipers -r crypto-insight -p 33 -d
+```
+
+**Actually resolve conversations:**
+```bash
+# Remove the -d flag to actually resolve
+python scripts/resolve-pr-conversations.py -o BerryKuipers -r crypto-insight -p 33
+```
+
+### CI Checks
+
+#### `run-ci-checks.ps1` (PowerShell - Windows)
 ```powershell
 # Run all checks (read-only)
 .\scripts\run-ci-checks.ps1
