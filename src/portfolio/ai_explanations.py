@@ -182,6 +182,25 @@ def format_currency(amount: float, currency: str = "€") -> str:
         return f"{currency}{amount:.8f}"
 
 
+def get_price_format_details(price: float) -> tuple[float, str]:
+    """Get appropriate step value and format string for price input controls.
+
+    Args:
+        price: The price value to determine formatting for
+
+    Returns:
+        Tuple of (step_value, format_string) for use in number inputs
+    """
+    if price >= 1:
+        return (0.01, "%.2f")
+    elif price >= 0.01:
+        return (0.0001, "%.4f")
+    elif price >= 0.0001:
+        return (0.000001, "%.6f")
+    else:
+        return (0.00000001, "%.8f")
+
+
 def format_crypto_amount(amount: float, asset: str) -> str:
     """Format cryptocurrency amount with appropriate precision.
 

@@ -1,5 +1,7 @@
 """Tests for AI explanations module, focusing on price formatting and coin explanations."""
 
+import re
+
 import pytest
 
 from src.portfolio.ai_explanations import (
@@ -105,8 +107,6 @@ class TestGenerateCoinExplanation:
             "€0.00001262" in explanation
         )  # Current price should be formatted correctly
         # The key fix: prices should never be exactly €0.00 (check for problematic patterns)
-        import re
-
         # Look for "€0.00" followed by word boundary (space, comma, period) - not part of longer number
         zero_price_pattern = r"€0\.00(?=\s|,|\.|\))"
         assert not re.search(
@@ -272,8 +272,6 @@ class TestPriceFormattingRegression:
         explanation = generate_coin_explanation(shib_data)
 
         # Should never contain €0.00 for prices (but may contain it for amounts)
-        import re
-
         # Look for "€0.00" followed by word boundary (space, comma, period) - not part of longer number
         zero_price_pattern = r"€0\.00(?=\s|,|\.|\))"
         assert not re.search(

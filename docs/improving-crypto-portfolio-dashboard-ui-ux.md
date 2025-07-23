@@ -250,7 +250,7 @@ Another option is to constrain its height. For example,
 
 
 
-![](D:/berry/Projects/crypto_insight/docs/images/Improving-the-Crypto-Portfolio-Dashboard-UI_UX.pdf-2-1.png)
+![Portfolio Table Layout](images/Improving-the-Crypto-Portfolio-Dashboard-UI_UX.pdf-2-1.png)
 
 
 
@@ -435,7 +435,7 @@ with an AI model or custom logic, but from a UI perspective you need a text inpu
 
 
 
-![](D:/berry/Projects/crypto_insight/docs/images/Improving-the-Crypto-Portfolio-Dashboard-UI_UX.pdf-3-0.png)
+![Chat Interface Design](images/Improving-the-Crypto-Portfolio-Dashboard-UI_UX.pdf-3-0.png)
 
 
 - Design the chat interface to occupy the full tab, perhaps with an expander for chat history if needed.
@@ -552,7 +552,7 @@ creating all metrics. This will inject custom CSS to style all `st.metric` eleme
 
 
 
-![](D:/berry/Projects/crypto_insight/docs/images/Improving-the-Crypto-Portfolio-Dashboard-UI_UX.pdf-4-1.png)
+![Metric Cards Design](images/Improving-the-Crypto-Portfolio-Dashboard-UI_UX.pdf-4-1.png)
 
 border, and even a colored left border accent [8](https://arnaudmiribel.github.io/streamlit-extras/extras/metric_cards/#:~:text=) [14](https://arnaudmiribel.github.io/streamlit-extras/extras/metric_cards/#:~:text=Border%20color.%20Defaults%20to%20%22,292D34%22%20in%20dark%20mode) . In dark mode, it defaults to a dark card
 
@@ -1013,7 +1013,7 @@ on the portfolio performance.
 
 
 
-![](D:/berry/Projects/crypto_insight/docs/images/Improving-the-Crypto-Portfolio-Dashboard-UI_UX.pdf-8-0.png)
+![Settings Configuration](images/Improving-the-Crypto-Portfolio-Dashboard-UI_UX.pdf-8-0.png)
 
 supported.
 Mark this section clearly so it doesn’t interfere with other parts (since chat might not be
@@ -1023,7 +1023,7 @@ implemented immediately, keep it isolated).
 
 reinitialize the API client. You might incorporate a button to test the connection. Also, you could
 
-![](D:/berry/Projects/crypto_insight/docs/images/Improving-the-Crypto-Portfolio-Dashboard-UI_UX.pdf-8-3.png)
+![AgGrid Implementation](images/Improving-the-Crypto-Portfolio-Dashboard-UI_UX.pdf-8-3.png)
 
 ```
  from st_aggrid import AgGrid, GridOptionsBuilder

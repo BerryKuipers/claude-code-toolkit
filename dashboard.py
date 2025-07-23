@@ -86,6 +86,7 @@ from src.portfolio.ai_explanations import (
     format_currency,
     generate_coin_explanation,
     get_position_summary,
+    get_price_format_details,
 )
 from src.portfolio.chat import render_chat_interface
 from src.portfolio.chat.api_status import APIStatusChecker
@@ -281,7 +282,7 @@ def get_portfolio_data(
                     "Realised €": float(pnl["realised_eur"]),
                     "Unrealised €": float(pnl["unrealised_eur"]),
                     "Total Return %": float(total_return_pct),
-                    "Current Price €": float(price_eur),
+                    "Current Price €": format_currency(float(price_eur)),
                     "Total Invested €": float(
                         invested
                     ),  # Add the correct total investment amount
@@ -700,18 +701,7 @@ def main():
             price_display = format_currency(current_price)
 
             # Set appropriate step and format based on price magnitude
-            if current_price >= 1:
-                step_value = 0.01
-                format_str = "%.2f"
-            elif current_price >= 0.01:
-                step_value = 0.0001
-                format_str = "%.4f"
-            elif current_price >= 0.0001:
-                step_value = 0.000001
-                format_str = "%.6f"
-            else:
-                step_value = 0.00000001
-                format_str = "%.8f"
+            step_value, format_str = get_price_format_details(current_price)
 
             label = f"{asset} Price (€) - Current: {price_display}"
             help_text = (
@@ -995,9 +985,8 @@ def main():
                 width="small",
                 help="Overall performance percentage - 🟢 Green = Profit, 🔴 Red = Loss, 🟡 Yellow = Break-even",
             ),
-            "Current Price €": st.column_config.NumberColumn(
+            "Current Price €": st.column_config.TextColumn(
                 "Price €",
-                format="€%.8f",
                 width="small",
                 help="Current market price per coin",
             ),
