@@ -1,6 +1,7 @@
 """Base LLM client interface for multiple AI providers."""
 
 import logging
+import os
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
@@ -270,21 +271,32 @@ class LLMClientFactory:
         """Get the default model key based on available API keys.
 
         Priority:
-        1. GPT-4o (if OpenAI API key available)
-        2. Claude Sonnet 4 (if Anthropic API key available)
-        3. Fallback to first available model
+        1. GPT-4o (if OpenAI API key available and model exists)
+        2. Claude Sonnet 4 (if Anthropic API key available and model exists)
+        3. First model with available API key
+        4. Final fallback to first available model
         """
-        import os
-
         # Check for OpenAI API key first (GPT-4o as preferred default)
-        if os.getenv("OPENAI_API_KEY"):
+        if os.getenv("OPENAI_API_KEY") and "gpt-4o" in AVAILABLE_MODELS:
             return "gpt-4o"
 
         # Fallback to Claude Sonnet 4 if Anthropic key available
-        if os.getenv("ANTHROPIC_API_KEY"):
+        if os.getenv("ANTHROPIC_API_KEY") and "claude-sonnet-4" in AVAILABLE_MODELS:
             return "claude-sonnet-4"
 
-        # Final fallback to first available model
+        # Find first model with available API key
+        for model_key in AVAILABLE_MODELS:
+            model_info = AVAILABLE_MODELS[model_key]
+            if (
+                model_info.provider == LLMProvider.OPENAI
+                and os.getenv("OPENAI_API_KEY")
+            ) or (
+                model_info.provider == LLMProvider.ANTHROPIC
+                and os.getenv("ANTHROPIC_API_KEY")
+            ):
+                return model_key
+
+        # Final fallback to first available model (may fail if no API keys)
         return list(AVAILABLE_MODELS.keys())[0]
 
     @staticmethod
