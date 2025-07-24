@@ -517,13 +517,17 @@ class PortfolioFunctionHandler:
         if df.empty:
             return {"error": "No matching assets found"}
 
-        # Sort by specified criteria
+        # Sort by specified criteria using safe sorting
         if sort_by == "return_pct":
-            df = df.sort_values("Total Return %", ascending=False)
+            df = SafeDataFrameOperations.safe_sort(
+                df, "Total Return %", ascending=False
+            )
         elif sort_by == "value":
-            df = df.sort_values("Actual Value €", ascending=False)
+            df = SafeDataFrameOperations.safe_sort(
+                df, "Actual Value €", ascending=False
+            )
         elif sort_by == "unrealised":
-            df = df.sort_values("Unrealised €", ascending=False)
+            df = SafeDataFrameOperations.safe_sort(df, "Unrealised €", ascending=False)
 
         # Format results
         results = []
@@ -565,9 +569,11 @@ class PortfolioFunctionHandler:
         if df.empty:
             return {"error": "No positions found"}
 
-        # Sort by return percentage
+        # Sort by return percentage using safe sorting
         ascending = type == "worst"
-        df = df.sort_values("Total Return %", ascending=ascending).head(limit)
+        df = SafeDataFrameOperations.safe_sort(
+            df, "Total Return %", ascending=ascending
+        ).head(limit)
 
         results = []
         for _, row in df.iterrows():
@@ -996,8 +1002,8 @@ class PortfolioFunctionHandler:
         if df.empty:
             return {"error": "No current holdings found"}
 
-        # Sort by value descending
-        df = df.sort_values("Actual Value €", ascending=False)
+        # Sort by value descending using safe sorting
+        df = SafeDataFrameOperations.safe_sort(df, "Actual Value €", ascending=False)
 
         holdings = []
         # Use safe float conversion for total value calculation

@@ -119,9 +119,13 @@ class PortfolioTab(BaseTab):
         total_unrealized = df["Unrealised €"].sum()
         total_realized = df["Realised €"].sum()
 
-        # Calculate return percentage
+        # Calculate return percentage - comprehensive formula including realized gains
+        # total_invested = cost + absolute value of realized (to account for both gains and losses)
+        total_invested = total_cost + abs(total_realized)
         total_return = (
-            ((total_value - total_cost) / total_cost * 100) if total_cost > 0 else 0
+            ((total_value + total_realized) - total_invested) / total_invested * 100
+            if total_invested > 0
+            else 0
         )
 
         # Display metrics in columns
@@ -316,12 +320,11 @@ class PortfolioTab(BaseTab):
 
     def _render_portfolio_charts(self, df: pd.DataFrame):
         """Render portfolio charts and visualizations."""
-        # Import here to avoid circular imports
-        # Note: create_pnl_chart will be imported from dashboard module
-        # For now, we'll implement a placeholder
+        from .charts import create_pnl_chart
+
         if not df.empty:
             st.markdown("### 📊 Portfolio Visualizations")
-            st.info("Charts will be implemented in the next iteration")
+            create_pnl_chart(df)
 
     def _render_active_overrides(self, price_overrides: Dict[str, float]):
         """Render active price overrides."""
