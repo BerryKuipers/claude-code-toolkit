@@ -1,7 +1,13 @@
 """Tests for type safety fixes to prevent string/numeric operation errors."""
 
+import os
+import sys
+
 import pandas as pd
 import pytest
+
+# Add src to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from src.portfolio.predictions.technical_analysis import TechnicalAnalyzer
 from src.portfolio.utils import safe_float_conversion

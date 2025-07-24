@@ -9,7 +9,7 @@
 
 ### Development Environment
 - **Python Environment**: `.venv` (always activate before running)
-- **Main Application**: `streamlit run dashboard.py`
+- **Start Application**: `powershell -ExecutionPolicy Bypass -File "scripts\start.ps1"` (ALWAYS USE THIS)
 - **Dashboard URL**: `http://localhost:8501`
 - **Testing**: `python -m pytest tests/ -v`
 
@@ -188,7 +188,10 @@
 
 ### Development
 ```bash
-# Start development
+# Start development (ALWAYS USE THIS)
+powershell -ExecutionPolicy Bypass -File "scripts\start.ps1"
+
+# Alternative manual start (only if script fails)
 .venv\Scripts\activate
 streamlit run dashboard.py
 

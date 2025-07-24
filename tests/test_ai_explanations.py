@@ -1,8 +1,13 @@
 """Tests for AI explanations module, focusing on price formatting and coin explanations."""
 
+import os
 import re
+import sys
 
 import pytest
+
+# Add src to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from src.portfolio.ai_explanations import (
     format_crypto_amount,

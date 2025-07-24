@@ -6,12 +6,17 @@ analysis using FIFO accounting with high-precision Decimal arithmetic.
 
 from __future__ import annotations
 
+import logging
 import time
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal, getcontext
 from typing import Deque, Dict, List, Optional, Tuple
+
+from .api import default_rate_limiter
+
+logger = logging.getLogger(__name__)
 
 try:
     from python_bitvavo_api.bitvavo import Bitvavo  # type: ignore
@@ -98,11 +103,14 @@ def _decimal(value: str | float | int | Decimal) -> Decimal:
     return Decimal(str(value))
 
 
-def _check_rate_limit(client: "Bitvavo", threshold: int = 10) -> None:
-    """Sleep defensively when close to Bitvavo's weight budget."""
-    remaining = int(client.getRemainingLimit())
-    if remaining < threshold:
-        time.sleep(15)  # simple, effective back‑off
+def _check_rate_limit(client: "Bitvavo") -> None:
+    """
+    Enforce rate limit using clean, testable rate limiter.
+
+    This function is a thin wrapper around the RateLimiter class,
+    maintaining backward compatibility while using clean architecture.
+    """
+    default_rate_limiter.enforce_rate_limit(client)
 
 
 # ---------------------------------------------------------------------------
@@ -273,13 +281,20 @@ def fetch_deposit_history(client: "Bitvavo", asset: str) -> List[Dict[str, str]]
     _check_rate_limit(client)
     try:
         deposits = client.depositHistory({"symbol": asset})  # type: ignore[arg-type]
+
+        # Check if the response is an error
+        if isinstance(deposits, dict) and "errorCode" in deposits:
+            logger.warning(f"Bitvavo API error for {asset} deposits: {deposits}")
+            return []
+
         if not deposits:
             return []
         # Ensure we return a list of dictionaries
         if isinstance(deposits, list):
             return [d for d in deposits if isinstance(d, dict)]
         return []
-    except Exception:
+    except Exception as exc:
+        logger.warning(f"Exception fetching deposit history for {asset}: {exc}")
         return []
 
 
@@ -288,13 +303,20 @@ def fetch_withdrawal_history(client: "Bitvavo", asset: str) -> List[Dict[str, st
     _check_rate_limit(client)
     try:
         withdrawals = client.withdrawalHistory({"symbol": asset})  # type: ignore[arg-type]
+
+        # Check if the response is an error
+        if isinstance(withdrawals, dict) and "errorCode" in withdrawals:
+            logger.warning(f"Bitvavo API error for {asset} withdrawals: {withdrawals}")
+            return []
+
         if not withdrawals:
             return []
         # Ensure we return a list of dictionaries
         if isinstance(withdrawals, list):
             return [w for w in withdrawals if isinstance(w, dict)]
         return []
-    except Exception:
+    except Exception as exc:
+        logger.warning(f"Exception fetching withdrawal history for {asset}: {exc}")
         return []
 
 

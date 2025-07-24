@@ -206,10 +206,12 @@ class CostTracker:
 
 def render_cost_footer():
     """Render sticky footer with cost information."""
+    # Don't create a new cost tracker - use existing one or show zero stats
     if "cost_tracker" not in st.session_state:
-        st.session_state.cost_tracker = CostTracker()
-
-    tracker = st.session_state.cost_tracker
+        # Create a temporary tracker just for display (don't store it)
+        tracker = CostTracker()
+    else:
+        tracker = st.session_state.cost_tracker
     session_stats = tracker.get_session_stats()
     total_stats = tracker.get_total_stats()
 

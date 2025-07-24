@@ -4,12 +4,17 @@ Comprehensive test suite for the core portfolio analysis functionality,
 including FIFO accounting, API integration, and edge cases.
 """
 
+import os
+import sys
 import time
 from decimal import Decimal
 from typing import Dict
 from unittest.mock import MagicMock
 
 import pytest
+
+# Add src to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from src.portfolio.core import (
     BitvavoAPIException,
@@ -180,22 +185,22 @@ class TestAPIHelpers:
     def test_check_rate_limit_sufficient(self, mocker):
         """Test rate limit check when limit is sufficient."""
         mock_client = mocker.MagicMock()
-        mock_client.getRemainingLimit.return_value = 100
+        mock_client.getRemainingLimit.return_value = "100"
 
-        # Should not sleep
-        mock_sleep = mocker.patch("time.sleep")
-        _check_rate_limit(mock_client, threshold=10)
-        mock_sleep.assert_not_called()
+        # Mock the rate limiter to test the wrapper
+        mock_rate_limiter = mocker.patch("src.portfolio.core.default_rate_limiter")
+        _check_rate_limit(mock_client)
+        mock_rate_limiter.enforce_rate_limit.assert_called_once_with(mock_client)
 
     def test_check_rate_limit_insufficient(self, mocker):
         """Test rate limit check when limit is low."""
         mock_client = mocker.MagicMock()
-        mock_client.getRemainingLimit.return_value = 5
+        mock_client.getRemainingLimit.return_value = "5"
 
-        # Should sleep
-        mock_sleep = mocker.patch("time.sleep")
-        _check_rate_limit(mock_client, threshold=10)
-        mock_sleep.assert_called_once_with(15)
+        # Mock the rate limiter to test the wrapper
+        mock_rate_limiter = mocker.patch("src.portfolio.core.default_rate_limiter")
+        _check_rate_limit(mock_client)
+        mock_rate_limiter.enforce_rate_limit.assert_called_once_with(mock_client)
 
     def test_sync_time_success(self, mocker):
         """Test successful time synchronization."""

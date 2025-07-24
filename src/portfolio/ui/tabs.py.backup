@@ -174,10 +174,8 @@ class PortfolioTab(BaseTab):
                 else:
                     return "💥 Heavy Loss"
 
-            if "Total Return %" in df_display.columns:
-                df_display.insert(
-                    1, "P&L Status", df_display.apply(get_profit_indicator, axis=1)
-                )
+            if 'Total Return %' in df_display.columns:
+                df_display.insert(1, 'P&L Status', df_display.apply(get_profit_indicator, axis=1))
 
             # Display the table with proper formatting and row selection
             selected_rows = st.dataframe(
@@ -189,9 +187,7 @@ class PortfolioTab(BaseTab):
                 column_config={
                     "Asset": st.column_config.TextColumn("Asset", width="small"),
                     "P&L Status": st.column_config.TextColumn(
-                        "P&L Status",
-                        width="medium",
-                        help="Visual profit/loss indicator",
+                        "P&L Status", width="medium", help="Visual profit/loss indicator"
                     ),
                     "FIFO Amount": st.column_config.NumberColumn(
                         "FIFO Amt",
@@ -261,8 +257,7 @@ class PortfolioTab(BaseTab):
     def _render_explanation_section(self):
         """Render explanation of portfolio data columns."""
         with st.expander("ℹ️ Understanding Your Portfolio Data", expanded=False):
-            st.markdown(
-                """
+            st.markdown("""
             **Column Explanations:**
 
             - **P&L Status**: Visual indicator of your profit/loss status
@@ -283,16 +278,11 @@ class PortfolioTab(BaseTab):
             - 🟢 **Green numbers** = Profit/Gains
             - 🔴 **Red numbers** = Loss/Negative
             - ⚫ **Black numbers** = Neutral/Cost basis
-            """
-            )
+            """)
 
     def _handle_row_selection(self, selected_rows, df: pd.DataFrame):
         """Handle row selection and display AI analysis."""
-        if (
-            selected_rows
-            and hasattr(selected_rows, "selection")
-            and len(selected_rows.selection.rows) > 0
-        ):
+        if selected_rows and hasattr(selected_rows, 'selection') and len(selected_rows.selection.rows) > 0:
             selected_idx = selected_rows.selection.rows[0]
             selected_asset = df.iloc[selected_idx]
 
@@ -330,40 +320,27 @@ class PortfolioTab(BaseTab):
             st.info(f"{asset}: {format_currency(price)}")
 
     def _render_sticky_chat(self, df: pd.DataFrame):
-        """Render sticky chat interface at bottom of portfolio page."""
+        """Render chat interface at bottom of portfolio page."""
+        st.markdown("---")
+        st.markdown("### 💬 AI Portfolio Assistant")
 
-        # Initialize chat state - CLOSED by default
+        # Initialize chat state - CLOSED by default for better UX
         if "sticky_chat_open" not in st.session_state:
             st.session_state.sticky_chat_open = False
 
-        # Render the sticky chat interface
-        self._render_sticky_chat_interface(df)
-
-    def _render_sticky_chat_interface(self, df: pd.DataFrame):
-        """Render a simple working chat interface."""
-
-        if st.session_state.sticky_chat_open:
-            # Show chat interface at bottom of page
-            st.markdown("---")
-
-            # Chat header with close button
-            col1, col2 = st.columns([4, 1])
-            with col1:
-                st.markdown("### 💬 AI Portfolio Assistant")
-            with col2:
-                if st.button("✕", key="close_sticky_chat", help="Close Chat"):
-                    st.session_state.sticky_chat_open = False
-                    st.rerun()
-
-            # Chat input
+        # Simple chat interface using Streamlit expander
+        with st.expander("💬 Chat with AI about your portfolio", expanded=st.session_state.sticky_chat_open):
+            # Chat interface content
             user_input = st.text_input(
                 "Ask about your portfolio",
                 placeholder="Ask about your portfolio performance, holdings, or get analysis...",
                 key="portfolio_chat_input",
+                label_visibility="collapsed"
             )
 
-            # Ask button
-            ask_button = st.button("Ask AI", key="portfolio_chat_ask", type="primary")
+            col1, col2 = st.columns([3, 1])
+            with col2:
+                ask_button = st.button("Ask AI", key="portfolio_chat_ask", type="primary")
 
             # Process the question
             if ask_button and user_input:
@@ -388,10 +365,10 @@ class PortfolioTab(BaseTab):
                         llm_client = LLMClientFactory.create_client(selected_model)
 
                         # Generate response using function calling
-                        from src.portfolio.chat.chat_interface import _get_ai_response
-
-                        response = _get_ai_response(
-                            user_input, llm_client, function_handler
+                        response = llm_client.generate_response(
+                            user_input,
+                            function_handler.get_available_functions(),
+                            function_handler
                         )
 
                         # Display response
@@ -399,50 +376,18 @@ class PortfolioTab(BaseTab):
                         st.markdown(response)
 
                         # Track cost if available
-                        if hasattr(st.session_state, "cost_tracker"):
-                            # Get model info for cost calculation
-                            from src.portfolio.chat.base_llm_client import (
-                                AVAILABLE_MODELS,
+                        if hasattr(st.session_state, 'cost_tracker'):
+                            st.session_state.cost_tracker.add_request(
+                                model=selected_model,
+                                input_tokens=len(user_input.split()) * 1.3,  # Rough estimate
+                                output_tokens=len(response.split()) * 1.3,   # Rough estimate
+                                request_type="chat"
                             )
-
-                            if selected_model in AVAILABLE_MODELS:
-                                model_info = AVAILABLE_MODELS[selected_model]
-                                prompt_tokens = int(
-                                    len(user_input.split()) * 1.3
-                                )  # Rough estimate
-                                completion_tokens = int(
-                                    len(response.split()) * 1.3
-                                )  # Rough estimate
-                                cost = (
-                                    prompt_tokens / 1000
-                                ) * model_info.cost_per_1k_input + (
-                                    completion_tokens / 1000
-                                ) * model_info.cost_per_1k_output
-
-                                st.session_state.cost_tracker.track_usage(
-                                    model_info.provider,
-                                    model_info.model_id,
-                                    prompt_tokens,
-                                    completion_tokens,
-                                    cost,
-                                    "chat",
-                                )
 
                     except Exception as e:
                         st.error(f"❌ Error: {str(e)}")
-                        st.info(
-                            "💡 Make sure your API keys are configured in the Settings tab"
-                        )
+                        st.info("💡 Make sure your API keys are configured in the Settings tab")
 
-        else:
-            # Show simple button to open chat
-            st.markdown("---")
-            st.markdown("### 💬 Need help with your portfolio?")
-            if st.button(
-                "Open AI Portfolio Assistant", key="open_sticky_chat", type="primary"
-            ):
-                st.session_state.sticky_chat_open = True
-                st.rerun()
 
 
 class AnalysisTab(BaseTab):
@@ -531,8 +476,7 @@ class ChatTab(BaseTab):
         self._render_section_header("AI Portfolio Assistant", "🤖")
 
         # Add a prominent welcome message
-        st.markdown(
-            """
+        st.markdown("""
         <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
                    color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
             <h3 style="margin: 0; color: white;">💬 Welcome to your AI Portfolio Assistant!</h3>
@@ -541,9 +485,7 @@ class ChatTab(BaseTab):
                 I can help you understand your holdings, performance, and trends.
             </p>
         </div>
-        """,
-            unsafe_allow_html=True,
-        )
+        """, unsafe_allow_html=True)
 
         # Info about sticky chat
         st.info(
@@ -623,9 +565,7 @@ class SettingsTab(BaseTab):
     def _render_ai_model_settings(self):
         """Render AI model selection and configuration."""
         st.markdown("### 🤖 AI Model Configuration")
-        st.markdown(
-            "*Configure which AI model to use for portfolio analysis and chat.*"
-        )
+        st.markdown("*Configure which AI model to use for portfolio analysis and chat.*")
 
         # Render the model selector (moved from chat interface)
         render_model_selector()

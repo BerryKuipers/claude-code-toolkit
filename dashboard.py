@@ -105,8 +105,10 @@ from src.portfolio.core import (
     get_portfolio_assets,
     sync_time,
 )
-from src.portfolio.ui import add_section_anchor, render_quick_actions, render_sticky_nav
-from src.portfolio.ui.tabs import TabManager
+from src.portfolio.ui.components import get_current_tab, render_sticky_header
+
+# Note: Removed old UI imports - now using TabManager for clean navigation
+from src.portfolio.ui.tabs import AnalysisTab, PortfolioTab, SettingsTab
 
 
 def init_bitvavo_client() -> Optional[Bitvavo]:
@@ -591,14 +593,14 @@ def create_pnl_chart(df: pd.DataFrame) -> None:
 
 
 def render_sticky_chat_interface(df: pd.DataFrame):
-    """Render a sticky chat interface at the bottom of the page."""
+    """Render a chat interface that's accessible from all tabs."""
     # Add some spacing before the chat
     st.markdown("---")
+    st.markdown("### 💬 AI Portfolio Assistant")
+    st.markdown("*Ask questions about your portfolio from any tab*")
 
-    # Create a collapsible chat section
-    with st.expander(
-        "💬 AI Portfolio Assistant - Ask questions about your portfolio", expanded=False
-    ):
+    # Create a collapsible chat section that's always visible
+    with st.expander("🤖 Chat with AI about your portfolio", expanded=False):
         # Import here to avoid circular imports
         from src.portfolio.chat import render_chat_interface
 
@@ -610,11 +612,14 @@ def main():
     # Apply global performance optimizations
     apply_global_optimizations()
 
+    # Get sidebar state from session state (persisted across refreshes)
+    sidebar_state = st.session_state.get("sidebar_state", "expanded")
+
     st.set_page_config(
         page_title="Crypto Portfolio Dashboard",
         page_icon="📈",
         layout="wide",
-        initial_sidebar_state="expanded",
+        initial_sidebar_state=sidebar_state,
     )
 
     # Initialize session state objects FIRST
@@ -627,7 +632,13 @@ def main():
 
     # Initialize other required session state objects
     if "selected_model" not in st.session_state:
-        st.session_state.selected_model = "claude"
+        from src.portfolio.chat.base_llm_client import LLMClientFactory
+
+        st.session_state.selected_model = LLMClientFactory.get_default_model()
+
+    # Initialize sidebar state with persistence
+    if "sidebar_state" not in st.session_state:
+        st.session_state.sidebar_state = "expanded"
 
     if "total_cost" not in st.session_state:
         st.session_state.total_cost = 0.0
@@ -636,47 +647,10 @@ def main():
     if "active_tab" not in st.session_state:
         st.session_state.active_tab = 0  # Default to Portfolio tab
 
-    # Render sticky navigation
-    render_sticky_nav()
-    render_quick_actions()
+    # Note: Removed old sticky navigation - now using TabManager for clean tab navigation
 
-    # Add mobile-responsive CSS
-    st.markdown(
-        """
-    <style>
-    /* Mobile-responsive adjustments */
-    @media (max-width: 768px) {
-        .stDataFrame {
-            font-size: 12px;
-        }
-        .metric-container {
-            margin-bottom: 1rem;
-        }
-        .stColumns > div {
-            padding: 0.5rem;
-        }
-    }
-
-    /* Better spacing for metrics */
-    .metric-container {
-        background-color: #f0f2f6;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        margin: 0.5rem 0;
-    }
-
-    /* Improved table styling */
-    .stDataFrame {
-        border-radius: 0.5rem;
-        overflow: hidden;
-    }
-    </style>
-    """,
-        unsafe_allow_html=True,
-    )
-
-    # Portfolio section header (title now in sticky nav)
-    st.markdown("*Real-time portfolio analysis with FIFO accounting*")
+    # Render sticky header at the very top
+    render_sticky_header()
 
     # Sidebar for controls
     st.sidebar.header("🎛️ Controls")
@@ -791,12 +765,19 @@ def main():
         st.error("❌ No data available")
         return
 
-    # Create and render tabs using our clean tab system
-    tab_manager = TabManager()
-    tab_manager.render_tabs(df, selected_assets, price_overrides, current_prices)
+    # Render content based on selected tab
+    current_tab = get_current_tab()
+
+    if current_tab == "Portfolio":
+        PortfolioTab().render(df, price_overrides)
+    elif current_tab == "Analysis":
+        AnalysisTab().render(df)
+    elif current_tab == "Settings":
+        SettingsTab().render(selected_assets, current_prices, price_overrides)
 
     # Render sticky chat interface at the bottom (outside of tabs)
-    render_sticky_chat_interface(df)
+    # Note: Chat is available in dedicated Chat tab and doesn't need to be sticky
+    # render_sticky_chat_interface(df)
 
     # Footer (outside of tabs)
     st.markdown("---")
