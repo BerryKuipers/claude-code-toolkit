@@ -15,6 +15,7 @@ from .model_selector import (
     render_model_status_indicator,
     show_model_switch_success,
 )
+from .orchestrator import OrchestratorAgent
 from .prompt_editor import PromptEditor
 
 logger = logging.getLogger(__name__)
