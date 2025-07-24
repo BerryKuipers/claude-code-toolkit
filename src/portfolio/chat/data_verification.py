@@ -64,6 +64,8 @@ class PortfolioDataVerifier:
                 return self._verify_portfolio_allocation(args, result_data)
             elif function_name == "get_transfer_analysis":
                 return self._verify_transfer_analysis(args, result_data)
+            elif function_name == "get_current_holdings":
+                return self._verify_current_holdings(result_data)
             else:
                 # Unknown function - allow but log
                 logger.warning(f"Unknown function for verification: {function_name}")
@@ -330,3 +332,54 @@ class PortfolioDataVerifier:
                 else 0
             ),
         }
+
+    def _verify_current_holdings(
+        self, result_data: Dict[str, Any]
+    ) -> Tuple[bool, str, Optional[str]]:
+        """Verify current holdings data."""
+        from ..utils import safe_float_conversion
+
+        if "error" in result_data:
+            return True, json.dumps(result_data), None
+
+        holdings_data = result_data.get("holdings", [])
+        total_value = result_data.get("total_value_eur", 0)
+
+        # Verify total value calculation
+        calculated_total = 0
+        for holding in holdings_data:
+            calculated_total += safe_float_conversion(holding.get("value_eur", 0))
+
+        tolerance = 0.01
+        if abs(calculated_total - safe_float_conversion(total_value)) > tolerance:
+            logger.warning(
+                f"Total value mismatch: calculated {calculated_total}, reported {total_value}"
+            )
+
+        # Verify holdings exist in portfolio data
+        for holding in holdings_data:
+            asset = holding["asset"]
+            portfolio_row = self.portfolio_data[self.portfolio_data["Asset"] == asset]
+            if portfolio_row.empty:
+                logger.warning(f"Asset {asset} not found in portfolio data")
+                continue
+
+            # Verify key metrics
+            actual_row = portfolio_row.iloc[0]
+            actual_amount = safe_float_conversion(actual_row["Actual Amount"])
+            actual_value = safe_float_conversion(actual_row["Actual Value €"])
+
+            reported_amount = safe_float_conversion(holding.get("amount", 0))
+            reported_value = safe_float_conversion(holding.get("value_eur", 0))
+
+            if abs(actual_amount - reported_amount) > 0.000001:
+                logger.warning(
+                    f"Amount mismatch for {asset}: actual {actual_amount}, reported {reported_amount}"
+                )
+
+            if abs(actual_value - reported_value) > tolerance:
+                logger.warning(
+                    f"Value mismatch for {asset}: actual {actual_value}, reported {reported_value}"
+                )
+
+        return True, json.dumps(result_data), None

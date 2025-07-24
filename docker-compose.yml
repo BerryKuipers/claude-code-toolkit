@@ -31,21 +31,35 @@ services:
       - LOG_LEVEL=INFO
       - TZ=Europe/Amsterdam
 
-      # User and group permissions for NAS compatibility
-      - PUID=1027
-      - PGID=100
-      - UMASK=002
+      # User and group permissions (configurable via .env file)
+      - PUID=${PUID:-1027}
+      - PGID=${PGID:-100}
+      - UMASK=${UMASK:-002}
     
     # Port mapping
     ports:
       - "8503:8503"
     
-    # Volume mounts to NAS
+    # Volume mounts - Choose one option below:
+    # RECOMMENDED: Named volumes are the best practice for most users as they are:
+    # - Portable across different systems and platforms
+    # - Managed by Docker (automatic cleanup, backup-friendly)
+    # - Work without requiring specific host paths
     volumes:
-      # Persistent data storage on NAS
-      - /volume2/docker/crypto_insight/data:/app/data
-      - /volume2/docker/crypto_insight/logs:/app/logs
-      - /volume2/docker/crypto_insight/config:/app/config
+      # Option 1: Named volumes (portable, recommended for most users)
+      - crypto_data:/app/data
+      - crypto_logs:/app/logs
+      - crypto_config:/app/config
+
+      # Option 2: NAS/specific paths (uncomment and modify paths as needed)
+      # - /volume2/docker/crypto_insight/data:/app/data
+      # - /volume2/docker/crypto_insight/logs:/app/logs
+      # - /volume2/docker/crypto_insight/config:/app/config
+
+      # Option 3: Local relative paths (uncomment for local development)
+      # - ./data:/app/data
+      # - ./logs:/app/logs
+      # - ./config:/app/config
     
     # Health check
     healthcheck:
@@ -65,3 +79,12 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+# Named volumes for portable data persistence
+volumes:
+  crypto_data:
+    driver: local
+  crypto_logs:
+    driver: local
+  crypto_config:
+    driver: local

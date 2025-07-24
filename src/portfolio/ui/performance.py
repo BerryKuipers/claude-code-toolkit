@@ -158,6 +158,12 @@ class PerformanceOptimizer:
         )
 
         # Add custom CSS for performance
+        # Apply CSS optimizations
+        PerformanceOptimizer.apply_css_optimizations()
+
+    @staticmethod
+    def apply_css_optimizations():
+        """Apply CSS optimizations without page config."""
         st.markdown(
             """
         <style>
@@ -165,29 +171,29 @@ class PerformanceOptimizer:
         .main > div {
             scroll-behavior: smooth;
         }
-        
+
         /* Reduce animation overhead */
         * {
             transition: none !important;
             animation: none !important;
         }
-        
+
         /* Optimize table rendering */
         .dataframe {
             font-size: 12px;
         }
-        
+
         /* Reduce memory usage for large tables */
         .stDataFrame {
             height: 400px;
             overflow-y: auto;
         }
-        
+
         /* Optimize chat interface */
         .stChatMessage {
             margin-bottom: 0.5rem;
         }
-        
+
         /* Reduce padding for better space usage */
         .block-container {
             padding-top: 2rem;
@@ -352,9 +358,10 @@ def optimize_chat_interface():
 
 
 def apply_global_optimizations():
-    """Apply global performance optimizations."""
-    # Configure Streamlit
-    PerformanceOptimizer.optimize_streamlit_config()
+    """Apply global performance optimizations (excluding page config)."""
+    # Skip the page config part - that's handled in main()
+    # Just apply the CSS optimizations
+    PerformanceOptimizer.apply_css_optimizations()
 
     # Clear old cache periodically
     if "last_cache_clear" not in st.session_state:

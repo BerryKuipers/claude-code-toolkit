@@ -93,7 +93,7 @@ class PortfolioFunctionHandler:
             },
             {
                 "name": "analyze_market_opportunities",
-                "description": "Analyze current market opportunities and trends using web research",
+                "description": "Analyze current market opportunities and trends using web research. ALWAYS call this AFTER get_current_holdings when asked about investment recommendations or what coins to buy. This provides market analysis to complement portfolio context.",
                 "parameters": {
                     "type": "object",
                     "properties": {

@@ -67,7 +67,9 @@ def create_pnl_chart(df: pd.DataFrame) -> None:
                     height=500,
                 )
                 fig.update_traces(textposition="inside", textinfo="percent+label")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(
+                    fig, use_container_width=True, key="portfolio_allocation_pie"
+                )
             except ImportError:
                 # Fallback to simple bar chart if plotly not available
                 st.bar_chart(
@@ -161,7 +163,9 @@ def create_pnl_chart(df: pd.DataFrame) -> None:
                     xaxis_title="Asset",
                     yaxis_title="Amount",
                 )
-                st.plotly_chart(fig_transfers, use_container_width=True)
+                st.plotly_chart(
+                    fig_transfers, use_container_width=True, key="transfers_bar_chart"
+                )
             except ImportError:
                 # Fallback without plotly
                 st.bar_chart(
@@ -206,7 +210,11 @@ def create_pnl_chart(df: pd.DataFrame) -> None:
                     yaxis_title="Amount Difference",
                     legend_title="Explanation Type",
                 )
-                st.plotly_chart(fig_discrepancy, use_container_width=True)
+                st.plotly_chart(
+                    fig_discrepancy,
+                    use_container_width=True,
+                    key="discrepancy_explanation_chart",
+                )
             except ImportError:
                 # Fallback without plotly
                 st.bar_chart(

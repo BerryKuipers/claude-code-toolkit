@@ -205,11 +205,29 @@ def render(active_tab: str = "Portfolio") -> None:
 
         with col1:
             if st.button("☰", key="sidebar_toggle_btn", help="Toggle Sidebar"):
-                # Toggle sidebar state
+                # Toggle sidebar state in session state for persistence
                 current_state = st.session_state.get("sidebar_state", "expanded")
                 new_state = "collapsed" if current_state == "expanded" else "expanded"
                 st.session_state.sidebar_state = new_state
-                st.rerun()
+
+                # Immediately toggle sidebar with JavaScript
+                st.markdown(
+                    """
+                    <script>
+                    const sidebar = document.querySelector('[data-testid="stSidebar"]');
+                    if (sidebar) {
+                        const isCollapsed = sidebar.style.marginLeft === '-21rem' || sidebar.style.display === 'none';
+                        if (isCollapsed) {
+                            sidebar.style.marginLeft = '0rem';
+                            sidebar.style.display = 'block';
+                        } else {
+                            sidebar.style.marginLeft = '-21rem';
+                        }
+                    }
+                    </script>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
         with col2:
             st.markdown(

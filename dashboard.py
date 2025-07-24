@@ -379,18 +379,19 @@ def render_sticky_chat_interface(df: pd.DataFrame):
 
 def main():
     """Main Streamlit application."""
-    # Apply global performance optimizations
-    apply_global_optimizations()
-
     # Get sidebar state from session state (persisted across refreshes)
     sidebar_state = st.session_state.get("sidebar_state", "expanded")
 
+    # Configure page FIRST before any other Streamlit commands
     st.set_page_config(
         page_title="Crypto Portfolio Dashboard",
         page_icon="📈",
         layout="wide",
         initial_sidebar_state=sidebar_state,
     )
+
+    # Apply global performance optimizations (but skip the page config part)
+    apply_global_optimizations()
 
     # Initialize session state objects FIRST
     if "api_status_checker" not in st.session_state:
