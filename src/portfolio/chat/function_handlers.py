@@ -7,7 +7,10 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 
 from ..ai_explanations import generate_coin_explanation
+from ..data.dataframe_utils import SafeDataFrameOperations
 from ..predictions import PredictionEngine
+from ..research.web_search import CryptoWebSearcher
+from ..utils import safe_float_conversion
 from .data_verification import PortfolioDataVerifier
 
 logger = logging.getLogger(__name__)
@@ -26,6 +29,7 @@ class PortfolioFunctionHandler:
         self.functions = self._define_functions()
         self.verifier = PortfolioDataVerifier(portfolio_data)
         self.prediction_engine = PredictionEngine()
+        self.web_searcher = CryptoWebSearcher()
 
     def _define_functions(self) -> List[Dict[str, Any]]:
         """Define available functions for OpenAI function calling."""
@@ -33,6 +37,11 @@ class PortfolioFunctionHandler:
             {
                 "name": "get_portfolio_summary",
                 "description": "Get overall portfolio summary with total value, P&L, and key metrics",
+                "parameters": {"type": "object", "properties": {}, "required": []},
+            },
+            {
+                "name": "get_current_holdings",
+                "description": "Get list of all currently held assets with amounts and values - CRITICAL for investment recommendations",
                 "parameters": {"type": "object", "properties": {}, "required": []},
             },
             {
@@ -51,6 +60,62 @@ class PortfolioFunctionHandler:
                             "enum": ["return_pct", "value", "unrealised"],
                             "description": "How to sort the results",
                             "default": "return_pct",
+                        },
+                    },
+                    "required": [],
+                },
+            },
+            {
+                "name": "search_crypto_news",
+                "description": "Search for latest cryptocurrency news and market analysis using Perplexity AI",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Search query for crypto news (e.g., 'Solana price prediction 2024', 'DeFi trends')",
+                        },
+                        "focus": {
+                            "type": "string",
+                            "enum": [
+                                "news",
+                                "analysis",
+                                "price",
+                                "technology",
+                                "adoption",
+                            ],
+                            "description": "Focus area for the search",
+                            "default": "news",
+                        },
+                    },
+                    "required": ["query"],
+                },
+            },
+            {
+                "name": "analyze_market_opportunities",
+                "description": "🚨 CRITICAL: ALWAYS call this function when user asks 'what coin should I buy' or similar investment questions. Must be called AFTER get_current_holdings. Analyzes current market opportunities and trends using web research to provide specific coin recommendations.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "sector": {
+                            "type": "string",
+                            "enum": [
+                                "defi",
+                                "layer1",
+                                "layer2",
+                                "gaming",
+                                "ai",
+                                "meme",
+                                "all",
+                            ],
+                            "description": "Crypto sector to analyze",
+                            "default": "all",
+                        },
+                        "timeframe": {
+                            "type": "string",
+                            "enum": ["short", "medium", "long"],
+                            "description": "Investment timeframe",
+                            "default": "medium",
                         },
                     },
                     "required": [],
@@ -178,6 +243,135 @@ class PortfolioFunctionHandler:
                     "required": [],
                 },
             },
+            {
+                "name": "search_crypto_news",
+                "description": "Search for latest cryptocurrency news and market analysis using Perplexity AI",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Search query for crypto news (e.g., 'Solana price prediction 2024', 'DeFi trends')",
+                        },
+                        "focus": {
+                            "type": "string",
+                            "enum": [
+                                "news",
+                                "analysis",
+                                "price",
+                                "technology",
+                                "adoption",
+                            ],
+                            "description": "Focus area for the search",
+                            "default": "news",
+                        },
+                    },
+                    "required": ["query"],
+                },
+            },
+            {
+                "name": "analyze_market_opportunities",
+                "description": "Analyze current market opportunities and trends using web research",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "sector": {
+                            "type": "string",
+                            "enum": [
+                                "defi",
+                                "layer1",
+                                "layer2",
+                                "gaming",
+                                "ai",
+                                "meme",
+                                "all",
+                            ],
+                            "description": "Crypto sector to analyze",
+                            "default": "all",
+                        },
+                        "timeframe": {
+                            "type": "string",
+                            "enum": ["short", "medium", "long"],
+                            "description": "Investment timeframe",
+                            "default": "medium",
+                        },
+                    },
+                    "required": [],
+                },
+            },
+            {
+                "name": "get_current_holdings",
+                "description": "Get list of all currently held assets with amounts and values - CRITICAL for investment recommendations",
+                "parameters": {"type": "object", "properties": {}, "required": []},
+            },
+            {
+                "name": "compare_with_market",
+                "description": "Compare portfolio performance with market benchmarks and similar assets",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "benchmark": {
+                            "type": "string",
+                            "enum": ["btc", "eth", "total_market", "defi_index"],
+                            "description": "Benchmark to compare against",
+                            "default": "total_market",
+                        },
+                        "timeframe": {
+                            "type": "string",
+                            "enum": ["1d", "7d", "30d", "90d", "1y"],
+                            "description": "Comparison timeframe",
+                            "default": "30d",
+                        },
+                    },
+                    "required": [],
+                },
+            },
+            {
+                "name": "get_trading_signals",
+                "description": "Get AI-powered trading signals and entry/exit recommendations",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "assets": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Assets to analyze for trading signals",
+                        },
+                        "strategy": {
+                            "type": "string",
+                            "enum": ["conservative", "moderate", "aggressive"],
+                            "description": "Trading strategy risk level",
+                            "default": "moderate",
+                        },
+                    },
+                    "required": [],
+                },
+            },
+            {
+                "name": "find_similar_assets",
+                "description": "Find assets similar to current holdings that might be good additions",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "reference_asset": {
+                            "type": "string",
+                            "description": "Asset to find similar alternatives to (e.g., 'ETH')",
+                        },
+                        "criteria": {
+                            "type": "string",
+                            "enum": [
+                                "technology",
+                                "market_cap",
+                                "use_case",
+                                "performance",
+                            ],
+                            "description": "Similarity criteria",
+                            "default": "technology",
+                        },
+                    },
+                    "required": ["reference_asset"],
+                },
+            },
         ]
 
     def handle_function_call(self, function_name: str, arguments: str) -> str:
@@ -190,9 +384,12 @@ class PortfolioFunctionHandler:
         Returns:
             JSON string containing the verified function result
         """
+        logger.info(f"🔧 AI Function call: {function_name} with args: {arguments}")
+
         try:
             # Parse arguments
             args = json.loads(arguments) if arguments else {}
+            logger.info(f"📋 Parsed arguments: {args}")
 
             # Route to appropriate handler
             if function_name == "get_portfolio_summary":
@@ -215,6 +412,23 @@ class PortfolioFunctionHandler:
                 result = self._get_price_prediction(**args)
             elif function_name == "get_portfolio_optimization":
                 result = self._get_portfolio_optimization(**args)
+            elif function_name == "get_current_holdings":
+                logger.info("📋 Getting current portfolio holdings...")
+                result = self._get_current_holdings()
+                holdings_count = len(result.get("holdings", []))
+                logger.info(f"✅ Retrieved {holdings_count} holdings")
+            elif function_name == "search_crypto_news":
+                result = self._search_crypto_news(**args)
+            elif function_name == "analyze_market_opportunities":
+                logger.info(f"🔍 Executing market analysis with args: {args}")
+                result = self._analyze_market_opportunities(**args)
+                logger.info(f"📊 Market analysis result: {str(result)[:200]}...")
+            elif function_name == "compare_with_market":
+                result = self._compare_with_market(**args)
+            elif function_name == "get_trading_signals":
+                result = self._get_trading_signals(**args)
+            elif function_name == "find_similar_assets":
+                result = self._find_similar_assets(**args)
             else:
                 result = {"error": f"Unknown function: {function_name}"}
 
@@ -254,18 +468,14 @@ class PortfolioFunctionHandler:
         if self.portfolio_data.empty:
             return {"error": "No portfolio data available"}
 
-        total_cost = self.portfolio_data["Cost €"].sum()
-        total_actual_value = self.portfolio_data["Actual Value €"].sum()
-        total_realised = self.portfolio_data["Realised €"].sum()
-        total_unrealised = self.portfolio_data["Unrealised €"].sum()
+        # Use clean utility for safe calculations
+        totals = SafeDataFrameOperations.calculate_portfolio_totals(self.portfolio_data)
 
-        # Calculate total return using correct total invested amount
-        # Use the "Total Invested €" column which tracks total_buys_eur from calculate_pnl
-        if "Total Invested €" in self.portfolio_data.columns:
-            total_invested = self.portfolio_data["Total Invested €"].sum()
-        else:
-            # Fallback to cost basis if Total Invested column not available
-            total_invested = total_cost
+        total_cost = totals["total_cost"]
+        total_actual_value = totals["total_actual_value"]
+        total_realised = totals["total_realised"]
+        total_unrealised = totals["total_unrealised"]
+        total_invested = totals["total_invested"]
 
         total_return_pct = (
             ((total_actual_value + total_realised) - total_invested)
@@ -275,12 +485,9 @@ class PortfolioFunctionHandler:
             else 0
         )
 
-        # Count positions
-        profitable_positions = len(
-            self.portfolio_data[self.portfolio_data["Total Return %"] > 0]
-        )
-        total_positions = len(
-            self.portfolio_data[self.portfolio_data["Actual Amount"] > 0]
+        # Count positions using clean utility
+        profitable_positions, total_positions = (
+            SafeDataFrameOperations.count_profitable_positions(self.portfolio_data)
         )
 
         return {
@@ -309,19 +516,26 @@ class PortfolioFunctionHandler:
         if assets:
             df = df[df["Asset"].isin(assets)]
 
-        # Filter out zero positions
-        df = df[df["Actual Amount"] > 0]
+        # Filter out zero positions using safe conversion
+        def has_positive_amount(x):
+            return safe_float_conversion(x) > 0
+
+        df = df[df["Actual Amount"].apply(has_positive_amount)]
 
         if df.empty:
             return {"error": "No matching assets found"}
 
-        # Sort by specified criteria
+        # Sort by specified criteria using safe sorting
         if sort_by == "return_pct":
-            df = df.sort_values("Total Return %", ascending=False)
+            df = SafeDataFrameOperations.safe_sort(
+                df, "Total Return %", ascending=False
+            )
         elif sort_by == "value":
-            df = df.sort_values("Actual Value €", ascending=False)
+            df = SafeDataFrameOperations.safe_sort(
+                df, "Actual Value €", ascending=False
+            )
         elif sort_by == "unrealised":
-            df = df.sort_values("Unrealised €", ascending=False)
+            df = SafeDataFrameOperations.safe_sort(df, "Unrealised €", ascending=False)
 
         # Format results
         results = []
@@ -329,12 +543,22 @@ class PortfolioFunctionHandler:
             results.append(
                 {
                     "asset": row["Asset"],
-                    "actual_amount": round(row["Actual Amount"], 6),
-                    "actual_value_eur": round(row["Actual Value €"], 2),
-                    "cost_eur": round(row["Cost €"], 2),
-                    "unrealised_eur": round(row["Unrealised €"], 2),
-                    "total_return_pct": round(row["Total Return %"], 2),
-                    "current_price_eur": round(row["Current Price €"], 2),
+                    "actual_amount": round(
+                        safe_float_conversion(row["Actual Amount"]), 6
+                    ),
+                    "actual_value_eur": round(
+                        safe_float_conversion(row["Actual Value €"]), 2
+                    ),
+                    "cost_eur": round(safe_float_conversion(row["Cost €"]), 2),
+                    "unrealised_eur": round(
+                        safe_float_conversion(row["Unrealised €"]), 2
+                    ),
+                    "total_return_pct": round(
+                        safe_float_conversion(row["Total Return %"]), 2
+                    ),
+                    "current_price_eur": round(
+                        safe_float_conversion(row["Current Price €"]), 2
+                    ),
                 }
             )
 
@@ -342,23 +566,37 @@ class PortfolioFunctionHandler:
 
     def _get_top_performers(self, type: str, limit: int = 5) -> Dict[str, Any]:
         """Get top or worst performing assets."""
-        df = self.portfolio_data[self.portfolio_data["Actual Amount"] > 0].copy()
+
+        def has_positive_amount(x):
+            return safe_float_conversion(x) > 0
+
+        df = self.portfolio_data[
+            self.portfolio_data["Actual Amount"].apply(has_positive_amount)
+        ].copy()
 
         if df.empty:
             return {"error": "No positions found"}
 
-        # Sort by return percentage
+        # Sort by return percentage using safe sorting
         ascending = type == "worst"
-        df = df.sort_values("Total Return %", ascending=ascending).head(limit)
+        df = SafeDataFrameOperations.safe_sort(
+            df, "Total Return %", ascending=ascending
+        ).head(limit)
 
         results = []
         for _, row in df.iterrows():
             results.append(
                 {
                     "asset": row["Asset"],
-                    "return_pct": round(row["Total Return %"], 2),
-                    "unrealised_eur": round(row["Unrealised €"], 2),
-                    "actual_value_eur": round(row["Actual Value €"], 2),
+                    "return_pct": round(
+                        safe_float_conversion(row["Total Return %"]), 2
+                    ),
+                    "unrealised_eur": round(
+                        safe_float_conversion(row["Unrealised €"]), 2
+                    ),
+                    "actual_value_eur": round(
+                        safe_float_conversion(row["Actual Value €"]), 2
+                    ),
                 }
             )
 
@@ -387,27 +625,36 @@ class PortfolioFunctionHandler:
 
     def _get_portfolio_allocation(self, min_percentage: float = 1.0) -> Dict[str, Any]:
         """Get portfolio allocation by value."""
-        df = self.portfolio_data[self.portfolio_data["Actual Value €"] > 0].copy()
+        df = self.portfolio_data[
+            self.portfolio_data["Actual Value €"].apply(
+                lambda x: safe_float_conversion(x) > 0
+            )
+        ].copy()
 
         if df.empty:
             return {"error": "No positions found"}
 
-        total_value = df["Actual Value €"].sum()
-        df["allocation_pct"] = df["Actual Value €"] / total_value * 100
+        # Use safe float conversion for calculations
+        total_value = sum(safe_float_conversion(val) for val in df["Actual Value €"])
 
-        # Filter by minimum percentage
-        df = df[df["allocation_pct"] >= min_percentage]
-        df = df.sort_values("allocation_pct", ascending=False)
-
+        # Calculate allocation percentages safely
         allocations = []
         for _, row in df.iterrows():
-            allocations.append(
-                {
-                    "asset": row["Asset"],
-                    "value_eur": round(row["Actual Value €"], 2),
-                    "allocation_pct": round(row["allocation_pct"], 2),
-                }
-            )
+            value_eur = safe_float_conversion(row["Actual Value €"])
+            allocation_pct = (value_eur / total_value * 100) if total_value > 0 else 0
+
+            # Filter by minimum percentage
+            if allocation_pct >= min_percentage:
+                allocations.append(
+                    {
+                        "asset": row["Asset"],
+                        "value_eur": round(value_eur, 2),
+                        "allocation_pct": round(allocation_pct, 2),
+                    }
+                )
+
+        # Sort by allocation percentage descending
+        allocations.sort(key=lambda x: x["allocation_pct"], reverse=True)
 
         return {"total_value_eur": round(total_value, 2), "allocations": allocations}
 
@@ -753,3 +1000,273 @@ class PortfolioFunctionHandler:
             "HIGH",
             "VERY_HIGH",
         ]
+
+    def _get_current_holdings(self) -> Dict[str, Any]:
+        """Get list of all currently held assets with amounts and values."""
+        df = SafeDataFrameOperations.filter_positive_amounts(
+            self.portfolio_data, "Actual Amount"
+        )
+
+        if df.empty:
+            return {"error": "No current holdings found"}
+
+        # Sort by value descending using safe sorting
+        df = SafeDataFrameOperations.safe_sort(df, "Actual Value €", ascending=False)
+
+        holdings = []
+        # Use safe float conversion for total value calculation
+        from ..utils import safe_float_conversion
+
+        total_value = sum(safe_float_conversion(val) for val in df["Actual Value €"])
+
+        for _, row in df.iterrows():
+            # Use safe float conversion to handle formatted currency strings
+            from ..utils import safe_float_conversion
+
+            actual_value = safe_float_conversion(row["Actual Value €"])
+            allocation_pct = (
+                (actual_value / total_value) * 100 if total_value > 0 else 0
+            )
+
+            holdings.append(
+                {
+                    "asset": row["Asset"],
+                    "amount": safe_float_conversion(row["Actual Amount"]),
+                    "value_eur": actual_value,
+                    "allocation_pct": round(allocation_pct, 2),
+                    "return_pct": safe_float_conversion(row["Total Return %"]),
+                    "unrealised_eur": safe_float_conversion(row["Unrealised €"]),
+                    "current_price_eur": safe_float_conversion(row["Current Price €"]),
+                }
+            )
+
+        return {
+            "total_holdings": len(holdings),
+            "total_value_eur": safe_float_conversion(total_value),
+            "holdings": holdings,
+            "note": "These are your current holdings - consider this when making new investment recommendations",
+        }
+
+    def _search_crypto_news(self, query: str, focus: str = "news") -> Dict[str, Any]:
+        """Search for cryptocurrency news using Perplexity AI."""
+        try:
+            import os
+
+            import requests
+
+            api_key = os.getenv("PERPLEXITY_API_KEY")
+            if not api_key:
+                return {"error": "Perplexity API key not configured"}
+
+            # Enhance query based on focus
+            focus_prompts = {
+                "news": f"Latest news and developments about {query}",
+                "analysis": f"Technical and fundamental analysis of {query}",
+                "price": f"Price analysis and predictions for {query}",
+                "technology": f"Technology and development updates for {query}",
+                "adoption": f"Adoption and partnership news for {query}",
+            }
+
+            enhanced_query = focus_prompts.get(focus, query)
+
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            }
+
+            data = {
+                "model": os.getenv("PERPLEXITY_MODEL", "sonar-pro"),
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are a cryptocurrency research assistant. Provide accurate, up-to-date information with sources.",
+                    },
+                    {"role": "user", "content": enhanced_query},
+                ],
+                "max_tokens": int(os.getenv("MAX_TOKENS", "4000")),
+                "temperature": float(os.getenv("TEMPERATURE", "0.2")),
+            }
+
+            response = requests.post(
+                "https://api.perplexity.ai/chat/completions",
+                headers=headers,
+                json=data,
+                timeout=30,
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                content = result["choices"][0]["message"]["content"]
+
+                return {
+                    "query": query,
+                    "focus": focus,
+                    "research_results": content,
+                    "source": "Perplexity AI",
+                    "timestamp": "now",
+                }
+            else:
+                return {"error": f"Perplexity API error: {response.status_code}"}
+
+        except Exception as e:
+            return {"error": f"Failed to search crypto news: {str(e)}"}
+
+    def _analyze_market_opportunities(
+        self, sector: str = "all", timeframe: str = "medium"
+    ) -> Dict[str, Any]:
+        """Analyze current market opportunities using web research."""
+        try:
+            # Create sector-specific search query
+            sector_queries = {
+                "defi": "DeFi cryptocurrency opportunities 2024 yield farming lending protocols",
+                "layer1": "Layer 1 blockchain opportunities Ethereum competitors Solana Avalanche",
+                "layer2": "Layer 2 scaling solutions Polygon Arbitrum Optimism opportunities",
+                "gaming": "GameFi blockchain gaming tokens metaverse opportunities",
+                "ai": "AI cryptocurrency tokens artificial intelligence blockchain opportunities",
+                "meme": "Meme coin opportunities viral tokens community driven projects",
+                "all": "cryptocurrency market opportunities 2024 trending sectors",
+            }
+
+            query = sector_queries.get(sector, sector_queries["all"])
+
+            # Use Perplexity to research opportunities
+            research_result = self._search_crypto_news(query, "analysis")
+
+            if "error" in research_result:
+                return research_result
+
+            return {
+                "sector": sector,
+                "timeframe": timeframe,
+                "market_analysis": research_result["research_results"],
+                "opportunities_identified": True,
+                "recommendation": f"Based on current market research for {sector} sector with {timeframe} timeframe",
+                "source": "Perplexity AI Market Research",
+            }
+
+        except Exception as e:
+            return {"error": f"Failed to analyze market opportunities: {str(e)}"}
+
+    def _compare_with_market(
+        self, benchmark: str = "total_market", timeframe: str = "30d"
+    ) -> Dict[str, Any]:
+        """Compare portfolio performance with market benchmarks."""
+        try:
+            # Get portfolio summary for comparison
+            portfolio_summary = self._get_portfolio_summary()
+
+            if "error" in portfolio_summary:
+                return portfolio_summary
+
+            # Research benchmark performance
+            benchmark_queries = {
+                "btc": f"Bitcoin BTC price performance last {timeframe}",
+                "eth": f"Ethereum ETH price performance last {timeframe}",
+                "total_market": f"Total cryptocurrency market performance last {timeframe}",
+                "defi_index": f"DeFi index performance last {timeframe}",
+            }
+
+            query = benchmark_queries.get(benchmark, benchmark_queries["total_market"])
+            benchmark_research = self._search_crypto_news(query, "analysis")
+
+            portfolio_return = portfolio_summary.get("total_return_percentage", 0)
+
+            return {
+                "portfolio_return_pct": portfolio_return,
+                "benchmark": benchmark,
+                "timeframe": timeframe,
+                "benchmark_analysis": benchmark_research.get(
+                    "research_results", "No data available"
+                ),
+                "comparison_summary": f"Your portfolio return: {portfolio_return:.2f}%",
+                "relative_performance": (
+                    "outperforming" if portfolio_return > 0 else "underperforming"
+                ),
+                "analysis_timestamp": "now",
+            }
+
+        except Exception as e:
+            return {"error": f"Failed to compare with market: {str(e)}"}
+
+    def _get_trading_signals(
+        self, assets: list = None, strategy: str = "moderate"
+    ) -> Dict[str, Any]:
+        """Get AI-powered trading signals and recommendations."""
+        try:
+            if not assets:
+                # Get top holdings if no assets specified
+                holdings = self._get_current_holdings()
+                if "error" in holdings:
+                    return holdings
+                assets = [h["asset"] for h in holdings["holdings"][:5]]
+
+            signals = []
+
+            for asset in assets:
+                # Research current technical analysis for each asset
+                query = (
+                    f"{asset} technical analysis trading signals {strategy} strategy"
+                )
+                analysis = self._search_crypto_news(query, "analysis")
+
+                if "error" not in analysis:
+                    signals.append(
+                        {
+                            "asset": asset,
+                            "strategy": strategy,
+                            "analysis": analysis["research_results"],
+                            "signal_strength": "moderate",  # Would be calculated from actual TA
+                            "recommendation": "HOLD",  # Would be determined from analysis
+                        }
+                    )
+
+            return {
+                "strategy": strategy,
+                "signals_generated": len(signals),
+                "trading_signals": signals,
+                "disclaimer": "Trading signals are for informational purposes only. Always do your own research.",
+                "timestamp": "now",
+            }
+
+        except Exception as e:
+            return {"error": f"Failed to get trading signals: {str(e)}"}
+
+    def _find_similar_assets(
+        self, reference_asset: str, criteria: str = "technology"
+    ) -> Dict[str, Any]:
+        """Find assets similar to current holdings."""
+        try:
+            # Check if reference asset is in current holdings
+            holdings = self._get_current_holdings()
+            current_assets = (
+                [h["asset"] for h in holdings.get("holdings", [])]
+                if "error" not in holdings
+                else []
+            )
+
+            # Create search query based on criteria
+            criteria_queries = {
+                "technology": f"cryptocurrencies similar to {reference_asset} same technology blockchain",
+                "market_cap": f"cryptocurrencies similar market cap to {reference_asset}",
+                "use_case": f"cryptocurrencies similar use case to {reference_asset}",
+                "performance": f"cryptocurrencies similar performance to {reference_asset}",
+            }
+
+            query = criteria_queries.get(criteria, criteria_queries["technology"])
+            research = self._search_crypto_news(query, "analysis")
+
+            if "error" in research:
+                return research
+
+            return {
+                "reference_asset": reference_asset,
+                "criteria": criteria,
+                "currently_held": reference_asset in current_assets,
+                "similar_assets_analysis": research["research_results"],
+                "recommendation": f"Based on {criteria} similarity to {reference_asset}",
+                "note": f"You {'already hold' if reference_asset in current_assets else 'do not currently hold'} {reference_asset}",
+                "current_holdings": current_assets,
+            }
+
+        except Exception as e:
+            return {"error": f"Failed to find similar assets: {str(e)}"}

@@ -5,12 +5,16 @@ error handling, and integration with the core portfolio logic.
 """
 
 import os
+import sys
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
 import typer
 from typer.testing import CliRunner
+
+# Add src to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from src.portfolio.cli import _get_bitvavo_client, _parse_price_override, app
 

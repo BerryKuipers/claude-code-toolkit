@@ -15,6 +15,7 @@ from .model_selector import (
     render_model_status_indicator,
     show_model_switch_success,
 )
+from .orchestrator import OrchestratorAgent
 from .prompt_editor import PromptEditor
 
 logger = logging.getLogger(__name__)
@@ -26,10 +27,15 @@ def render_chat_interface(portfolio_data: pd.DataFrame):
     Args:
         portfolio_data: DataFrame containing portfolio information
     """
-    # Model selection UI
-    selected_model = render_model_selector()
+    # Get selected model from session state (configured in Settings tab)
+    if "selected_model" not in st.session_state:
+        from .base_llm_client import LLMClientFactory
 
-    # Check if model changed
+        st.session_state.selected_model = LLMClientFactory.get_default_model()
+
+    selected_model = st.session_state.selected_model
+
+    # Check if model changed (from Settings tab)
     if "current_model" not in st.session_state:
         st.session_state.current_model = selected_model
     elif st.session_state.current_model != selected_model:
@@ -41,10 +47,15 @@ def render_chat_interface(portfolio_data: pd.DataFrame):
         show_model_switch_success(old_model, selected_model)
 
     st.markdown("---")
-    st.subheader("💬 Portfolio Chat")
 
-    # Show current model status
-    render_model_status_indicator(selected_model)
+    # Header with model status
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.subheader("💬 Portfolio Chat")
+    with col2:
+        # Show current model status (compact)
+        render_model_status_indicator(selected_model)
+        st.caption("*Configure in Settings tab*")
 
     # Initialize session state for chat
     if "chat_messages" not in st.session_state:
@@ -55,7 +66,7 @@ def render_chat_interface(portfolio_data: pd.DataFrame):
             }
         ]
 
-    # Initialize cost tracker
+    # Use existing cost tracker from main dashboard (don't create a new one)
     if "cost_tracker" not in st.session_state:
         st.session_state.cost_tracker = CostTracker()
 
@@ -166,36 +177,8 @@ def render_chat_interface(portfolio_data: pd.DataFrame):
         """
         )
 
-    # Add detailed cost analysis
+    # Add detailed cost analysis (keep this for the chat interface)
     render_detailed_cost_analysis()
-
-    # Add prompt editor section
-    st.markdown("---")
-    with st.expander("🎭 Customize AI Behavior & Prompts"):
-        st.session_state.prompt_editor.render_prompt_editor()
-
-    # Add API status and error help
-    st.markdown("---")
-    col1, col2 = st.columns(2)
-
-    with col1:
-        with st.expander("🔍 API Status Monitor"):
-            try:
-                if (
-                    hasattr(st.session_state, "api_status_checker")
-                    and st.session_state.api_status_checker
-                ):
-                    st.session_state.api_status_checker.render_status_widget()
-                else:
-                    st.warning(
-                        "API status checker not initialized. Please refresh the page."
-                    )
-            except Exception as e:
-                st.error(f"Error loading API status: {str(e)}")
-                st.info("Try refreshing the page to fix this issue.")
-
-    with col2:
-        render_error_help()
 
 
 def _get_ai_response(
@@ -213,16 +196,29 @@ def _get_ai_response(
     """
     try:
         # Prepare messages with model-specific system prompt
+        system_prompt = _get_system_prompt(llm_client.provider)
         messages = [
-            {"role": "system", "content": _get_system_prompt(llm_client.provider)},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message},
         ]
 
         # Get available functions
         functions = function_handler.get_available_functions()
 
+        # Debug logging
+        logger.info(f"Function calling setup: {len(functions)} functions available")
+        logger.info(
+            f"System prompt contains function calling instructions: {'MUST use function calls' in system_prompt}"
+        )
+        logger.info(
+            f"Client supports function calling: {llm_client.supports_function_calling()}"
+        )
+
         # Check if client supports function calling
         if not llm_client.supports_function_calling():
+            logger.warning(
+                "Function calling not supported - falling back to simple chat"
+            )
             # Simple chat without function calling
             response = llm_client.chat_completion(messages=messages)
             return llm_client.get_response_content(response)
@@ -230,11 +226,13 @@ def _get_ai_response(
         # Use provider-specific function calling if available
         if hasattr(llm_client, "handle_function_calling_conversation"):
             # Claude-style function calling
+            logger.info("Using Claude-style function calling")
             return llm_client.handle_function_calling_conversation(
                 messages, functions, function_handler
             )
         else:
             # OpenAI-style function calling
+            logger.info("Using OpenAI-style function calling")
             return _handle_openai_function_calling(
                 messages, functions, llm_client, function_handler
             )
@@ -250,6 +248,8 @@ def _handle_openai_function_calling(
     messages, functions, llm_client, function_handler
 ) -> str:
     """Handle OpenAI-style function calling."""
+    logger.info(f"Making OpenAI API call with {len(functions)} functions")
+
     # Make initial API call
     response = llm_client.chat_completion(
         messages=messages, functions=functions, function_call="auto"
@@ -257,16 +257,24 @@ def _handle_openai_function_calling(
 
     # Check if function calls were made
     function_calls = llm_client.get_function_calls(response)
+    logger.info(f"Received {len(function_calls)} function calls from API")
 
     if function_calls:
+        logger.info("Processing function calls...")
         # Handle function calls
         for func_call in function_calls:
             function_name = func_call["name"]
             function_args = func_call["arguments"]
+            logger.info(
+                f"Executing function: {function_name} with args: {function_args}"
+            )
 
             # Execute function
             function_result = function_handler.handle_function_call(
                 function_name, function_args
+            )
+            logger.info(
+                f"Function {function_name} returned {len(str(function_result))} characters"
             )
 
             # Add function result to messages
@@ -296,12 +304,20 @@ def _handle_openai_function_calling(
             )
 
         # Get final response with function results
+        logger.info("Getting final response with function results...")
         final_response = llm_client.chat_completion(messages=messages)
-        return llm_client.get_response_content(final_response)
+        final_content = llm_client.get_response_content(final_response)
+        logger.info(f"Final response: {len(final_content)} characters")
+        return final_content
 
     else:
         # No function calls, return direct response
-        return llm_client.get_response_content(response)
+        logger.warning(
+            "No function calls made - returning direct response (this may be generic)"
+        )
+        direct_content = llm_client.get_response_content(response)
+        logger.info(f"Direct response: {len(direct_content)} characters")
+        return direct_content
 
 
 def _get_system_prompt(provider: LLMProvider = None) -> str:
@@ -313,22 +329,44 @@ def _get_system_prompt(provider: LLMProvider = None) -> str:
     Returns:
         Optimized system prompt
     """
-    base_prompt = """You are a helpful AI assistant specialized in cryptocurrency portfolio analysis.
+    base_prompt = """You are an expert cryptocurrency portfolio analyst with access to the user's real portfolio data through function calls.
 
-You have access to the user's complete portfolio data including:
-- Asset holdings (FIFO and actual amounts)
-- Cost basis and current values
-- Realized and unrealized P&L
-- Transfer history (deposits/withdrawals)
-- Performance metrics
+CRITICAL: You MUST use function calls to analyze the actual portfolio data before providing any recommendations or analysis. Never give generic advice without first examining the real data.
 
-When answering questions:
-1. Use the provided functions to access real portfolio data
-2. Provide clear, actionable insights
-3. Explain financial concepts in simple terms
-4. Include specific numbers and percentages when relevant
-5. Be conversational and helpful
-6. If asked about a specific coin, use the explain_coin_position function for detailed analysis
+WORKFLOW FOR ALL QUERIES:
+1. ALWAYS start by calling get_portfolio_summary() to understand the current portfolio state
+2. Use additional specific functions based on the user's question
+3. Provide specific, data-driven recommendations based on the actual portfolio analysis
+4. Include concrete numbers, percentages, and specific asset recommendations
+
+🚨 MANDATORY WORKFLOW for investment questions ("what coin should I buy", "new coin to add", etc.):
+1. 📋 FIRST call get_current_holdings() - REQUIRED to see current assets
+2. 📊 Call get_portfolio_summary() - REQUIRED to see allocations and performance
+3. 🔍 Call analyze_market_opportunities() - REQUIRED to identify trending sectors and specific coins
+4. 📰 Call search_crypto_news() - REQUIRED to research current market opportunities
+5. ⚖️ Call get_risk_assessment() - REQUIRED to understand risk profile
+6. 🎯 Provide SPECIFIC coin recommendations with exact reasoning, amounts, and percentages
+7. ✅ ALWAYS mention if suggested coins are already held and adjust recommendations accordingly
+
+YOU MUST CALL ALL 5 FUNCTIONS ABOVE when user asks about buying new coins. No exceptions.
+
+Available functions:
+- get_current_holdings: Get list of all currently held assets (CRITICAL - use first for investment recommendations)
+- get_portfolio_summary: Overall portfolio metrics and performance
+- get_asset_performance: Detailed performance data for specific assets
+- search_crypto_news: Search latest crypto news and analysis using Perplexity AI
+- analyze_market_opportunities: Analyze current market opportunities and trends
+- get_technical_analysis: Technical indicators and trading signals
+- get_risk_assessment: Portfolio risk and diversification analysis
+- compare_with_market: Compare portfolio performance with market benchmarks
+- get_trading_signals: Get AI-powered trading signals and recommendations
+- find_similar_assets: Find assets similar to current holdings
+- get_correlation_analysis: Analyze correlations between assets
+- get_rebalancing_suggestions: Portfolio rebalancing recommendations
+- get_tax_implications: Tax implications of trades
+- get_profit_loss_breakdown: Detailed P&L analysis
+
+NEVER provide generic suggestions like "research projects" or "consider market trends" - instead USE THE FUNCTIONS to do that research and provide specific, actionable recommendations based on the actual portfolio data.
 
 Always base your responses on the actual portfolio data, not general market information.
 Format monetary amounts clearly (e.g., €1,234.56) and percentages with appropriate precision."""

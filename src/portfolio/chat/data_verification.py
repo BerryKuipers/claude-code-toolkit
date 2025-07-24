@@ -64,6 +64,8 @@ class PortfolioDataVerifier:
                 return self._verify_portfolio_allocation(args, result_data)
             elif function_name == "get_transfer_analysis":
                 return self._verify_transfer_analysis(args, result_data)
+            elif function_name == "get_current_holdings":
+                return self._verify_current_holdings(result_data)
             else:
                 # Unknown function - allow but log
                 logger.warning(f"Unknown function for verification: {function_name}")
@@ -81,10 +83,16 @@ class PortfolioDataVerifier:
         if "error" in result_data:
             return True, json.dumps(result_data), None
 
-        # Calculate actual values from portfolio data
-        actual_total_value = self.portfolio_data["Actual Value €"].sum()
-        actual_total_cost = self.portfolio_data["Cost €"].sum()
-        actual_total_unrealised = self.portfolio_data["Unrealised €"].sum()
+        # Calculate actual values from portfolio data using safe conversion
+        actual_total_value = sum(
+            safe_float_conversion(val) for val in self.portfolio_data["Actual Value €"]
+        )
+        actual_total_cost = sum(
+            safe_float_conversion(val) for val in self.portfolio_data["Cost €"]
+        )
+        actual_total_unrealised = sum(
+            safe_float_conversion(val) for val in self.portfolio_data["Unrealised €"]
+        )
 
         # Verify key metrics with tolerance for rounding
         tolerance = 0.01  # €0.01 tolerance
@@ -144,15 +152,21 @@ class PortfolioDataVerifier:
 
             actual_row = actual_row.iloc[0]
 
-            # Verify key metrics
+            # Verify key metrics using safe conversion
             tolerance = 0.01
-            actual_value = actual_row["Actual Value €"]
-            actual_unrealised = actual_row["Unrealised €"]
-            actual_return_pct = actual_row["Total Return %"]
+            actual_value = safe_float_conversion(actual_row["Actual Value €"])
+            actual_unrealised = safe_float_conversion(actual_row["Unrealised €"])
+            actual_return_pct = safe_float_conversion(actual_row["Total Return %"])
 
-            reported_value = asset_data.get("actual_value_eur", 0)
-            reported_unrealised = asset_data.get("unrealised_eur", 0)
-            reported_return_pct = asset_data.get("total_return_pct", 0)
+            reported_value = safe_float_conversion(
+                asset_data.get("actual_value_eur", 0)
+            )
+            reported_unrealised = safe_float_conversion(
+                asset_data.get("unrealised_eur", 0)
+            )
+            reported_return_pct = safe_float_conversion(
+                asset_data.get("total_return_pct", 0)
+            )
 
             if abs(actual_value - reported_value) > tolerance:
                 error_msg = f"{asset} value mismatch: actual €{actual_value:.2f} vs reported €{reported_value:.2f}"
@@ -177,9 +191,12 @@ class PortfolioDataVerifier:
         performance_type = args.get("type", "best")
         limit = args.get("limit", 5)
 
-        # Get actual top performers
+        # Get actual top performers using safe filtering
+        def has_positive_amount(x):
+            return safe_float_conversion(x) > 0
+
         portfolio_with_positions = self.portfolio_data[
-            self.portfolio_data["Actual Amount"] > 0
+            self.portfolio_data["Actual Amount"].apply(has_positive_amount)
         ].copy()
         if portfolio_with_positions.empty:
             return True, json.dumps(result_data), None
@@ -262,8 +279,10 @@ class PortfolioDataVerifier:
         if "error" in result_data:
             return True, json.dumps(result_data), None
 
-        reported_total = result_data.get("total_value_eur", 0)
-        actual_total = self.portfolio_data["Actual Value €"].sum()
+        reported_total = safe_float_conversion(result_data.get("total_value_eur", 0))
+        actual_total = sum(
+            safe_float_conversion(val) for val in self.portfolio_data["Actual Value €"]
+        )
 
         tolerance = 0.01
         if abs(actual_total - reported_total) > tolerance:
@@ -313,3 +332,54 @@ class PortfolioDataVerifier:
                 else 0
             ),
         }
+
+    def _verify_current_holdings(
+        self, result_data: Dict[str, Any]
+    ) -> Tuple[bool, str, Optional[str]]:
+        """Verify current holdings data."""
+        from ..utils import safe_float_conversion
+
+        if "error" in result_data:
+            return True, json.dumps(result_data), None
+
+        holdings_data = result_data.get("holdings", [])
+        total_value = result_data.get("total_value_eur", 0)
+
+        # Verify total value calculation
+        calculated_total = 0
+        for holding in holdings_data:
+            calculated_total += safe_float_conversion(holding.get("value_eur", 0))
+
+        tolerance = 0.01
+        if abs(calculated_total - safe_float_conversion(total_value)) > tolerance:
+            logger.warning(
+                f"Total value mismatch: calculated {calculated_total}, reported {total_value}"
+            )
+
+        # Verify holdings exist in portfolio data
+        for holding in holdings_data:
+            asset = holding["asset"]
+            portfolio_row = self.portfolio_data[self.portfolio_data["Asset"] == asset]
+            if portfolio_row.empty:
+                logger.warning(f"Asset {asset} not found in portfolio data")
+                continue
+
+            # Verify key metrics
+            actual_row = portfolio_row.iloc[0]
+            actual_amount = safe_float_conversion(actual_row["Actual Amount"])
+            actual_value = safe_float_conversion(actual_row["Actual Value €"])
+
+            reported_amount = safe_float_conversion(holding.get("amount", 0))
+            reported_value = safe_float_conversion(holding.get("value_eur", 0))
+
+            if abs(actual_amount - reported_amount) > 0.000001:
+                logger.warning(
+                    f"Amount mismatch for {asset}: actual {actual_amount}, reported {reported_amount}"
+                )
+
+            if abs(actual_value - reported_value) > tolerance:
+                logger.warning(
+                    f"Value mismatch for {asset}: actual {actual_value}, reported {reported_value}"
+                )
+
+        return True, json.dumps(result_data), None

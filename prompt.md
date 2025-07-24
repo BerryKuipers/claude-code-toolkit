@@ -9,7 +9,7 @@
 
 ### Development Environment
 - **Python Environment**: `.venv` (always activate before running)
-- **Main Application**: `streamlit run dashboard.py`
+- **Start Application**: `powershell -ExecutionPolicy Bypass -File "scripts\start.ps1"` (ALWAYS USE THIS)
 - **Dashboard URL**: `http://localhost:8501`
 - **Testing**: `python -m pytest tests/ -v`
 
@@ -31,6 +31,8 @@
 ### Quality Standards
 - **No shortcuts**: Never use fake data, stubs, or placeholder code
 - **Genuine fixes only**: Always resolve underlying problems
+- **No simple scapegoats**: When complex architecture fails, debug and fix the root cause instead of falling back to simple solutions that abandon the planned architecture
+- **Preserve planned architecture**: If a SOLID/clean architecture approach was planned (like TabManager), persist through debugging rather than reverting to basic implementations
 - **Test coverage**: Write unit tests for complex logic
 - **Security first**: Protect API keys and user data
 - **Performance**: Optimize for real-time portfolio updates
@@ -186,7 +188,10 @@
 
 ### Development
 ```bash
-# Start development
+# Start development (ALWAYS USE THIS)
+powershell -ExecutionPolicy Bypass -File "scripts\start.ps1"
+
+# Alternative manual start (only if script fails)
 .venv\Scripts\activate
 streamlit run dashboard.py
 
