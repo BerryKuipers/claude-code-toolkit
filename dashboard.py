@@ -15,8 +15,11 @@ import pandas as pd
 import streamlit as st
 from python_bitvavo_api.bitvavo import Bitvavo
 
+# Add src to path for imports
+sys.path.append("src")
+
 # Import performance optimizations
-from src.portfolio.ui.performance import (
+from portfolio.ui.performance import (
     PerformanceOptimizer,
     apply_global_optimizations,
     render_optimized_dataframe,
@@ -82,16 +85,16 @@ load_env_file()
 # Add the src directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
-from src.portfolio.ai_explanations import (
+from portfolio.ai_explanations import (
     format_currency,
     generate_coin_explanation,
     get_position_summary,
     get_price_format_details,
 )
-from src.portfolio.chat import render_chat_interface
-from src.portfolio.chat.api_status import APIStatusChecker
-from src.portfolio.chat.cost_tracker import CostTracker, render_cost_footer
-from src.portfolio.core import (
+from portfolio.chat import render_chat_interface
+from portfolio.chat.api_status import APIStatusChecker
+from portfolio.chat.cost_tracker import CostTracker, render_cost_footer
+from portfolio.core import (
     BitvavoAPIException,
     InvalidAPIKeyError,
     RateLimitExceededError,
@@ -105,10 +108,10 @@ from src.portfolio.core import (
     get_portfolio_assets,
     sync_time,
 )
-from src.portfolio.ui.components import get_current_tab, render_sticky_header
+from portfolio.ui.components import get_current_tab, render_sticky_header
 
 # Note: Removed old UI imports - now using TabManager for clean navigation
-from src.portfolio.ui.tabs import AnalysisTab, PortfolioTab, SettingsTab
+from portfolio.ui.tabs import AnalysisTab, PortfolioTab, SettingsTab
 
 
 def init_bitvavo_client() -> Optional[Bitvavo]:

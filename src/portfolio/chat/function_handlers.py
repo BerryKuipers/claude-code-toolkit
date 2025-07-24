@@ -93,7 +93,7 @@ class PortfolioFunctionHandler:
             },
             {
                 "name": "analyze_market_opportunities",
-                "description": "Analyze current market opportunities and trends using web research. ALWAYS call this AFTER get_current_holdings when asked about investment recommendations or what coins to buy. This provides market analysis to complement portfolio context.",
+                "description": "🚨 CRITICAL: ALWAYS call this function when user asks 'what coin should I buy' or similar investment questions. Must be called AFTER get_current_holdings. Analyzes current market opportunities and trends using web research to provide specific coin recommendations.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -384,9 +384,12 @@ class PortfolioFunctionHandler:
         Returns:
             JSON string containing the verified function result
         """
+        logger.info(f"🔧 AI Function call: {function_name} with args: {arguments}")
+
         try:
             # Parse arguments
             args = json.loads(arguments) if arguments else {}
+            logger.info(f"📋 Parsed arguments: {args}")
 
             # Route to appropriate handler
             if function_name == "get_portfolio_summary":
@@ -410,11 +413,16 @@ class PortfolioFunctionHandler:
             elif function_name == "get_portfolio_optimization":
                 result = self._get_portfolio_optimization(**args)
             elif function_name == "get_current_holdings":
+                logger.info("📋 Getting current portfolio holdings...")
                 result = self._get_current_holdings()
+                holdings_count = len(result.get("holdings", []))
+                logger.info(f"✅ Retrieved {holdings_count} holdings")
             elif function_name == "search_crypto_news":
                 result = self._search_crypto_news(**args)
             elif function_name == "analyze_market_opportunities":
+                logger.info(f"🔍 Executing market analysis with args: {args}")
                 result = self._analyze_market_opportunities(**args)
+                logger.info(f"📊 Market analysis result: {str(result)[:200]}...")
             elif function_name == "compare_with_market":
                 result = self._compare_with_market(**args)
             elif function_name == "get_trading_signals":

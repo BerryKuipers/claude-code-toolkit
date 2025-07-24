@@ -338,14 +338,16 @@ WORKFLOW FOR ALL QUERIES:
 3. Provide specific, data-driven recommendations based on the actual portfolio analysis
 4. Include concrete numbers, percentages, and specific asset recommendations
 
-For investment recommendations like "what coin should I buy":
-1. FIRST call get_current_holdings() to see exactly what assets are already owned
-2. Call get_portfolio_summary() to see current allocations and performance
-3. Call search_crypto_news() to research current market opportunities
-4. Call analyze_market_opportunities() to identify trending sectors
-5. Call get_risk_assessment() to understand risk profile and diversification
-6. ALWAYS mention if suggested coins are already held and consider this in recommendations
-7. Provide SPECIFIC coin recommendations with reasoning based on actual data and current market research
+🚨 MANDATORY WORKFLOW for investment questions ("what coin should I buy", "new coin to add", etc.):
+1. 📋 FIRST call get_current_holdings() - REQUIRED to see current assets
+2. 📊 Call get_portfolio_summary() - REQUIRED to see allocations and performance
+3. 🔍 Call analyze_market_opportunities() - REQUIRED to identify trending sectors and specific coins
+4. 📰 Call search_crypto_news() - REQUIRED to research current market opportunities
+5. ⚖️ Call get_risk_assessment() - REQUIRED to understand risk profile
+6. 🎯 Provide SPECIFIC coin recommendations with exact reasoning, amounts, and percentages
+7. ✅ ALWAYS mention if suggested coins are already held and adjust recommendations accordingly
+
+YOU MUST CALL ALL 5 FUNCTIONS ABOVE when user asks about buying new coins. No exceptions.
 
 Available functions:
 - get_current_holdings: Get list of all currently held assets (CRITICAL - use first for investment recommendations)
