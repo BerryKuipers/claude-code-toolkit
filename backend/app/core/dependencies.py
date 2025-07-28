@@ -10,14 +10,30 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from ..services.interfaces import IChatService, IMarketService, IPortfolioService
+from ..services.interfaces import IChatService, IMarketService, IPortfolioService, IBitvavoClient
 from ..services.chat_service import ChatService
 from ..services.market_service import MarketService
 from ..services.portfolio_service import PortfolioService
+from ..clients.bitvavo_client import BitvavoClient
 from .config import Settings, get_settings
 
 
 # Service factory functions with proper dependency injection
+
+@lru_cache()
+def get_bitvavo_client(
+    settings: Annotated[Settings, Depends(get_settings)]
+) -> IBitvavoClient:
+    """
+    Get Bitvavo client instance with dependency injection.
+
+    Args:
+        settings: Application settings
+
+    Returns:
+        IBitvavoClient: Bitvavo client implementation
+    """
+    return BitvavoClient(settings)
 
 @lru_cache()
 def get_portfolio_service(
@@ -25,13 +41,13 @@ def get_portfolio_service(
 ) -> IPortfolioService:
     """
     Get portfolio service instance with dependency injection.
-    
+
     Similar to C# DI container service resolution.
     Uses LRU cache for singleton-like behavior.
-    
+
     Args:
         settings: Application settings
-        
+
     Returns:
         IPortfolioService: Portfolio service implementation
     """
@@ -73,6 +89,7 @@ def get_chat_service(
 
 
 # Type aliases for cleaner dependency injection
+BitvavoClientDep = Annotated[IBitvavoClient, Depends(get_bitvavo_client)]
 PortfolioServiceDep = Annotated[IPortfolioService, Depends(get_portfolio_service)]
 MarketServiceDep = Annotated[IMarketService, Depends(get_market_service)]
 ChatServiceDep = Annotated[IChatService, Depends(get_chat_service)]
