@@ -25,6 +25,12 @@ from ..models.market import (
 from .base_service import BaseService
 from .interfaces.bitvavo_client import IBitvavoClient
 from .interfaces.market_service import IMarketService
+from ..shared.market_core import (
+    get_market_prices,
+    calculate_price_change_24h,
+    get_market_summary,
+    TechnicalAnalyzer,
+)
 
 
 class MarketService(BaseService, IMarketService):
@@ -66,41 +72,34 @@ class MarketService(BaseService, IMarketService):
         try:
             self.logger.info(f"Getting current prices for assets: {assets or 'all'}")
 
-            # TODO: Integrate with existing Bitvavo price fetching logic
-            # For now, return mock data
+            # Get Bitvavo client instance
+            client = self.bitvavo_client._get_client()
 
-            mock_prices = {
-                "BTC": PriceResponse(
-                    asset="BTC",
-                    price_eur=Decimal("45000.00"),
-                    price_change_24h=Decimal("2.5"),
-                    volume_24h=Decimal("1500000.00"),
-                    last_updated=datetime.utcnow(),
-                ),
-                "ETH": PriceResponse(
-                    asset="ETH",
-                    price_eur=Decimal("3000.00"),
-                    price_change_24h=Decimal("-1.2"),
-                    volume_24h=Decimal("800000.00"),
-                    last_updated=datetime.utcnow(),
-                ),
-                "ADA": PriceResponse(
-                    asset="ADA",
-                    price_eur=Decimal("0.45"),
-                    price_change_24h=Decimal("5.8"),
-                    volume_24h=Decimal("200000.00"),
-                    last_updated=datetime.utcnow(),
-                ),
-            }
+            # Use real market data from existing logic
+            market_prices = get_market_prices(client, assets)
 
-            if assets:
-                return {
-                    asset: mock_prices[asset]
-                    for asset in assets
-                    if asset in mock_prices
-                }
+            # Convert to PriceResponse objects
+            price_responses = {}
+            for asset, price_data in market_prices.items():
+                try:
+                    # Calculate 24h change
+                    price_change_24h = calculate_price_change_24h(client, asset)
 
-            return mock_prices
+                    # Mock volume for now (would need separate API call)
+                    volume_24h = Decimal("1000000.00")  # Placeholder
+
+                    price_responses[asset] = PriceResponse(
+                        asset=asset,
+                        price_eur=price_data["price_eur"],
+                        price_change_24h=price_change_24h,
+                        volume_24h=volume_24h,
+                        last_updated=datetime.utcnow(),
+                    )
+                except Exception as e:
+                    self.logger.warning(f"Error processing price for {asset}: {e}")
+                    continue
+
+            return price_responses
 
         except Exception as e:
             self.logger.error(f"Error getting current prices: {e}")
@@ -119,20 +118,33 @@ class MarketService(BaseService, IMarketService):
         try:
             self.logger.info("Getting comprehensive market data")
 
+            # Get real price data
             prices = await self.get_current_prices()
+
+            # Get market summary from real data
+            client = self.bitvavo_client._get_client()
+            market_summary = get_market_summary(client)
 
             # Sort by price change for top gainers/losers
             sorted_prices = sorted(
                 prices.values(), key=lambda x: x.price_change_24h, reverse=True
             )
 
+            # Convert trend string to enum
+            trend_mapping = {
+                "BULLISH": TrendDirection.BULLISH,
+                "BEARISH": TrendDirection.BEARISH,
+                "NEUTRAL": TrendDirection.NEUTRAL,
+                "UNKNOWN": TrendDirection.NEUTRAL,
+            }
+
             return MarketDataResponse(
                 prices=prices,
-                market_cap_total=Decimal("2500000000000.00"),  # Mock total market cap
-                market_trend=TrendDirection.BULLISH,
-                fear_greed_index=65,  # Mock Fear & Greed Index
-                top_gainers=sorted_prices[:2],  # Top 2 gainers
-                top_losers=sorted_prices[-1:],  # Top 1 loser
+                market_cap_total=market_summary["total_market_cap"],
+                market_trend=trend_mapping.get(market_summary["trend"], TrendDirection.NEUTRAL),
+                fear_greed_index=market_summary["fear_greed_index"],
+                top_gainers=sorted_prices[:3] if len(sorted_prices) >= 3 else sorted_prices,
+                top_losers=sorted_prices[-2:] if len(sorted_prices) >= 2 else [],
                 last_updated=datetime.utcnow(),
             )
 
@@ -153,34 +165,67 @@ class MarketService(BaseService, IMarketService):
         try:
             self.logger.info("Analyzing market opportunities")
 
-            # TODO: Integrate with existing prediction engine logic
-            # For now, return mock opportunities
+            # Analyze real market data for opportunities
+            prices = await self.get_current_prices()
 
-            opportunities = [
-                MarketOpportunityResponse(
-                    asset="ADA",
-                    opportunity_type="Technical Breakout",
-                    potential_return=Decimal("15.0"),
-                    risk_level=RiskLevel.MEDIUM,
-                    time_horizon="2-4 weeks",
-                    reasoning="Strong technical indicators suggest upward momentum with support at €0.40",
-                    confidence_score=Decimal("0.75"),
-                ),
-                MarketOpportunityResponse(
-                    asset="ETH",
-                    opportunity_type="DeFi Growth",
-                    potential_return=Decimal("8.0"),
-                    risk_level=RiskLevel.LOW,
-                    time_horizon="1-3 months",
-                    reasoning="Upcoming network upgrades and DeFi adoption driving long-term value",
-                    confidence_score=Decimal("0.85"),
-                ),
-            ]
+            opportunities = []
+
+            # Handle case when no prices are available
+            if not prices:
+                return MarketOpportunitiesResponse(
+                    opportunities=[],
+                    market_sentiment="Unknown",
+                    analysis_summary="No market data available for analysis",
+                    last_updated=datetime.utcnow(),
+                )
+
+            # Find opportunities based on real price movements
+            for asset, price_data in prices.items():
+                price_change = price_data.price_change_24h
+                current_price = price_data.price_eur
+
+                # Strong positive momentum opportunity
+                if price_change > 5:
+                    opportunities.append(MarketOpportunityResponse(
+                        asset=asset,
+                        opportunity_type="Momentum Play",
+                        potential_return=price_change * Decimal("1.5"),  # Projected continuation
+                        risk_level=RiskLevel.MEDIUM,
+                        time_horizon="1-2 weeks",
+                        reasoning=f"Strong 24h gain of {price_change}% suggests continued momentum at €{current_price}",
+                        confidence_score=Decimal("0.75"),
+                    ))
+
+                # Oversold opportunity
+                elif price_change < -5:
+                    opportunities.append(MarketOpportunityResponse(
+                        asset=asset,
+                        opportunity_type="Oversold Bounce",
+                        potential_return=abs(price_change) * Decimal("0.8"),  # Recovery potential
+                        risk_level=RiskLevel.HIGH,
+                        time_horizon="2-4 weeks",
+                        reasoning=f"24h decline of {price_change}% may present buying opportunity at €{current_price}",
+                        confidence_score=Decimal("0.65"),
+                    ))
+
+            # Determine market sentiment based on overall price movements
+            positive_moves = sum(1 for p in prices.values() if p.price_change_24h > 0)
+            total_assets = len(prices)
+
+            if positive_moves / total_assets > 0.6:
+                sentiment = "Bullish"
+                summary = f"Market showing strength with {positive_moves}/{total_assets} assets in the green"
+            elif positive_moves / total_assets < 0.4:
+                sentiment = "Bearish"
+                summary = f"Market under pressure with {total_assets - positive_moves}/{total_assets} assets declining"
+            else:
+                sentiment = "Mixed"
+                summary = f"Market showing mixed signals with {positive_moves}/{total_assets} assets positive"
 
             return MarketOpportunitiesResponse(
-                opportunities=opportunities,
-                market_sentiment="Cautiously Optimistic",
-                analysis_summary="Market showing signs of recovery with selective opportunities in altcoins",
+                opportunities=opportunities[:5],  # Limit to top 5 opportunities
+                market_sentiment=sentiment,
+                analysis_summary=summary,
                 last_updated=datetime.utcnow(),
             )
 
@@ -212,38 +257,67 @@ class MarketService(BaseService, IMarketService):
             if asset not in prices:
                 raise AssetNotFoundException(asset)
 
-            # TODO: Integrate with existing technical analysis logic
-            # For now, return mock analysis
+            # Use real price data for technical analysis
+            current_price = prices[asset].price_eur
+            price_change = prices[asset].price_change_24h
 
+            # Simple technical analysis based on real price data
+            if price_change > 5:
+                trend_direction = TrendDirection.BULLISH
+                recommendation = "Buy - Strong positive momentum"
+                risk_level = RiskLevel.MEDIUM
+                rsi_signal = "buy"
+            elif price_change < -5:
+                trend_direction = TrendDirection.BEARISH
+                recommendation = "Sell - Strong negative momentum"
+                risk_level = RiskLevel.HIGH
+                rsi_signal = "sell"
+            else:
+                trend_direction = TrendDirection.NEUTRAL
+                recommendation = "Hold - Neutral momentum"
+                risk_level = RiskLevel.LOW
+                rsi_signal = "hold"
+
+            # Calculate support/resistance based on current price
+            support_levels = [
+                current_price * Decimal("0.95"),  # 5% below
+                current_price * Decimal("0.90"),  # 10% below
+            ]
+            resistance_levels = [
+                current_price * Decimal("1.05"),  # 5% above
+                current_price * Decimal("1.10"),  # 10% above
+            ]
+
+            # Create indicators based on real data
             indicators = [
                 TechnicalIndicatorResponse(
-                    indicator_name="RSI",
-                    value=Decimal("65.5"),
-                    signal="hold",
+                    indicator_name="Price Change 24h",
+                    value=price_change,
+                    signal=rsi_signal,
                     confidence=Decimal("0.8"),
                 ),
                 TechnicalIndicatorResponse(
-                    indicator_name="MACD",
-                    value=Decimal("1.25"),
-                    signal="buy",
-                    confidence=Decimal("0.7"),
+                    indicator_name="Current Price",
+                    value=current_price,
+                    signal=rsi_signal,
+                    confidence=Decimal("0.9"),
                 ),
                 TechnicalIndicatorResponse(
-                    indicator_name="Moving Average (50)",
-                    value=Decimal("42000.00"),
-                    signal="buy",
+                    indicator_name="Trend Analysis",
+                    value=Decimal(str(abs(price_change))),
+                    signal=rsi_signal,
                     confidence=Decimal("0.75"),
                 ),
             ]
 
             return TechnicalAnalysisResponse(
                 asset=asset,
-                trend_direction=TrendDirection.BULLISH,
+                trend_direction=trend_direction,
                 indicators=indicators,
-                support_levels=[Decimal("42000.00"), Decimal("40000.00")],
-                resistance_levels=[Decimal("47000.00"), Decimal("50000.00")],
-                recommendation="Moderate Buy - Technical indicators suggest upward momentum",
-                risk_level=RiskLevel.MEDIUM,
+                support_levels=support_levels,
+                resistance_levels=resistance_levels,
+                recommendation=recommendation,
+                risk_level=risk_level,
                 analysis_timestamp=datetime.utcnow(),
             )
 
@@ -296,14 +370,25 @@ class MarketService(BaseService, IMarketService):
         try:
             self.logger.info("Refreshing market data from external sources")
 
-            # TODO: Integrate with existing market data fetching logic
-            # Clear cache and force fresh data fetch
-
+            # Clear cache and force fresh data fetch from Bitvavo
             self._market_data_cache = None
             self._cache_timestamp = None
 
-            # Mock successful refresh
-            return True
+            # Test connection by fetching a sample price
+            try:
+                client = self.bitvavo_client._get_client()
+                test_prices = get_market_prices(client, ["BTC"])
+
+                if test_prices:
+                    self.logger.info("Market data refresh successful")
+                    return True
+                else:
+                    self.logger.warning("Market data refresh returned no data")
+                    return False
+
+            except Exception as e:
+                self.logger.error(f"Market data refresh failed: {e}")
+                return False
 
         except Exception as e:
             self.logger.error(f"Error refreshing market data: {e}")

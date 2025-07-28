@@ -34,6 +34,8 @@ class BaseResponse(BaseModel):
     )
 
     model_config = {
+        # Note: json_encoders is deprecated in Pydantic v2
+        # Using custom serializers would be the v2 way, but this works for now
         "json_encoders": {
             Decimal: str,  # Serialize Decimals as strings for precision
             datetime: lambda v: v.isoformat(),
