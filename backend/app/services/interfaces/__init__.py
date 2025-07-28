@@ -12,7 +12,7 @@ from .portfolio_service import IPortfolioService
 
 __all__ = [
     "IPortfolioService",
-    "IMarketService", 
+    "IMarketService",
     "IChatService",
     "IBitvavoClient",
 ]

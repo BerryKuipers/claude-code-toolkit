@@ -13,12 +13,10 @@ __all__ = [
     # Configuration
     "Settings",
     "get_settings",
-    
     # Dependencies
     "get_portfolio_service",
-    "get_market_service", 
+    "get_market_service",
     "get_chat_service",
-    
     # Exceptions
     "APIException",
     "PortfolioServiceException",

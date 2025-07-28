@@ -57,7 +57,7 @@ startup_time = time.time()
 async def lifespan(app: FastAPI):
     """
     Application lifespan manager.
-    
+
     Handles startup and shutdown events similar to C# hosted services.
     """
     # Startup
@@ -66,9 +66,9 @@ async def lifespan(app: FastAPI):
     logger.info(f"📊 API Version: {settings.api_version}")
     logger.info(f"🔧 Debug Mode: {settings.debug}")
     logger.info(f"🌐 CORS Origins: {settings.cors_origins}")
-    
+
     yield
-    
+
     # Shutdown
     logger.info("🛑 Shutting down Crypto Portfolio API...")
 
@@ -77,12 +77,12 @@ async def lifespan(app: FastAPI):
 def create_application() -> FastAPI:
     """
     Create and configure FastAPI application.
-    
+
     Returns:
         FastAPI: Configured application instance
     """
     settings = get_settings()
-    
+
     app = FastAPI(
         title=settings.api_title,
         description=settings.api_description,
@@ -93,7 +93,7 @@ def create_application() -> FastAPI:
         redoc_url="/redoc",
         openapi_url="/openapi.json",
     )
-    
+
     # Configure CORS
     app.add_middleware(
         CORSMiddleware,
@@ -102,7 +102,7 @@ def create_application() -> FastAPI:
         allow_methods=settings.cors_allow_methods,
         allow_headers=settings.cors_allow_headers,
     )
-    
+
     # Add request timing middleware
     @app.middleware("http")
     async def add_process_time_header(request: Request, call_next):
@@ -111,10 +111,10 @@ def create_application() -> FastAPI:
         process_time = time.time() - start_time
         response.headers["X-Process-Time"] = str(process_time)
         return response
-    
+
     # Include API routes
     app.include_router(api_router, prefix="/api/v1")
-    
+
     return app
 
 
@@ -127,26 +127,21 @@ app = create_application()
 async def api_exception_handler(request: Request, exc: APIException) -> JSONResponse:
     """
     Handle custom API exceptions with proper error responses.
-    
+
     Args:
         request: FastAPI request
         exc: API exception
-        
+
     Returns:
         JSONResponse: Structured error response
     """
     error_response = ErrorResponse(
-        error_code=exc.error_code,
-        error_message=exc.message,
-        details=exc.details
+        error_code=exc.error_code, error_message=exc.message, details=exc.details
     )
-    
+
     logger.error(f"API Exception: {exc.error_code} - {exc.message}")
-    
-    return CustomJSONResponse(
-        status_code=exc.status_code,
-        content=error_response.model_dump()
-    )
+
+    return CustomJSONResponse(status_code=exc.status_code, content=error_response.model_dump())
 
 
 # Global exception handler for unhandled exceptions
@@ -154,26 +149,23 @@ async def api_exception_handler(request: Request, exc: APIException) -> JSONResp
 async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """
     Handle unexpected exceptions with generic error response.
-    
+
     Args:
         request: FastAPI request
         exc: Unhandled exception
-        
+
     Returns:
         JSONResponse: Generic error response
     """
     logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
-    
+
     error_response = ErrorResponse(
         error_code="INTERNAL_SERVER_ERROR",
         error_message="An unexpected error occurred",
-        details={"exception_type": type(exc).__name__}
+        details={"exception_type": type(exc).__name__},
     )
-    
-    return CustomJSONResponse(
-        status_code=500,
-        content=error_response.model_dump()
-    )
+
+    return CustomJSONResponse(status_code=500, content=error_response.model_dump())
 
 
 # Health check endpoint
@@ -181,25 +173,25 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
 async def health_check() -> HealthCheckResponse:
     """
     Health check endpoint for monitoring and load balancers.
-    
+
     Returns:
         HealthCheckResponse: Service health status
     """
     settings = get_settings()
     uptime = time.time() - startup_time
-    
+
     # Check dependencies (simplified for now)
     dependencies = {
         "bitvavo_api": "healthy" if settings.bitvavo_api_key else "unhealthy",
         "openai_api": "healthy" if settings.openai_api_key else "not_configured",
         "anthropic_api": "healthy" if settings.anthropic_api_key else "not_configured",
     }
-    
+
     return HealthCheckResponse(
         status="healthy",
         version=settings.api_version,
         uptime_seconds=uptime,
-        dependencies=dependencies
+        dependencies=dependencies,
     )
 
 
@@ -208,7 +200,7 @@ async def health_check() -> HealthCheckResponse:
 async def root() -> Dict[str, str]:
     """
     Root endpoint with API information.
-    
+
     Returns:
         Dict[str, str]: Basic API information
     """
@@ -217,18 +209,18 @@ async def root() -> Dict[str, str]:
         "message": "Crypto Portfolio API",
         "version": settings.api_version,
         "docs": "/docs",
-        "health": "/health"
+        "health": "/health",
     }
 
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     settings = get_settings()
     uvicorn.run(
         "main:app",
         host=settings.host,
         port=settings.port,
         reload=settings.reload,
-        log_level=settings.log_level.lower()
+        log_level=settings.log_level.lower(),
     )

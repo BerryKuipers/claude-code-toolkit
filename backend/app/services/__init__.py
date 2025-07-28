@@ -18,11 +18,9 @@ __all__ = [
     "IMarketService",
     "IChatService",
     "IBitvavoClient",
-
     # Base classes
     "BaseService",
     "ServiceFactory",
-
     # Implementations
     "PortfolioService",
     "MarketService",

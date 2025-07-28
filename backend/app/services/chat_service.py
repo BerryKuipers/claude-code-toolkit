@@ -48,11 +48,11 @@ logger = logging.getLogger(__name__)
 class ChatService(IChatService):
     """
     Chat service implementation providing C#-like business logic layer.
-    
+
     This service integrates with existing AI chat functionality
     and provides strongly typed responses for the API.
     """
-    
+
     def __init__(self, settings: Settings, portfolio_service: IPortfolioService):
         """
         Initialize chat service with configuration and dependencies.
@@ -92,7 +92,7 @@ class ChatService(IChatService):
                 api_key=api_key,
                 model_id=model,
                 temperature=self.settings.ai_temperature,
-                max_tokens=self.settings.ai_max_tokens
+                max_tokens=self.settings.ai_max_tokens,
             )
 
         return self._llm_client
@@ -105,35 +105,38 @@ class ChatService(IChatService):
 
             # Convert holdings to DataFrame format expected by function handler
             import pandas as pd
+
             portfolio_data = []
 
             for holding in holdings:
-                portfolio_data.append({
-                    "Asset": holding.asset,
-                    "Actual Amount": float(holding.quantity),
-                    "Actual Value €": float(holding.value_eur),
-                    "Total Return %": float(holding.total_return_percentage),
-                    "Unrealised €": float(holding.unrealized_pnl),
-                    "Current Price €": float(holding.current_price),
-                })
+                portfolio_data.append(
+                    {
+                        "Asset": holding.asset,
+                        "Actual Amount": float(holding.quantity),
+                        "Actual Value €": float(holding.value_eur),
+                        "Total Return %": float(holding.total_return_percentage),
+                        "Unrealised €": float(holding.unrealized_pnl),
+                        "Current Price €": float(holding.current_price),
+                    }
+                )
 
             df = pd.DataFrame(portfolio_data)
             self._function_handler = PortfolioFunctionHandler(df)
 
         return self._function_handler
-    
+
     def _create_function_definitions(self) -> List[FunctionDefinition]:
         """Create function definitions for AI function calling."""
         return [
             FunctionDefinition(
                 name="get_portfolio_summary",
                 description="Get overall portfolio summary with total value, P&L, and key metrics",
-                parameters=[]
+                parameters=[],
             ),
             FunctionDefinition(
                 name="get_current_holdings",
                 description="Get list of all currently held assets with amounts and values",
-                parameters=[]
+                parameters=[],
             ),
             FunctionDefinition(
                 name="get_asset_performance",
@@ -143,17 +146,17 @@ class ChatService(IChatService):
                         name="asset",
                         type=FunctionParameterType.STRING,
                         description="Asset symbol (e.g., 'BTC', 'ETH')",
-                        required=True
+                        required=True,
                     )
-                ]
+                ],
             ),
             FunctionDefinition(
                 name="get_market_opportunities",
                 description="Analyze current market for investment opportunities",
-                parameters=[]
-            )
+                parameters=[],
+            ),
         ]
-    
+
     async def process_chat_request(self, request: ChatRequest) -> ChatResponse:
         """
         Process a chat request with optional function calling.
@@ -181,7 +184,9 @@ class ChatService(IChatService):
 
             # Get AI client and function handler
             llm_client = self._get_llm_client()
-            function_handler = await self._get_function_handler() if request.use_function_calling else None
+            function_handler = (
+                await self._get_function_handler() if request.use_function_calling else None
+            )
 
             # Prepare messages
             system_prompt = self._get_system_prompt(llm_client.provider)
@@ -207,7 +212,7 @@ class ChatService(IChatService):
                     functions=functions if function_handler else None,
                     function_call="auto" if function_handler else None,
                     temperature=request.temperature,
-                    max_tokens=request.max_tokens
+                    max_tokens=request.max_tokens,
                 )
 
                 ai_response = llm_client.get_response_content(response)
@@ -224,20 +229,24 @@ class ChatService(IChatService):
                             )
                             func_end_time = time.time()
 
-                            function_calls.append(FunctionCallResponse(
-                                function_name=func_call["name"],
-                                result=result,
-                                success=True,
-                                execution_time_ms=(func_end_time - func_start_time) * 1000
-                            ))
+                            function_calls.append(
+                                FunctionCallResponse(
+                                    function_name=func_call["name"],
+                                    result=result,
+                                    success=True,
+                                    execution_time_ms=(func_end_time - func_start_time) * 1000,
+                                )
+                            )
                         except Exception as e:
-                            function_calls.append(FunctionCallResponse(
-                                function_name=func_call["name"],
-                                result=None,
-                                success=False,
-                                error_message=str(e),
-                                execution_time_ms=0.0
-                            ))
+                            function_calls.append(
+                                FunctionCallResponse(
+                                    function_name=func_call["name"],
+                                    result=None,
+                                    success=False,
+                                    error_message=str(e),
+                                    execution_time_ms=0.0,
+                                )
+                            )
 
             # Calculate response time
             end_time = time.time()
@@ -247,29 +256,26 @@ class ChatService(IChatService):
             token_usage = {"input_tokens": 0, "output_tokens": 0}
             cost_estimate = 0.0
 
-            if hasattr(llm_client, 'last_usage'):
+            if hasattr(llm_client, "last_usage"):
                 token_usage = llm_client.last_usage
                 cost_estimate = llm_client.calculate_cost(
-                    token_usage.get("input_tokens", 0),
-                    token_usage.get("output_tokens", 0)
+                    token_usage.get("input_tokens", 0), token_usage.get("output_tokens", 0)
                 )
 
             # Store conversation
             if conversation_id not in self._conversations:
                 self._conversations[conversation_id] = []
 
-            self._conversations[conversation_id].extend([
-                ChatMessage(
-                    role=MessageRole.USER,
-                    content=request.message,
-                    timestamp=datetime.utcnow()
-                ),
-                ChatMessage(
-                    role=MessageRole.ASSISTANT,
-                    content=ai_response,
-                    timestamp=datetime.utcnow()
-                )
-            ])
+            self._conversations[conversation_id].extend(
+                [
+                    ChatMessage(
+                        role=MessageRole.USER, content=request.message, timestamp=datetime.utcnow()
+                    ),
+                    ChatMessage(
+                        role=MessageRole.ASSISTANT, content=ai_response, timestamp=datetime.utcnow()
+                    ),
+                ]
+            )
 
             return ChatResponse(
                 message=ai_response,
@@ -278,7 +284,7 @@ class ChatService(IChatService):
                 function_calls=function_calls,
                 token_usage=token_usage,
                 response_time_ms=response_time_ms,
-                cost_estimate=cost_estimate
+                cost_estimate=cost_estimate,
             )
 
         except InvalidRequestException:
@@ -286,7 +292,7 @@ class ChatService(IChatService):
         except Exception as e:
             logger.error(f"Error processing chat request: {e}")
             raise ChatServiceException(f"Failed to process chat request: {str(e)}")
-    
+
     def _get_system_prompt(self, provider) -> str:
         """Get system prompt for the AI model."""
         return """You are a crypto portfolio analysis assistant with access to real-time portfolio data and market information.
@@ -305,7 +311,7 @@ IMPORTANT: You MUST use function calls when users ask about:
 - Current prices or market trends
 
 Always provide detailed, accurate analysis based on the function call results. Be helpful, informative, and professional in your responses."""
-    
+
     async def get_available_functions(self) -> AvailableFunctionsResponse:
         """
         Get list of all available functions for AI function calling.
@@ -324,12 +330,7 @@ Always provide detailed, accurate analysis based on the function call results. B
 
             # Convert to our function definition format
             functions = []
-            categories = {
-                "Portfolio": [],
-                "Market": [],
-                "Analysis": [],
-                "Research": []
-            }
+            categories = {"Portfolio": [], "Market": [], "Analysis": [], "Research": []}
 
             for func in raw_functions:
                 func_name = func["name"]
@@ -346,20 +347,20 @@ Always provide detailed, accurate analysis based on the function call results. B
                             "integer": FunctionParameterType.INTEGER,
                             "boolean": FunctionParameterType.BOOLEAN,
                             "array": FunctionParameterType.ARRAY,
-                            "object": FunctionParameterType.OBJECT
+                            "object": FunctionParameterType.OBJECT,
                         }
 
-                        parameters.append(FunctionParameter(
-                            name=param_name,
-                            type=type_mapping.get(param_type, FunctionParameterType.STRING),
-                            description=param_info.get("description", ""),
-                            required=param_name in func["parameters"].get("required", [])
-                        ))
+                        parameters.append(
+                            FunctionParameter(
+                                name=param_name,
+                                type=type_mapping.get(param_type, FunctionParameterType.STRING),
+                                description=param_info.get("description", ""),
+                                required=param_name in func["parameters"].get("required", []),
+                            )
+                        )
 
                 function_def = FunctionDefinition(
-                    name=func_name,
-                    description=func["description"],
-                    parameters=parameters
+                    name=func_name, description=func["description"], parameters=parameters
                 )
                 functions.append(function_def)
 
@@ -376,125 +377,123 @@ Always provide detailed, accurate analysis based on the function call results. B
                     categories["Portfolio"].append(func_name)  # Default category
 
             return AvailableFunctionsResponse(
-                functions=functions,
-                total_functions=len(functions),
-                categories=categories
+                functions=functions, total_functions=len(functions), categories=categories
             )
 
         except Exception as e:
             logger.error(f"Error getting available functions: {e}")
             raise ChatServiceException(f"Failed to get available functions: {str(e)}")
-    
+
     async def get_chat_history(self, conversation_id: str) -> ChatHistoryResponse:
         """
         Get chat conversation history.
-        
+
         Args:
             conversation_id: Conversation identifier
-            
+
         Returns:
             ChatHistoryResponse: Conversation history
-            
+
         Raises:
             ConversationNotFoundException: If conversation is not found
             ChatServiceException: If history cannot be retrieved
         """
         try:
             logger.info(f"Getting chat history for conversation: {conversation_id}")
-            
+
             if conversation_id not in self._conversations:
                 raise ConversationNotFoundException(conversation_id)
-            
+
             messages = self._conversations[conversation_id]
-            
+
             return ChatHistoryResponse(
                 conversation_id=conversation_id,
                 messages=messages,
                 total_messages=len(messages),
                 total_cost=len(messages) * 0.001,  # Mock cost calculation
                 created_at=messages[0].timestamp if messages else datetime.utcnow(),
-                last_updated=messages[-1].timestamp if messages else datetime.utcnow()
+                last_updated=messages[-1].timestamp if messages else datetime.utcnow(),
             )
-            
+
         except ConversationNotFoundException:
             raise
         except Exception as e:
             logger.error(f"Error getting chat history: {e}")
             raise ChatServiceException(f"Failed to get chat history: {str(e)}")
-    
+
     async def create_conversation(self) -> str:
         """
         Create a new chat conversation.
-        
+
         Returns:
             str: New conversation ID
-            
+
         Raises:
             ChatServiceException: If conversation cannot be created
         """
         try:
             conversation_id = str(uuid.uuid4())
             self._conversations[conversation_id] = []
-            
+
             logger.info(f"Created new conversation: {conversation_id}")
             return conversation_id
-            
+
         except Exception as e:
             logger.error(f"Error creating conversation: {e}")
             raise ChatServiceException(f"Failed to create conversation: {str(e)}")
-    
+
     async def delete_conversation(self, conversation_id: str) -> bool:
         """
         Delete a chat conversation and its history.
-        
+
         Args:
             conversation_id: Conversation identifier
-            
+
         Returns:
             bool: True if deletion was successful
-            
+
         Raises:
             ConversationNotFoundException: If conversation is not found
             ChatServiceException: If deletion fails
         """
         try:
             logger.info(f"Deleting conversation: {conversation_id}")
-            
+
             if conversation_id not in self._conversations:
                 raise ConversationNotFoundException(conversation_id)
-            
+
             del self._conversations[conversation_id]
             return True
-            
+
         except ConversationNotFoundException:
             raise
         except Exception as e:
             logger.error(f"Error deleting conversation: {e}")
             raise ChatServiceException(f"Failed to delete conversation: {str(e)}")
-    
+
     async def get_function_definition(self, function_name: str) -> FunctionDefinition:
         """
         Get definition for a specific function.
-        
+
         Args:
             function_name: Name of the function
-            
+
         Returns:
             FunctionDefinition: Function definition with parameters
-            
+
         Raises:
             FunctionNotFoundException: If function is not found
             ChatServiceException: If definition cannot be retrieved
         """
         try:
             logger.info(f"Getting function definition for: {function_name}")
-            
+
             for func_def in self._function_definitions:
                 if func_def.name == function_name:
                     return func_def
-            
+
             raise FunctionNotFoundException(function_name)
-            
+
         except FunctionNotFoundException:
             raise
         except Exception as e:

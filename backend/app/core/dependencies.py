@@ -21,10 +21,9 @@ from .config import Settings, get_settings
 
 # Service factory functions with proper dependency injection
 
+
 @lru_cache()
-def get_service_factory(
-    settings: Annotated[Settings, Depends(get_settings)]
-) -> ServiceFactory:
+def get_service_factory(settings: Annotated[Settings, Depends(get_settings)]) -> ServiceFactory:
     """
     Get service factory instance with dependency injection.
 
@@ -38,7 +37,7 @@ def get_service_factory(
 
 
 def get_bitvavo_client(
-    factory: Annotated[ServiceFactory, Depends(get_service_factory)]
+    factory: Annotated[ServiceFactory, Depends(get_service_factory)],
 ) -> IBitvavoClient:
     """
     Get Bitvavo client instance via service factory.
@@ -53,7 +52,7 @@ def get_bitvavo_client(
 
 
 def get_portfolio_service(
-    factory: Annotated[ServiceFactory, Depends(get_service_factory)]
+    factory: Annotated[ServiceFactory, Depends(get_service_factory)],
 ) -> IPortfolioService:
     """
     Get portfolio service instance via service factory.
@@ -68,7 +67,7 @@ def get_portfolio_service(
 
 
 def get_market_service(
-    factory: Annotated[ServiceFactory, Depends(get_service_factory)]
+    factory: Annotated[ServiceFactory, Depends(get_service_factory)],
 ) -> IMarketService:
     """
     Get market service instance via service factory.
@@ -83,7 +82,7 @@ def get_market_service(
 
 
 def get_chat_service(
-    factory: Annotated[ServiceFactory, Depends(get_service_factory)]
+    factory: Annotated[ServiceFactory, Depends(get_service_factory)],
 ) -> IChatService:
     """
     Get chat service instance via service factory.
