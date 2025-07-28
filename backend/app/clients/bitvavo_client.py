@@ -10,7 +10,11 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
 from ..core.config import Settings
-from ..core.exceptions import BitvavoAPIException, InvalidAPIKeyError, RateLimitExceededError
+from ..core.exceptions import (
+    BitvavoAPIException,
+    InvalidAPIKeyError,
+    RateLimitExceededError,
+)
 from ..services.interfaces.bitvavo_client import IBitvavoClient
 
 logger = logging.getLogger(__name__)
@@ -60,8 +64,8 @@ class BitvavoClient(IBitvavoClient):
     def _check_rate_limit(self) -> None:
         """Enforce rate limit using existing rate limiter."""
         # Import here to avoid circular imports
-        import sys
         import os
+        import sys
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "src"))
         from src.portfolio.api import default_rate_limiter
         default_rate_limiter.enforce_rate_limit(self._get_client())

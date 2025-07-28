@@ -6,7 +6,7 @@ injection patterns similar to C# ASP.NET Core.
 """
 
 from .config import Settings, get_settings
-from .dependencies import get_portfolio_service, get_market_service, get_chat_service
+from .dependencies import get_chat_service, get_market_service, get_portfolio_service
 from .exceptions import *
 
 __all__ = [

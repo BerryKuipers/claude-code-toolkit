@@ -10,10 +10,14 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from ..services.interfaces import IChatService, IMarketService, IPortfolioService, IBitvavoClient
+from ..services.interfaces import (
+    IBitvavoClient,
+    IChatService,
+    IMarketService,
+    IPortfolioService,
+)
 from ..services.service_factory import ServiceFactory
 from .config import Settings, get_settings
-
 
 # Service factory functions with proper dependency injection
 

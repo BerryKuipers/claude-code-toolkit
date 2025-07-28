@@ -9,6 +9,18 @@ from datetime import datetime
 from decimal import Decimal, getcontext
 from typing import Dict, List, Optional
 
+# Import existing portfolio logic
+from src.portfolio.core import (
+    PurchaseLot,
+    TransferSummary,
+    analyze_transfers,
+    calculate_pnl,
+    fetch_trade_history,
+    get_current_price,
+    get_portfolio_assets,
+    reconcile_portfolio_balances,
+)
+
 from ..core.config import Settings
 from ..core.exceptions import AssetNotFoundException, PortfolioServiceException
 from ..models.portfolio import (
@@ -19,21 +31,9 @@ from ..models.portfolio import (
     TransactionResponse,
     TransferSummaryResponse,
 )
-from .interfaces.portfolio_service import IPortfolioService
-from .interfaces.bitvavo_client import IBitvavoClient
 from .base_service import BaseService
-
-# Import existing portfolio logic
-from src.portfolio.core import (
-    calculate_pnl,
-    fetch_trade_history,
-    get_current_price,
-    get_portfolio_assets,
-    analyze_transfers,
-    reconcile_portfolio_balances,
-    PurchaseLot,
-    TransferSummary,
-)
+from .interfaces.bitvavo_client import IBitvavoClient
+from .interfaces.portfolio_service import IPortfolioService
 
 # Set high precision for Decimal calculations
 getcontext().prec = 28

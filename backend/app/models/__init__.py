@@ -5,10 +5,10 @@ These models provide C#-like DTOs with runtime validation and auto-generated
 OpenAPI documentation.
 """
 
-from .common import *
-from .portfolio import *
-from .market import *
 from .chat import *
+from .common import *
+from .market import *
+from .portfolio import *
 
 __all__ = [
     # Common models

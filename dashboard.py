@@ -20,7 +20,7 @@ import streamlit as st
 sys.path.append("frontend")
 sys.path.append("src")
 
-from frontend.api_client import SyncCryptoPortfolioAPIClient, APIException
+from frontend.api_client import APIException, SyncCryptoPortfolioAPIClient
 
 # Import UI components
 from portfolio.ui.performance import (
@@ -91,7 +91,7 @@ def check_backend_connection() -> bool:
 def display_connection_status():
     """Display backend connection status in sidebar."""
     st.sidebar.markdown("### 🔗 Backend Status")
-    
+
     if check_backend_connection():
         st.sidebar.success("✅ Backend Connected")
         if st.sidebar.button("🔄 Refresh Data"):
@@ -107,27 +107,29 @@ def display_connection_status():
                 st.sidebar.error(f"❌ Refresh error: {e}")
     else:
         st.sidebar.error("❌ Backend Disconnected")
-        st.sidebar.markdown("""
+        st.sidebar.markdown(
+            """
         **Backend not available**
         
         Please ensure the backend is running:
         ```bash
         .\\scripts\\start-backend.ps1
         ```
-        """)
+        """
+        )
 
 
 def load_portfolio_data():
     """Load portfolio data from API backend."""
     try:
         client = get_api_client()
-        
+
         # Get portfolio summary and holdings
         summary = client.get_portfolio_summary()
         holdings = client.get_current_holdings()
-        
+
         return summary, holdings
-        
+
     except APIException as e:
         st.error(f"API Error: {e.message}")
         if e.status_code:
@@ -141,75 +143,71 @@ def load_portfolio_data():
 def display_portfolio_summary(summary):
     """Display portfolio summary metrics."""
     st.markdown("## 📊 Portfolio Summary")
-    
+
     col1, col2, col3, col4 = st.columns(4)
-    
+
     with col1:
         st.metric(
             "Total Value",
             f"€{summary.total_value:,.2f}",
-            delta=f"€{summary.total_pnl:,.2f}"
+            delta=f"€{summary.total_pnl:,.2f}",
         )
-    
+
     with col2:
         st.metric(
             "Total Return",
             f"{summary.total_return_percentage:.2f}%",
-            delta=f"€{summary.unrealized_pnl:,.2f}"
+            delta=f"€{summary.unrealized_pnl:,.2f}",
         )
-    
+
     with col3:
-        st.metric(
-            "Realized P&L",
-            f"€{summary.realized_pnl:,.2f}",
-            delta=None
-        )
-    
+        st.metric("Realized P&L", f"€{summary.realized_pnl:,.2f}", delta=None)
+
     with col4:
-        st.metric(
-            "Assets",
-            f"{summary.asset_count}",
-            delta=None
-        )
-    
+        st.metric("Assets", f"{summary.asset_count}", delta=None)
+
     # Additional metrics in expandable section
     with st.expander("📈 Detailed Metrics"):
         col1, col2 = st.columns(2)
-        
+
         with col1:
             st.metric("Total Cost Basis", f"€{summary.total_cost:,.2f}")
             st.metric("Unrealized P&L", f"€{summary.unrealized_pnl:,.2f}")
-        
+
         with col2:
             st.metric("Total P&L", f"€{summary.total_pnl:,.2f}")
-            st.write(f"**Last Updated:** {summary.last_updated.strftime('%Y-%m-%d %H:%M:%S')}")
+            st.write(
+                f"**Last Updated:** {summary.last_updated.strftime('%Y-%m-%d %H:%M:%S')}"
+            )
 
 
 def display_holdings_table(holdings):
     """Display holdings in an optimized table."""
     st.markdown("## 💰 Current Holdings")
-    
+
     if not holdings:
         st.warning("No holdings found")
         return
-    
+
     # Convert holdings to DataFrame
     holdings_data = []
     for holding in holdings:
-        holdings_data.append({
-            "Asset": holding.asset,
-            "Quantity": float(holding.quantity),
-            "Current Price €": float(holding.current_price),
-            "Value €": float(holding.value_eur),
-            "Cost Basis €": float(holding.cost_basis),
-            "Unrealized P&L €": float(holding.unrealized_pnl),
-            "Realized P&L €": float(holding.realized_pnl),
-            "Portfolio %": float(holding.portfolio_percentage),
-            "Total Return %": float(holding.total_return_percentage),
-        })
-    
+        holdings_data.append(
+            {
+                "Asset": holding.asset,
+                "Quantity": float(holding.quantity),
+                "Current Price €": float(holding.current_price),
+                "Value €": float(holding.value_eur),
+                "Cost Basis €": float(holding.cost_basis),
+                "Unrealized P&L €": float(holding.unrealized_pnl),
+                "Realized P&L €": float(holding.realized_pnl),
+                "Portfolio %": float(holding.portfolio_percentage),
+                "Total Return %": float(holding.total_return_percentage),
+            }
+        )
+
     df = pd.DataFrame(holdings_data)
-    
+
     # Apply performance optimizations and display
     render_optimized_dataframe(
         df,
@@ -223,65 +221,69 @@ def display_holdings_table(holdings):
             "Realized P&L €": "{:,.2f}",
             "Portfolio %": "{:.2f}%",
             "Total Return %": "{:.2f}%",
-        }
+        },
     )
 
 
 def display_chat_interface():
     """Display AI chat interface using the backend."""
     st.markdown("## 🤖 AI Portfolio Assistant")
-    
+
     # Initialize chat history in session state
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
     if "conversation_id" not in st.session_state:
         st.session_state.conversation_id = None
-    
+
     # Chat input
     user_message = st.chat_input("Ask about your portfolio...")
-    
+
     if user_message:
         # Add user message to history
         st.session_state.chat_history.append({"role": "user", "content": user_message})
-        
+
         try:
             client = get_api_client()
-            
+
             # Send to backend
             with st.spinner("🤔 Thinking..."):
                 response = client.chat_query(
                     message=user_message,
                     conversation_id=st.session_state.conversation_id,
-                    use_function_calling=True
+                    use_function_calling=True,
                 )
-            
+
             # Update conversation ID
             st.session_state.conversation_id = response.conversation_id
-            
+
             # Add assistant response to history
-            st.session_state.chat_history.append({
-                "role": "assistant", 
-                "content": response.message,
-                "function_calls": response.function_calls,
-                "cost": response.cost_estimate,
-                "tokens": response.token_usage
-            })
-            
+            st.session_state.chat_history.append(
+                {
+                    "role": "assistant",
+                    "content": response.message,
+                    "function_calls": response.function_calls,
+                    "cost": response.cost_estimate,
+                    "tokens": response.token_usage,
+                }
+            )
+
         except Exception as e:
             st.error(f"Chat error: {e}")
-    
+
     # Display chat history
     for message in st.session_state.chat_history:
         with st.chat_message(message["role"]):
             st.write(message["content"])
-            
+
             # Show function calls and metadata for assistant messages
             if message["role"] == "assistant" and "function_calls" in message:
                 if message["function_calls"]:
                     with st.expander("🔧 Function Calls"):
                         for func_call in message["function_calls"]:
-                            st.write(f"**{func_call['function_name']}** - {func_call['execution_time_ms']:.1f}ms")
-                
+                            st.write(
+                                f"**{func_call['function_name']}** - {func_call['execution_time_ms']:.1f}ms"
+                            )
+
                 with st.expander("📊 Response Metadata"):
                     col1, col2 = st.columns(2)
                     with col1:
@@ -296,40 +298,40 @@ def main():
         page_title="Crypto Portfolio Dashboard",
         page_icon="📊",
         layout="wide",
-        initial_sidebar_state="expanded"
+        initial_sidebar_state="expanded",
     )
-    
+
     st.title("📊 Crypto Portfolio Dashboard")
     st.markdown("*Powered by strongly typed FastAPI backend*")
-    
+
     # Display connection status
     display_connection_status()
-    
+
     # Check backend connection
     if not check_backend_connection():
         st.error("❌ Cannot connect to backend. Please start the backend service.")
         st.stop()
-    
+
     # Load portfolio data
     with st.spinner("📊 Loading portfolio data..."):
         summary, holdings = load_portfolio_data()
-    
+
     if summary is None or holdings is None:
         st.error("❌ Failed to load portfolio data")
         st.stop()
-    
+
     # Create tabs for different views
     tab1, tab2, tab3 = st.tabs(["📊 Overview", "💰 Holdings", "🤖 AI Chat"])
-    
+
     with tab1:
         display_portfolio_summary(summary)
-    
+
     with tab2:
         display_holdings_table(holdings)
-    
+
     with tab3:
         display_chat_interface()
-    
+
     # Footer
     st.markdown("---")
     st.markdown("*Built with ❤️ using FastAPI + Streamlit + Strong Typing*")

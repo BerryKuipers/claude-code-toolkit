@@ -22,9 +22,9 @@ from ..models.market import (
     TechnicalIndicatorResponse,
     TrendDirection,
 )
-from .interfaces.market_service import IMarketService
-from .interfaces.bitvavo_client import IBitvavoClient
 from .base_service import BaseService
+from .interfaces.bitvavo_client import IBitvavoClient
+from .interfaces.market_service import IMarketService
 
 
 class MarketService(BaseService, IMarketService):

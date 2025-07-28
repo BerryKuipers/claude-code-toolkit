@@ -5,10 +5,10 @@ These interfaces define the contracts for business logic services,
 enabling dependency injection and testability.
 """
 
-from .portfolio_service import IPortfolioService
-from .market_service import IMarketService
-from .chat_service import IChatService
 from .bitvavo_client import IBitvavoClient
+from .chat_service import IChatService
+from .market_service import IMarketService
+from .portfolio_service import IPortfolioService
 
 __all__ = [
     "IPortfolioService",

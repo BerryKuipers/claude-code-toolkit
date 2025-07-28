@@ -6,15 +6,19 @@ and integration with existing chat functionality.
 """
 
 import logging
-import sys
 import os
-import uuid
+import sys
 import time
+import uuid
 from datetime import datetime
 from typing import Dict, List, Optional
 
 # Add src to path to import existing chat logic
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "src"))
+
+# Import existing chat functionality
+from src.portfolio.chat.base_llm_client import LLMClientFactory, LLMProvider
+from src.portfolio.chat.function_handlers import PortfolioFunctionHandler
 
 from ..core.config import Settings
 from ..core.exceptions import (
@@ -37,10 +41,6 @@ from ..models.chat import (
 )
 from .interfaces.chat_service import IChatService
 from .interfaces.portfolio_service import IPortfolioService
-
-# Import existing chat functionality
-from src.portfolio.chat.base_llm_client import LLMClientFactory, LLMProvider
-from src.portfolio.chat.function_handlers import PortfolioFunctionHandler
 
 logger = logging.getLogger(__name__)
 

@@ -21,6 +21,7 @@ from .core.config import get_settings
 from .core.exceptions import APIException
 from .models.common import ErrorResponse, HealthCheckResponse
 
+
 class DateTimeEncoder(json.JSONEncoder):
     """Custom JSON encoder for datetime objects."""
 

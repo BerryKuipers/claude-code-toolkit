@@ -6,9 +6,8 @@ correctly and provides the C#-like development experience.
 """
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app.main import app
+from fastapi.testclient import TestClient
 
 
 class TestAPIStructure:

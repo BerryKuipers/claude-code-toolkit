@@ -6,8 +6,8 @@ following DRY and SOLID principles.
 """
 
 import logging
-import sys
 import os
+import sys
 from abc import ABC
 from typing import Any, Dict, Optional
 

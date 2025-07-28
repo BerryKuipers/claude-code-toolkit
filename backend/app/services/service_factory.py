@@ -7,12 +7,12 @@ service creation and managing dependencies centrally.
 
 from typing import Dict, Optional
 
-from ..core.config import Settings
 from ..clients.bitvavo_client import BitvavoClient
+from ..core.config import Settings
 from .interfaces.bitvavo_client import IBitvavoClient
-from .interfaces.portfolio_service import IPortfolioService
-from .interfaces.market_service import IMarketService
 from .interfaces.chat_service import IChatService
+from .interfaces.market_service import IMarketService
+from .interfaces.portfolio_service import IPortfolioService
 
 
 class ServiceFactory:
