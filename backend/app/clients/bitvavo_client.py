@@ -71,7 +71,9 @@ class BitvavoClient(IBitvavoClient):
         import os
         import sys
 
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "src"))
+        sys.path.insert(
+            0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "src")
+        )
         from src.portfolio.api import default_rate_limiter
 
         default_rate_limiter.enforce_rate_limit(self._get_client())
@@ -192,7 +194,9 @@ class BitvavoClient(IBitvavoClient):
             self._check_rate_limit()
             client = self._get_client()
 
-            deposits = await run_in_threadpool(client.depositHistory, {"symbol": symbol})
+            deposits = await run_in_threadpool(
+                client.depositHistory, {"symbol": symbol}
+            )
 
             if isinstance(deposits, dict) and "errorCode" in deposits:
                 logger.warning(f"Bitvavo API error for {symbol} deposits: {deposits}")
@@ -225,10 +229,14 @@ class BitvavoClient(IBitvavoClient):
             self._check_rate_limit()
             client = self._get_client()
 
-            withdrawals = await run_in_threadpool(client.withdrawalHistory, {"symbol": symbol})
+            withdrawals = await run_in_threadpool(
+                client.withdrawalHistory, {"symbol": symbol}
+            )
 
             if isinstance(withdrawals, dict) and "errorCode" in withdrawals:
-                logger.warning(f"Bitvavo API error for {symbol} withdrawals: {withdrawals}")
+                logger.warning(
+                    f"Bitvavo API error for {symbol} withdrawals: {withdrawals}"
+                )
                 return []
 
             if not withdrawals:

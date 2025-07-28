@@ -23,7 +23,9 @@ from .config import Settings, get_settings
 
 
 @lru_cache()
-def get_service_factory(settings: Annotated[Settings, Depends(get_settings)]) -> ServiceFactory:
+def get_service_factory(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> ServiceFactory:
     """
     Get service factory instance with dependency injection.
 

@@ -34,7 +34,9 @@ router = APIRouter()
     summary="Process Chat Query",
     description="Process a chat request with optional function calling support",
 )
-async def process_chat_query(request: ChatRequest, chat_service: ChatServiceDep) -> ChatResponse:
+async def process_chat_query(
+    request: ChatRequest, chat_service: ChatServiceDep
+) -> ChatResponse:
     """
     Process a chat request with AI function calling.
 
@@ -71,7 +73,9 @@ async def process_chat_query(request: ChatRequest, chat_service: ChatServiceDep)
     summary="Get Available Functions",
     description="Get list of all available functions for AI function calling",
 )
-async def get_available_functions(chat_service: ChatServiceDep) -> AvailableFunctionsResponse:
+async def get_available_functions(
+    chat_service: ChatServiceDep,
+) -> AvailableFunctionsResponse:
     """
     Get all available functions for AI function calling.
 
@@ -129,7 +133,9 @@ async def get_function_definition(
     summary="Create Conversation",
     description="Create a new chat conversation",
 )
-async def create_conversation(chat_service: ChatServiceDep) -> CreateConversationResponse:
+async def create_conversation(
+    chat_service: ChatServiceDep,
+) -> CreateConversationResponse:
     """
     Create a new chat conversation.
 
@@ -145,8 +151,7 @@ async def create_conversation(chat_service: ChatServiceDep) -> CreateConversatio
     try:
         conversation_id = await chat_service.create_conversation()
         return CreateConversationResponse(
-            conversation_id=conversation_id,
-            message="Conversation created successfully"
+            conversation_id=conversation_id, message="Conversation created successfully"
         )
     except ChatServiceException as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -188,7 +193,9 @@ async def get_chat_history(
     summary="Delete Conversation",
     description="Delete a chat conversation and its history",
 )
-async def delete_conversation(conversation_id: str, chat_service: ChatServiceDep) -> dict:
+async def delete_conversation(
+    conversation_id: str, chat_service: ChatServiceDep
+) -> dict:
     """
     Delete a chat conversation and its history.
 
@@ -207,7 +214,9 @@ async def delete_conversation(conversation_id: str, chat_service: ChatServiceDep
         return {
             "success": success,
             "message": (
-                "Conversation deleted successfully" if success else "Failed to delete conversation"
+                "Conversation deleted successfully"
+                if success
+                else "Failed to delete conversation"
             ),
         }
     except ConversationNotFoundException as e:

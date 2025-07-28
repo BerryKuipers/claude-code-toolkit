@@ -100,7 +100,8 @@ class TestAPIStructure:
 
         # Test POST endpoint with minimal valid data
         chat_response = client.post(
-            "/api/v1/chat/query", json={"message": "test message", "use_function_calling": False}
+            "/api/v1/chat/query",
+            json={"message": "test message", "use_function_calling": False},
         )
         # Should not be 404 or 422 (validation error)
         assert chat_response.status_code not in [404, 422]
@@ -110,7 +111,10 @@ class TestAPIStructure:
         response = client.options("/api/v1/portfolio/summary")
 
         # CORS should be configured
-        assert response.status_code in [200, 405]  # 405 is OK for OPTIONS if not explicitly handled
+        assert response.status_code in [
+            200,
+            405,
+        ]  # 405 is OK for OPTIONS if not explicitly handled
 
     def test_error_handling(self, client):
         """Test error handling returns proper error responses."""
@@ -144,14 +148,20 @@ class TestTypeValidation:
         # Test invalid request (empty message)
         response = client.post(
             "/api/v1/chat/query",
-            json={"message": "", "use_function_calling": True},  # Empty message should be invalid
+            json={
+                "message": "",
+                "use_function_calling": True,
+            },  # Empty message should be invalid
         )
         assert response.status_code == 422  # Validation error
 
         # Test invalid temperature
         response = client.post(
             "/api/v1/chat/query",
-            json={"message": "test", "temperature": 2.0},  # Should be between 0.0 and 1.0
+            json={
+                "message": "test",
+                "temperature": 2.0,
+            },  # Should be between 0.0 and 1.0
         )
         assert response.status_code == 422  # Validation error
 
@@ -172,4 +182,6 @@ class TestTypeValidation:
         ]
 
         for field in required_fields:
-            assert field in data, f"Required field '{field}' missing from health response"
+            assert (
+                field in data
+            ), f"Required field '{field}' missing from health response"

@@ -36,8 +36,12 @@ class PriceResponse(BaseModel):
     """Current price data for an asset."""
 
     asset: AssetSymbol = Field(..., description="Asset symbol")
-    price_eur: Decimal = Field(..., description="Current price in EUR", decimal_places=4)
-    price_change_24h: Decimal = Field(..., description="24h price change %", decimal_places=2)
+    price_eur: Decimal = Field(
+        ..., description="Current price in EUR", decimal_places=4
+    )
+    price_change_24h: Decimal = Field(
+        ..., description="24h price change %", decimal_places=2
+    )
     volume_24h: Decimal = Field(..., description="24h trading volume", decimal_places=2)
     last_updated: datetime = Field(..., description="Price last updated timestamp")
 
@@ -55,7 +59,9 @@ class TechnicalIndicatorResponse(BaseModel):
     indicator_name: str = Field(..., description="Technical indicator name")
     value: Decimal = Field(..., description="Indicator value", decimal_places=4)
     signal: str = Field(..., description="Trading signal (buy/sell/hold)")
-    confidence: Decimal = Field(..., description="Signal confidence (0-1)", decimal_places=2)
+    confidence: Decimal = Field(
+        ..., description="Signal confidence (0-1)", decimal_places=2
+    )
 
     @field_validator("confidence")
     @classmethod
@@ -70,7 +76,9 @@ class TechnicalAnalysisResponse(BaseModel):
 
     asset: AssetSymbol = Field(..., description="Asset symbol")
     trend_direction: TrendDirection = Field(..., description="Overall trend direction")
-    indicators: List[TechnicalIndicatorResponse] = Field(..., description="Technical indicators")
+    indicators: List[TechnicalIndicatorResponse] = Field(
+        ..., description="Technical indicators"
+    )
     support_levels: List[Decimal] = Field(..., description="Support price levels")
     resistance_levels: List[Decimal] = Field(..., description="Resistance price levels")
     recommendation: str = Field(..., description="Overall trading recommendation")
@@ -83,11 +91,15 @@ class MarketOpportunityResponse(BaseModel):
 
     asset: AssetSymbol = Field(..., description="Asset symbol")
     opportunity_type: str = Field(..., description="Type of opportunity")
-    potential_return: Decimal = Field(..., description="Potential return %", decimal_places=2)
+    potential_return: Decimal = Field(
+        ..., description="Potential return %", decimal_places=2
+    )
     risk_level: RiskLevel = Field(..., description="Risk assessment")
     time_horizon: str = Field(..., description="Recommended time horizon")
     reasoning: str = Field(..., description="Analysis reasoning")
-    confidence_score: Decimal = Field(..., description="Confidence score (0-1)", decimal_places=2)
+    confidence_score: Decimal = Field(
+        ..., description="Confidence score (0-1)", decimal_places=2
+    )
 
     @field_validator("confidence_score")
     @classmethod
@@ -100,7 +112,9 @@ class MarketOpportunityResponse(BaseModel):
 class MarketOpportunitiesResponse(BaseResponse):
     """Market opportunities analysis response."""
 
-    opportunities: List[MarketOpportunityResponse] = Field(..., description="Market opportunities")
+    opportunities: List[MarketOpportunityResponse] = Field(
+        ..., description="Market opportunities"
+    )
     market_sentiment: str = Field(..., description="Overall market sentiment")
     analysis_summary: str = Field(..., description="Summary of market analysis")
     last_updated: datetime = Field(..., description="Analysis timestamp")
@@ -110,9 +124,13 @@ class MarketDataResponse(BaseResponse):
     """Comprehensive market data response."""
 
     prices: Dict[str, PriceResponse] = Field(..., description="Current prices by asset")
-    market_cap_total: Decimal = Field(..., description="Total market cap", decimal_places=2)
+    market_cap_total: Decimal = Field(
+        ..., description="Total market cap", decimal_places=2
+    )
     market_trend: TrendDirection = Field(..., description="Overall market trend")
-    fear_greed_index: Optional[int] = Field(None, description="Fear & Greed Index (0-100)")
+    fear_greed_index: Optional[int] = Field(
+        None, description="Fear & Greed Index (0-100)"
+    )
     top_gainers: List[PriceResponse] = Field(..., description="Top gaining assets")
     top_losers: List[PriceResponse] = Field(..., description="Top losing assets")
     last_updated: datetime = Field(..., description="Data last updated timestamp")

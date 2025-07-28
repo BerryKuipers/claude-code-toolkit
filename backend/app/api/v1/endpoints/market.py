@@ -60,7 +60,9 @@ async def get_market_data(market_service: MarketServiceDep) -> MarketDataRespons
 )
 async def get_current_prices(
     market_service: MarketServiceDep,
-    assets: Optional[List[str]] = Query(None, description="Optional list of asset symbols"),
+    assets: Optional[List[str]] = Query(
+        None, description="Optional list of asset symbols"
+    ),
 ) -> Dict[str, PriceResponse]:
     """
     Get current market prices.
@@ -89,7 +91,9 @@ async def get_current_prices(
     summary="Get Asset Price",
     description="Get current price data for a specific asset",
 )
-async def get_asset_price(asset: str, market_service: MarketServiceDep) -> PriceResponse:
+async def get_asset_price(
+    asset: str, market_service: MarketServiceDep
+) -> PriceResponse:
     """
     Get current price data for a specific asset.
 
@@ -117,7 +121,9 @@ async def get_asset_price(asset: str, market_service: MarketServiceDep) -> Price
     summary="Get Market Opportunities",
     description="Analyze current market for investment opportunities",
 )
-async def get_market_opportunities(market_service: MarketServiceDep) -> MarketOpportunitiesResponse:
+async def get_market_opportunities(
+    market_service: MarketServiceDep,
+) -> MarketOpportunitiesResponse:
     """
     Analyze current market for investment opportunities.
 
@@ -205,7 +211,9 @@ async def refresh_market_data(market_service: MarketServiceDep) -> dict:
         return {
             "success": success,
             "message": (
-                "Market data refreshed successfully" if success else "Failed to refresh market data"
+                "Market data refreshed successfully"
+                if success
+                else "Failed to refresh market data"
             ),
         }
     except MarketServiceException as e:

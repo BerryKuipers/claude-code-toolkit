@@ -25,11 +25,11 @@ try:
         PurchaseLot,
         TransferSummary,
     )
-    
+
     # Re-export for clean imports
     __all__ = [
         "calculate_pnl",
-        "fetch_trade_history", 
+        "fetch_trade_history",
         "get_current_price",
         "get_portfolio_assets",
         "analyze_transfers",
@@ -37,29 +37,29 @@ try:
         "PurchaseLot",
         "TransferSummary",
     ]
-    
+
 except ImportError as e:
     # Fallback for when src/ is not available
     def calculate_pnl(*args, **kwargs):
         raise NotImplementedError("Portfolio core logic not available")
-    
+
     def fetch_trade_history(*args, **kwargs):
         raise NotImplementedError("Portfolio core logic not available")
-    
+
     def get_current_price(*args, **kwargs):
         raise NotImplementedError("Portfolio core logic not available")
-    
+
     def get_portfolio_assets(*args, **kwargs):
         raise NotImplementedError("Portfolio core logic not available")
-    
+
     def analyze_transfers(*args, **kwargs):
         raise NotImplementedError("Portfolio core logic not available")
-    
+
     def reconcile_portfolio_balances(*args, **kwargs):
         raise NotImplementedError("Portfolio core logic not available")
-    
+
     class PurchaseLot:
         pass
-    
+
     class TransferSummary:
         pass

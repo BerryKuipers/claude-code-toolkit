@@ -50,7 +50,9 @@ class Settings(BaseSettings):
     # Bitvavo API Configuration
     bitvavo_api_key: str = Field(..., description="Bitvavo API key")
     bitvavo_api_secret: str = Field(..., description="Bitvavo API secret")
-    bitvavo_rate_limit_delay: float = Field(0.2, description="Rate limit delay in seconds")
+    bitvavo_rate_limit_delay: float = Field(
+        0.2, description="Rate limit delay in seconds"
+    )
 
     # AI Configuration
     openai_api_key: Optional[str] = Field(None, description="OpenAI API key")
@@ -65,7 +67,8 @@ class Settings(BaseSettings):
 
     # CORS Configuration
     cors_origins: list = Field(
-        ["http://localhost:8501", "http://127.0.0.1:8501"], description="Allowed CORS origins"
+        ["http://localhost:8501", "http://127.0.0.1:8501"],
+        description="Allowed CORS origins",
     )
     cors_allow_credentials: bool = Field(True, description="Allow CORS credentials")
     cors_allow_methods: list = Field(["*"], description="Allowed CORS methods")
@@ -78,7 +81,9 @@ class Settings(BaseSettings):
     )
 
     # Database Configuration (for future use)
-    database_url: Optional[str] = Field(None, description="Database URL for caching/persistence")
+    database_url: Optional[str] = Field(
+        None, description="Database URL for caching/persistence"
+    )
 
     @field_validator("bitvavo_api_key", "bitvavo_api_secret")
     @classmethod

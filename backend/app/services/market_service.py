@@ -94,7 +94,11 @@ class MarketService(BaseService, IMarketService):
             }
 
             if assets:
-                return {asset: mock_prices[asset] for asset in assets if asset in mock_prices}
+                return {
+                    asset: mock_prices[asset]
+                    for asset in assets
+                    if asset in mock_prices
+                }
 
             return mock_prices
 
@@ -118,7 +122,9 @@ class MarketService(BaseService, IMarketService):
             prices = await self.get_current_prices()
 
             # Sort by price change for top gainers/losers
-            sorted_prices = sorted(prices.values(), key=lambda x: x.price_change_24h, reverse=True)
+            sorted_prices = sorted(
+                prices.values(), key=lambda x: x.price_change_24h, reverse=True
+            )
 
             return MarketDataResponse(
                 prices=prices,
@@ -180,7 +186,9 @@ class MarketService(BaseService, IMarketService):
 
         except Exception as e:
             self.logger.error(f"Error analyzing market opportunities: {e}")
-            raise MarketServiceException(f"Failed to analyze market opportunities: {str(e)}")
+            raise MarketServiceException(
+                f"Failed to analyze market opportunities: {str(e)}"
+            )
 
     async def get_technical_analysis(self, asset: str) -> TechnicalAnalysisResponse:
         """

@@ -29,7 +29,9 @@ class BaseResponse(BaseModel):
     """Base response model with common fields."""
 
     success: bool = Field(True, description="Whether the request was successful")
-    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Response timestamp")
+    timestamp: datetime = Field(
+        default_factory=datetime.utcnow, description="Response timestamp"
+    )
 
     model_config = {
         "json_encoders": {
@@ -45,7 +47,9 @@ class ErrorResponse(BaseResponse):
     success: bool = Field(False, description="Always false for error responses")
     error_code: str = Field(..., description="Error code for programmatic handling")
     error_message: str = Field(..., description="Human-readable error message")
-    details: Optional[Dict[str, Any]] = Field(None, description="Additional error details")
+    details: Optional[Dict[str, Any]] = Field(
+        None, description="Additional error details"
+    )
 
 
 class PaginationParams(BaseModel):

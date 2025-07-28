@@ -29,7 +29,9 @@ router = APIRouter()
     summary="Get Portfolio Summary",
     description="Get comprehensive portfolio summary with total value, P&L, and key metrics",
 )
-async def get_portfolio_summary(portfolio_service: PortfolioServiceDep) -> PortfolioSummaryResponse:
+async def get_portfolio_summary(
+    portfolio_service: PortfolioServiceDep,
+) -> PortfolioSummaryResponse:
     """
     Get comprehensive portfolio summary.
 
@@ -60,7 +62,9 @@ async def get_portfolio_summary(portfolio_service: PortfolioServiceDep) -> Portf
     summary="Get Current Holdings",
     description="Get list of all currently held assets with detailed information",
 )
-async def get_current_holdings(portfolio_service: PortfolioServiceDep) -> List[HoldingResponse]:
+async def get_current_holdings(
+    portfolio_service: PortfolioServiceDep,
+) -> List[HoldingResponse]:
     """
     Get all current portfolio holdings.
 
@@ -153,7 +157,9 @@ async def get_asset_performance(
 )
 async def get_transaction_history(
     portfolio_service: PortfolioServiceDep,
-    asset: Optional[str] = Query(None, description="Optional asset symbol to filter by"),
+    asset: Optional[str] = Query(
+        None, description="Optional asset symbol to filter by"
+    ),
 ) -> List[TransactionResponse]:
     """
     Get transaction history.
@@ -169,7 +175,9 @@ async def get_transaction_history(
         HTTPException: If transaction data cannot be retrieved
     """
     try:
-        return await portfolio_service.get_transaction_history(asset.upper() if asset else None)
+        return await portfolio_service.get_transaction_history(
+            asset.upper() if asset else None
+        )
     except PortfolioServiceException as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -182,7 +190,9 @@ async def get_transaction_history(
 )
 async def reconcile_portfolio(
     portfolio_service: PortfolioServiceDep,
-    asset: Optional[str] = Query(None, description="Optional asset symbol to reconcile"),
+    asset: Optional[str] = Query(
+        None, description="Optional asset symbol to reconcile"
+    ),
 ) -> List[ReconciliationResponse]:
     """
     Perform portfolio reconciliation analysis.
@@ -201,7 +211,9 @@ async def reconcile_portfolio(
         HTTPException: If reconciliation cannot be performed
     """
     try:
-        return await portfolio_service.reconcile_portfolio(asset.upper() if asset else None)
+        return await portfolio_service.reconcile_portfolio(
+            asset.upper() if asset else None
+        )
     except PortfolioServiceException as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -212,7 +224,9 @@ async def reconcile_portfolio(
     summary="Refresh Portfolio Data",
     description="Force refresh of portfolio data from exchange",
 )
-async def refresh_portfolio_data(portfolio_service: PortfolioServiceDep) -> RefreshDataResponse:
+async def refresh_portfolio_data(
+    portfolio_service: PortfolioServiceDep,
+) -> RefreshDataResponse:
     """
     Force refresh of portfolio data from exchange.
 

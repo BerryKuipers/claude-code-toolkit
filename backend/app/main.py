@@ -141,7 +141,9 @@ async def api_exception_handler(request: Request, exc: APIException) -> JSONResp
 
     logger.error(f"API Exception: {exc.error_code} - {exc.message}")
 
-    return CustomJSONResponse(status_code=exc.status_code, content=error_response.model_dump())
+    return CustomJSONResponse(
+        status_code=exc.status_code, content=error_response.model_dump()
+    )
 
 
 # Global exception handler for unhandled exceptions

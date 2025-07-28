@@ -70,10 +70,13 @@ class PortfolioService(BaseService, IPortfolioService):
                 client = self.bitvavo_client._get_client()
                 self._assets_cache = get_portfolio_assets(client)
                 self._log_operation_success(
-                    "Getting portfolio assets", f"Found {len(self._assets_cache)} assets"
+                    "Getting portfolio assets",
+                    f"Found {len(self._assets_cache)} assets",
                 )
             except Exception as e:
-                self._handle_service_error("get portfolio assets", e, PortfolioServiceException)
+                self._handle_service_error(
+                    "get portfolio assets", e, PortfolioServiceException
+                )
         return self._assets_cache
 
     def _calculate_asset_pnl(self, client, asset: str) -> Dict[str, Decimal]:
@@ -117,7 +120,9 @@ class PortfolioService(BaseService, IPortfolioService):
         """Convert PnL calculation result to HoldingResponse."""
         value_eur = pnl_data["value_eur"]
         portfolio_percentage = (
-            (value_eur / total_portfolio_value * 100) if total_portfolio_value > 0 else Decimal("0")
+            (value_eur / total_portfolio_value * 100)
+            if total_portfolio_value > 0
+            else Decimal("0")
         )
 
         # Calculate total return percentage
@@ -170,9 +175,13 @@ class PortfolioService(BaseService, IPortfolioService):
             )
 
         except Exception as e:
-            self._handle_service_error("get portfolio summary", e, PortfolioServiceException)
+            self._handle_service_error(
+                "get portfolio summary", e, PortfolioServiceException
+            )
 
-    def _calculate_portfolio_totals(self, client, assets: List[str]) -> Dict[str, Decimal]:
+    def _calculate_portfolio_totals(
+        self, client, assets: List[str]
+    ) -> Dict[str, Decimal]:
         """
         Calculate portfolio totals from asset list.
 
@@ -206,7 +215,9 @@ class PortfolioService(BaseService, IPortfolioService):
                 self.logger.warning(f"Error processing asset {asset}: {e}")
                 continue
 
-        totals["total_pnl"] = totals["total_realized_pnl"] + totals["total_unrealized_pnl"]
+        totals["total_pnl"] = (
+            totals["total_realized_pnl"] + totals["total_unrealized_pnl"]
+        )
         totals["total_return_percentage"] = (
             (totals["total_pnl"] / totals["total_cost"] * 100)
             if totals["total_cost"] > 0
@@ -241,7 +252,9 @@ class PortfolioService(BaseService, IPortfolioService):
                     pnl = self._calculate_asset_pnl(client, asset)
                     current_price = get_current_price(client, asset)
 
-                    if pnl["amount"] > 0 and current_price > 0:  # Only include assets with holdings
+                    if (
+                        pnl["amount"] > 0 and current_price > 0
+                    ):  # Only include assets with holdings
                         all_pnl_data[asset] = (pnl, current_price)
                         total_portfolio_value += pnl["value_eur"]
 
@@ -262,7 +275,9 @@ class PortfolioService(BaseService, IPortfolioService):
             return holdings
 
         except Exception as e:
-            self._handle_service_error("get current holdings", e, PortfolioServiceException)
+            self._handle_service_error(
+                "get current holdings", e, PortfolioServiceException
+            )
 
     async def get_portfolio_holdings(self) -> PortfolioHoldingsResponse:
         """
@@ -286,7 +301,9 @@ class PortfolioService(BaseService, IPortfolioService):
 
         except Exception as e:
             self.logger.error(f"Error getting portfolio holdings: {e}")
-            raise PortfolioServiceException(f"Failed to get portfolio holdings: {str(e)}")
+            raise PortfolioServiceException(
+                f"Failed to get portfolio holdings: {str(e)}"
+            )
 
     async def get_asset_performance(self, asset: str) -> HoldingResponse:
         """
@@ -317,7 +334,9 @@ class PortfolioService(BaseService, IPortfolioService):
             raise
         except Exception as e:
             self.logger.error(f"Error getting asset performance for {asset}: {e}")
-            raise PortfolioServiceException(f"Failed to get asset performance: {str(e)}")
+            raise PortfolioServiceException(
+                f"Failed to get asset performance: {str(e)}"
+            )
 
     async def get_transaction_history(
         self, asset: Optional[str] = None
@@ -373,7 +392,9 @@ class PortfolioService(BaseService, IPortfolioService):
 
         except Exception as e:
             self.logger.error(f"Error getting transaction history: {e}")
-            raise PortfolioServiceException(f"Failed to get transaction history: {str(e)}")
+            raise PortfolioServiceException(
+                f"Failed to get transaction history: {str(e)}"
+            )
 
     def _convert_transfer_summary(
         self, transfer_summary: TransferSummary
@@ -404,7 +425,9 @@ class PortfolioService(BaseService, IPortfolioService):
             PortfolioServiceException: If reconciliation cannot be performed
         """
         try:
-            self.logger.info(f"Performing portfolio reconciliation for asset: {asset or 'all'}")
+            self.logger.info(
+                f"Performing portfolio reconciliation for asset: {asset or 'all'}"
+            )
 
             client = self.bitvavo_client._get_client()
 
@@ -414,7 +437,9 @@ class PortfolioService(BaseService, IPortfolioService):
                 assets_to_reconcile = await self._get_portfolio_assets()
 
             # Use existing reconciliation logic
-            reconciliation_data = reconcile_portfolio_balances(client, assets_to_reconcile)
+            reconciliation_data = reconcile_portfolio_balances(
+                client, assets_to_reconcile
+            )
 
             reconciliations = []
             for asset_data in reconciliation_data["assets"]:
@@ -438,7 +463,9 @@ class PortfolioService(BaseService, IPortfolioService):
 
         except Exception as e:
             self.logger.error(f"Error performing portfolio reconciliation: {e}")
-            raise PortfolioServiceException(f"Failed to perform reconciliation: {str(e)}")
+            raise PortfolioServiceException(
+                f"Failed to perform reconciliation: {str(e)}"
+            )
 
     async def refresh_portfolio_data(self) -> bool:
         """
@@ -466,4 +493,6 @@ class PortfolioService(BaseService, IPortfolioService):
 
         except Exception as e:
             self.logger.error(f"Error refreshing portfolio data: {e}")
-            raise PortfolioServiceException(f"Failed to refresh portfolio data: {str(e)}")
+            raise PortfolioServiceException(
+                f"Failed to refresh portfolio data: {str(e)}"
+            )

@@ -56,7 +56,9 @@ class ServiceFactory:
             # Import here to avoid circular imports
             from .portfolio_service import PortfolioService
 
-            self._services["portfolio"] = PortfolioService(self.settings, self.get_bitvavo_client())
+            self._services["portfolio"] = PortfolioService(
+                self.settings, self.get_bitvavo_client()
+            )
         return self._services["portfolio"]
 
     def get_market_service(self) -> IMarketService:
@@ -70,7 +72,9 @@ class ServiceFactory:
             # Import here to avoid circular imports
             from .market_service import MarketService
 
-            self._services["market"] = MarketService(self.settings, self.get_bitvavo_client())
+            self._services["market"] = MarketService(
+                self.settings, self.get_bitvavo_client()
+            )
         return self._services["market"]
 
     def get_chat_service(self) -> IChatService:
@@ -84,7 +88,9 @@ class ServiceFactory:
             # Import here to avoid circular imports
             from .chat_service import ChatService
 
-            self._services["chat"] = ChatService(self.settings, self.get_portfolio_service())
+            self._services["chat"] = ChatService(
+                self.settings, self.get_portfolio_service()
+            )
         return self._services["chat"]
 
     def clear_cache(self) -> None:
@@ -105,9 +111,13 @@ class ServiceFactory:
             try:
                 # Check if service has a health check method
                 if hasattr(service, "health_check"):
-                    health[service_name] = "healthy" if service.health_check() else "unhealthy"
+                    health[service_name] = (
+                        "healthy" if service.health_check() else "unhealthy"
+                    )
                 else:
-                    health[service_name] = "healthy"  # Assume healthy if no check method
+                    health[service_name] = (
+                        "healthy"  # Assume healthy if no check method
+                    )
             except Exception:
                 health[service_name] = "unhealthy"
 

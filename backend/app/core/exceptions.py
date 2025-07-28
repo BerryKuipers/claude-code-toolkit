@@ -34,7 +34,10 @@ class PortfolioServiceException(APIException):
 
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
-            message=message, error_code="PORTFOLIO_SERVICE_ERROR", status_code=500, details=details
+            message=message,
+            error_code="PORTFOLIO_SERVICE_ERROR",
+            status_code=500,
+            details=details,
         )
 
 
@@ -43,7 +46,10 @@ class MarketServiceException(APIException):
 
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
-            message=message, error_code="MARKET_SERVICE_ERROR", status_code=500, details=details
+            message=message,
+            error_code="MARKET_SERVICE_ERROR",
+            status_code=500,
+            details=details,
         )
 
 
@@ -52,7 +58,10 @@ class ChatServiceException(APIException):
 
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
-            message=message, error_code="CHAT_SERVICE_ERROR", status_code=500, details=details
+            message=message,
+            error_code="CHAT_SERVICE_ERROR",
+            status_code=500,
+            details=details,
         )
 
 
@@ -100,7 +109,10 @@ class InvalidRequestException(APIException):
 
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
-            message=message, error_code="INVALID_REQUEST", status_code=400, details=details
+            message=message,
+            error_code="INVALID_REQUEST",
+            status_code=400,
+            details=details,
         )
 
 
@@ -108,10 +120,15 @@ class RateLimitExceededError(APIException):
     """Rate limit exceeded exception."""
 
     def __init__(
-        self, message: str = "Rate limit exceeded", details: Optional[Dict[str, Any]] = None
+        self,
+        message: str = "Rate limit exceeded",
+        details: Optional[Dict[str, Any]] = None,
     ):
         super().__init__(
-            message=message, error_code="RATE_LIMIT_EXCEEDED", status_code=429, details=details
+            message=message,
+            error_code="RATE_LIMIT_EXCEEDED",
+            status_code=429,
+            details=details,
         )
 
 
@@ -120,14 +137,22 @@ class BitvavoAPIException(APIException):
 
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
-            message=message, error_code="BITVAVO_API_ERROR", status_code=502, details=details
+            message=message,
+            error_code="BITVAVO_API_ERROR",
+            status_code=502,
+            details=details,
         )
 
 
 class InvalidAPIKeyError(APIException):
     """Invalid API key exception."""
 
-    def __init__(self, message: str = "Invalid API key", details: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self, message: str = "Invalid API key", details: Optional[Dict[str, Any]] = None
+    ):
         super().__init__(
-            message=message, error_code="INVALID_API_KEY", status_code=401, details=details
+            message=message,
+            error_code="INVALID_API_KEY",
+            status_code=401,
+            details=details,
         )

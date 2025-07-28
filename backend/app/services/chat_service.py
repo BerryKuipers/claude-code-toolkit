@@ -185,7 +185,9 @@ class ChatService(IChatService):
             # Get AI client and function handler
             llm_client = self._get_llm_client()
             function_handler = (
-                await self._get_function_handler() if request.use_function_calling else None
+                await self._get_function_handler()
+                if request.use_function_calling
+                else None
             )
 
             # Prepare messages
@@ -196,10 +198,15 @@ class ChatService(IChatService):
             ]
 
             # Get available functions if function calling is enabled
-            functions = function_handler.get_available_functions() if function_handler else []
+            functions = (
+                function_handler.get_available_functions() if function_handler else []
+            )
 
             # Process with AI client
-            if hasattr(llm_client, "handle_function_calling_conversation") and function_handler:
+            if (
+                hasattr(llm_client, "handle_function_calling_conversation")
+                and function_handler
+            ):
                 # Claude-style function calling
                 ai_response = llm_client.handle_function_calling_conversation(
                     messages, functions, function_handler
@@ -234,7 +241,8 @@ class ChatService(IChatService):
                                     function_name=func_call["name"],
                                     result=result,
                                     success=True,
-                                    execution_time_ms=(func_end_time - func_start_time) * 1000,
+                                    execution_time_ms=(func_end_time - func_start_time)
+                                    * 1000,
                                 )
                             )
                         except Exception as e:
@@ -259,7 +267,8 @@ class ChatService(IChatService):
             if hasattr(llm_client, "last_usage"):
                 token_usage = llm_client.last_usage
                 cost_estimate = llm_client.calculate_cost(
-                    token_usage.get("input_tokens", 0), token_usage.get("output_tokens", 0)
+                    token_usage.get("input_tokens", 0),
+                    token_usage.get("output_tokens", 0),
                 )
 
             # Store conversation
@@ -269,10 +278,14 @@ class ChatService(IChatService):
             self._conversations[conversation_id].extend(
                 [
                     ChatMessage(
-                        role=MessageRole.USER, content=request.message, timestamp=datetime.utcnow()
+                        role=MessageRole.USER,
+                        content=request.message,
+                        timestamp=datetime.utcnow(),
                     ),
                     ChatMessage(
-                        role=MessageRole.ASSISTANT, content=ai_response, timestamp=datetime.utcnow()
+                        role=MessageRole.ASSISTANT,
+                        content=ai_response,
+                        timestamp=datetime.utcnow(),
                     ),
                 ]
             )
@@ -338,7 +351,9 @@ Always provide detailed, accurate analysis based on the function call results. B
                 # Convert parameters
                 parameters = []
                 if "parameters" in func and "properties" in func["parameters"]:
-                    for param_name, param_info in func["parameters"]["properties"].items():
+                    for param_name, param_info in func["parameters"][
+                        "properties"
+                    ].items():
                         param_type = param_info.get("type", "string")
                         # Map JSON schema types to our enum
                         type_mapping = {
@@ -353,14 +368,19 @@ Always provide detailed, accurate analysis based on the function call results. B
                         parameters.append(
                             FunctionParameter(
                                 name=param_name,
-                                type=type_mapping.get(param_type, FunctionParameterType.STRING),
+                                type=type_mapping.get(
+                                    param_type, FunctionParameterType.STRING
+                                ),
                                 description=param_info.get("description", ""),
-                                required=param_name in func["parameters"].get("required", []),
+                                required=param_name
+                                in func["parameters"].get("required", []),
                             )
                         )
 
                 function_def = FunctionDefinition(
-                    name=func_name, description=func["description"], parameters=parameters
+                    name=func_name,
+                    description=func["description"],
+                    parameters=parameters,
                 )
                 functions.append(function_def)
 
@@ -377,7 +397,9 @@ Always provide detailed, accurate analysis based on the function call results. B
                     categories["Portfolio"].append(func_name)  # Default category
 
             return AvailableFunctionsResponse(
-                functions=functions, total_functions=len(functions), categories=categories
+                functions=functions,
+                total_functions=len(functions),
+                categories=categories,
             )
 
         except Exception as e:
