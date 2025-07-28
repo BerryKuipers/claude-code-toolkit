@@ -6,17 +6,23 @@ with clear interfaces similar to C# service patterns.
 """
 
 from .interfaces import *
+from .base_service import BaseService
+from .service_factory import ServiceFactory
 from .portfolio_service import PortfolioService
-from .market_service import MarketService  
+from .market_service import MarketService
 from .chat_service import ChatService
 
 __all__ = [
     # Interfaces
     "IPortfolioService",
-    "IMarketService", 
+    "IMarketService",
     "IChatService",
     "IBitvavoClient",
-    
+
+    # Base classes
+    "BaseService",
+    "ServiceFactory",
+
     # Implementations
     "PortfolioService",
     "MarketService",

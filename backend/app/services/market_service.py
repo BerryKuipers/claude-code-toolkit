@@ -23,11 +23,11 @@ from ..models.market import (
     TrendDirection,
 )
 from .interfaces.market_service import IMarketService
+from .interfaces.bitvavo_client import IBitvavoClient
+from .base_service import BaseService
 
-logger = logging.getLogger(__name__)
 
-
-class MarketService(IMarketService):
+class MarketService(BaseService, IMarketService):
     """
     Market service implementation providing C#-like business logic layer.
     
@@ -35,18 +35,18 @@ class MarketService(IMarketService):
     and provides strongly typed responses for the API.
     """
     
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, bitvavo_client: IBitvavoClient):
         """
-        Initialize market service with configuration.
-        
+        Initialize market service with dependencies.
+
         Args:
             settings: Application settings
+            bitvavo_client: Bitvavo client for API operations
         """
-        self.settings = settings
+        super().__init__(settings, "MarketService")
+        self.bitvavo_client = bitvavo_client
         self._market_data_cache: Optional[Dict] = None
         self._cache_timestamp: Optional[datetime] = None
-        
-        logger.info("Market service initialized")
     
     async def get_current_prices(self, assets: Optional[List[str]] = None) -> Dict[str, PriceResponse]:
         """
@@ -62,7 +62,7 @@ class MarketService(IMarketService):
             MarketServiceException: If price data cannot be retrieved
         """
         try:
-            logger.info(f"Getting current prices for assets: {assets or 'all'}")
+            self.logger.info(f"Getting current prices for assets: {assets or 'all'}")
             
             # TODO: Integrate with existing Bitvavo price fetching logic
             # For now, return mock data
@@ -97,7 +97,7 @@ class MarketService(IMarketService):
             return mock_prices
             
         except Exception as e:
-            logger.error(f"Error getting current prices: {e}")
+            self.logger.error(f"Error getting current prices: {e}")
             raise MarketServiceException(f"Failed to get current prices: {str(e)}")
     
     async def get_market_data(self) -> MarketDataResponse:
@@ -111,7 +111,7 @@ class MarketService(IMarketService):
             MarketServiceException: If market data cannot be retrieved
         """
         try:
-            logger.info("Getting comprehensive market data")
+            self.logger.info("Getting comprehensive market data")
             
             prices = await self.get_current_prices()
             
@@ -129,7 +129,7 @@ class MarketService(IMarketService):
             )
             
         except Exception as e:
-            logger.error(f"Error getting market data: {e}")
+            self.logger.error(f"Error getting market data: {e}")
             raise MarketServiceException(f"Failed to get market data: {str(e)}")
     
     async def get_market_opportunities(self) -> MarketOpportunitiesResponse:
@@ -143,7 +143,7 @@ class MarketService(IMarketService):
             MarketServiceException: If opportunities analysis fails
         """
         try:
-            logger.info("Analyzing market opportunities")
+            self.logger.info("Analyzing market opportunities")
             
             # TODO: Integrate with existing prediction engine logic
             # For now, return mock opportunities
@@ -177,7 +177,7 @@ class MarketService(IMarketService):
             )
             
         except Exception as e:
-            logger.error(f"Error analyzing market opportunities: {e}")
+            self.logger.error(f"Error analyzing market opportunities: {e}")
             raise MarketServiceException(f"Failed to analyze market opportunities: {str(e)}")
     
     async def get_technical_analysis(self, asset: str) -> TechnicalAnalysisResponse:
@@ -195,7 +195,7 @@ class MarketService(IMarketService):
             MarketServiceException: If technical analysis fails
         """
         try:
-            logger.info(f"Getting technical analysis for {asset}")
+            self.logger.info(f"Getting technical analysis for {asset}")
             
             # Check if asset exists in our price data
             prices = await self.get_current_prices([asset])
@@ -240,7 +240,7 @@ class MarketService(IMarketService):
         except AssetNotFoundException:
             raise
         except Exception as e:
-            logger.error(f"Error getting technical analysis for {asset}: {e}")
+            self.logger.error(f"Error getting technical analysis for {asset}: {e}")
             raise MarketServiceException(f"Failed to get technical analysis: {str(e)}")
     
     async def get_asset_price(self, asset: str) -> PriceResponse:
@@ -258,7 +258,7 @@ class MarketService(IMarketService):
             MarketServiceException: If price data cannot be retrieved
         """
         try:
-            logger.info(f"Getting price for asset: {asset}")
+            self.logger.info(f"Getting price for asset: {asset}")
             
             prices = await self.get_current_prices([asset])
             
@@ -270,7 +270,7 @@ class MarketService(IMarketService):
         except AssetNotFoundException:
             raise
         except Exception as e:
-            logger.error(f"Error getting asset price for {asset}: {e}")
+            self.logger.error(f"Error getting asset price for {asset}: {e}")
             raise MarketServiceException(f"Failed to get asset price: {str(e)}")
     
     async def refresh_market_data(self) -> bool:
@@ -284,7 +284,7 @@ class MarketService(IMarketService):
             MarketServiceException: If data refresh fails
         """
         try:
-            logger.info("Refreshing market data from external sources")
+            self.logger.info("Refreshing market data from external sources")
             
             # TODO: Integrate with existing market data fetching logic
             # Clear cache and force fresh data fetch
@@ -296,5 +296,5 @@ class MarketService(IMarketService):
             return True
             
         except Exception as e:
-            logger.error(f"Error refreshing market data: {e}")
+            self.logger.error(f"Error refreshing market data: {e}")
             raise MarketServiceException(f"Failed to refresh market data: {str(e)}")

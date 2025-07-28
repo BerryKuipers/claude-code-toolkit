@@ -5,9 +5,11 @@ This is the main application entry point providing a comprehensive,
 type-safe API for crypto portfolio analysis with C#-like architecture.
 """
 
+import json
 import logging
 import time
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import Dict
 
 from fastapi import FastAPI, HTTPException, Request
@@ -18,6 +20,29 @@ from .api.v1.api import api_router
 from .core.config import get_settings
 from .core.exceptions import APIException
 from .models.common import ErrorResponse, HealthCheckResponse
+
+class DateTimeEncoder(json.JSONEncoder):
+    """Custom JSON encoder for datetime objects."""
+
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
+
+
+class CustomJSONResponse(JSONResponse):
+    """Custom JSONResponse that handles datetime serialization."""
+
+    def render(self, content) -> bytes:
+        return json.dumps(
+            content,
+            ensure_ascii=False,
+            allow_nan=False,
+            indent=None,
+            separators=(",", ":"),
+            cls=DateTimeEncoder,
+        ).encode("utf-8")
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -117,9 +142,9 @@ async def api_exception_handler(request: Request, exc: APIException) -> JSONResp
     
     logger.error(f"API Exception: {exc.error_code} - {exc.message}")
     
-    return JSONResponse(
+    return CustomJSONResponse(
         status_code=exc.status_code,
-        content=error_response.dict()
+        content=error_response.model_dump()
     )
 
 
@@ -144,9 +169,9 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
         details={"exception_type": type(exc).__name__}
     )
     
-    return JSONResponse(
+    return CustomJSONResponse(
         status_code=500,
-        content=error_response.dict()
+        content=error_response.model_dump()
     )
 
 

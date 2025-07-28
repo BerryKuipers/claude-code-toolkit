@@ -2,7 +2,7 @@
 Dependency injection setup for FastAPI.
 
 Provides C#-like dependency injection patterns with proper service lifetimes
-and interface-based dependency resolution.
+and interface-based dependency resolution using the Service Factory pattern.
 """
 
 from functools import lru_cache
@@ -11,81 +11,86 @@ from typing import Annotated
 from fastapi import Depends
 
 from ..services.interfaces import IChatService, IMarketService, IPortfolioService, IBitvavoClient
-from ..services.chat_service import ChatService
-from ..services.market_service import MarketService
-from ..services.portfolio_service import PortfolioService
-from ..clients.bitvavo_client import BitvavoClient
+from ..services.service_factory import ServiceFactory
 from .config import Settings, get_settings
 
 
 # Service factory functions with proper dependency injection
 
 @lru_cache()
-def get_bitvavo_client(
+def get_service_factory(
     settings: Annotated[Settings, Depends(get_settings)]
-) -> IBitvavoClient:
+) -> ServiceFactory:
     """
-    Get Bitvavo client instance with dependency injection.
+    Get service factory instance with dependency injection.
 
     Args:
         settings: Application settings
+
+    Returns:
+        ServiceFactory: Service factory for creating services
+    """
+    return ServiceFactory(settings)
+
+
+def get_bitvavo_client(
+    factory: Annotated[ServiceFactory, Depends(get_service_factory)]
+) -> IBitvavoClient:
+    """
+    Get Bitvavo client instance via service factory.
+
+    Args:
+        factory: Service factory
 
     Returns:
         IBitvavoClient: Bitvavo client implementation
     """
-    return BitvavoClient(settings)
+    return factory.get_bitvavo_client()
 
-@lru_cache()
+
 def get_portfolio_service(
-    settings: Annotated[Settings, Depends(get_settings)]
+    factory: Annotated[ServiceFactory, Depends(get_service_factory)]
 ) -> IPortfolioService:
     """
-    Get portfolio service instance with dependency injection.
-
-    Similar to C# DI container service resolution.
-    Uses LRU cache for singleton-like behavior.
+    Get portfolio service instance via service factory.
 
     Args:
-        settings: Application settings
+        factory: Service factory
 
     Returns:
         IPortfolioService: Portfolio service implementation
     """
-    return PortfolioService(settings)
+    return factory.get_portfolio_service()
 
 
-@lru_cache()
 def get_market_service(
-    settings: Annotated[Settings, Depends(get_settings)]
+    factory: Annotated[ServiceFactory, Depends(get_service_factory)]
 ) -> IMarketService:
     """
-    Get market service instance with dependency injection.
-    
+    Get market service instance via service factory.
+
     Args:
-        settings: Application settings
-        
+        factory: Service factory
+
     Returns:
         IMarketService: Market service implementation
     """
-    return MarketService(settings)
+    return factory.get_market_service()
 
 
-@lru_cache()
 def get_chat_service(
-    settings: Annotated[Settings, Depends(get_settings)],
-    portfolio_service: Annotated[IPortfolioService, Depends(get_portfolio_service)]
+    factory: Annotated[ServiceFactory, Depends(get_service_factory)]
 ) -> IChatService:
     """
-    Get chat service instance with dependency injection.
-    
+    Get chat service instance via service factory.
+
     Args:
-        settings: Application settings
-        portfolio_service: Portfolio service for function calling
-        
+        factory: Service factory
+
     Returns:
         IChatService: Chat service implementation
     """
-    return ChatService(settings, portfolio_service)
+    return factory.get_chat_service()
 
 
 # Type aliases for cleaner dependency injection

@@ -9,17 +9,29 @@ import os
 from functools import lru_cache
 from typing import Optional
 
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     """
     Application settings with strong typing and validation.
-    
+
     Similar to C# IConfiguration with automatic environment variable binding
     and validation.
     """
+
+
+
+    def __hash__(self):
+        """Make Settings hashable for LRU cache."""
+        return hash((
+            self.api_title,
+            self.api_version,
+            self.bitvavo_api_key,
+            self.bitvavo_api_secret,
+            self.debug
+        ))
     
     # API Configuration
     api_title: str = Field("Crypto Portfolio API", description="API title")
@@ -61,7 +73,8 @@ class Settings(BaseSettings):
     # Database Configuration (for future use)
     database_url: Optional[str] = Field(None, description="Database URL for caching/persistence")
     
-    @validator('bitvavo_api_key', 'bitvavo_api_secret')
+    @field_validator('bitvavo_api_key', 'bitvavo_api_secret')
+    @classmethod
     def validate_bitvavo_credentials(cls, v):
         if not v:
             raise ValueError('Bitvavo API credentials must be provided')
@@ -69,20 +82,23 @@ class Settings(BaseSettings):
         if len(v) < 5:
             raise ValueError('Bitvavo API credentials must be at least 5 characters')
         return v
-    
-    @validator('ai_temperature')
+
+    @field_validator('ai_temperature')
+    @classmethod
     def validate_temperature_range(cls, v):
         if not 0.0 <= v <= 1.0:
             raise ValueError('AI temperature must be between 0.0 and 1.0')
         return v
-    
-    @validator('port')
+
+    @field_validator('port')
+    @classmethod
     def validate_port_range(cls, v):
         if not 1 <= v <= 65535:
             raise ValueError('Port must be between 1 and 65535')
         return v
-    
-    @validator('log_level')
+
+    @field_validator('log_level')
+    @classmethod
     def validate_log_level(cls, v):
         valid_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
         if v.upper() not in valid_levels:
@@ -94,6 +110,7 @@ class Settings(BaseSettings):
         "env_file_encoding": "utf-8",
         "case_sensitive": False,
         "env_prefix": "",
+        "extra": "ignore",  # Allow extra fields in environment
     }
 
 
