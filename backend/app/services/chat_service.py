@@ -121,6 +121,8 @@ class ChatService(IChatService):
         # Initialize AI clients
         self._llm_client = None
         self._function_handler = None
+        self._cached_portfolio_data = None
+        self._cache_timestamp = None
 
         logger.info("Chat service initialized")
 
@@ -154,9 +156,20 @@ class ChatService(IChatService):
 
         return self._llm_client
 
-    async def _get_function_handler(self):
+    async def _get_function_handler(self, force_refresh: bool = False):
         """Get or create function handler with current portfolio data."""
-        if self._function_handler is None:
+        import time
+
+        # Check if we need to refresh the cache (5 minutes cache)
+        current_time = time.time()
+        cache_expired = (
+            self._cache_timestamp is None
+            or (current_time - self._cache_timestamp) > 300  # 5 minutes
+        )
+
+        if self._function_handler is None or force_refresh or cache_expired:
+            logger.info("🔄 Refreshing portfolio data for function handler...")
+
             # Get current portfolio data for function handler
             holdings = await self.portfolio_service.get_current_holdings()
 
@@ -186,8 +199,41 @@ class ChatService(IChatService):
                 raise ChatServiceException(f"Failed to import function handler: {e}")
 
             self._function_handler = PortfolioFunctionHandler(df)
+            self._cached_portfolio_data = df
+            self._cache_timestamp = current_time
+
+            logger.info(f"✅ Portfolio data cached with {len(df)} holdings")
+        else:
+            logger.info("📋 Using cached portfolio data for function handler")
 
         return self._function_handler
+
+    def _get_portfolio_context_summary(self) -> str:
+        """Generate a concise portfolio context summary to reduce redundant function calls."""
+        if self._cached_portfolio_data is None or self._cached_portfolio_data.empty:
+            return "No portfolio data available."
+
+        df = self._cached_portfolio_data
+        total_holdings = len(df)
+        total_value = df["Actual Value €"].sum()
+
+        # Get top 5 holdings by value
+        top_holdings = df.nlargest(5, "Actual Value €")
+        holdings_summary = []
+
+        for _, row in top_holdings.iterrows():
+            holdings_summary.append(
+                f"- {row['Asset']}: {row['Actual Amount']:.4f} (€{row['Actual Value €']:.2f}, {row['Total Return %']:.1f}%)"
+            )
+
+        context = f"""You have access to current portfolio data with {total_holdings} holdings worth €{total_value:.2f} total.
+
+Top holdings:
+{chr(10).join(holdings_summary)}
+
+For detailed analysis, you can use the available functions, but avoid calling get_current_holdings() unless specifically requested as this data is already available."""
+
+        return context
 
     def _create_function_definitions(self) -> List[FunctionDefinition]:
         """Create function definitions for AI function calling."""
@@ -254,8 +300,14 @@ class ChatService(IChatService):
                 else None
             )
 
-            # Prepare messages
+            # Prepare messages with portfolio context
             system_prompt = self._get_system_prompt(llm_client.provider)
+
+            # Add portfolio context if function calling is enabled
+            if request.use_function_calling and self._cached_portfolio_data is not None:
+                portfolio_summary = self._get_portfolio_context_summary()
+                system_prompt += f"\n\nCURRENT PORTFOLIO CONTEXT:\n{portfolio_summary}"
+
             messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": request.message},
