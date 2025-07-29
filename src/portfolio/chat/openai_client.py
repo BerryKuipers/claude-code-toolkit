@@ -66,8 +66,13 @@ class OpenAIClient(BaseLLMClient):
             # Get custom system prompt if available
             try:
                 import streamlit as st
+                from streamlit.runtime.scriptrunner import get_script_run_ctx
 
-                if "prompt_editor" in st.session_state:
+                # Check if we're in a Streamlit context
+                if (
+                    get_script_run_ctx() is not None
+                    and "prompt_editor" in st.session_state
+                ):
                     custom_system_prompt = (
                         st.session_state.prompt_editor.get_active_system_prompt()
                     )

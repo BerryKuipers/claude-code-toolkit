@@ -710,13 +710,29 @@ def render_sticky_chat_interface(df=None):
                     if hasattr(response, "function_calls") and response.function_calls:
                         with st.expander("🔧 Function Calls Used", expanded=False):
                             for func_call in response.function_calls:
-                                st.code(f"Called: {func_call.function_name}")
-                                if func_call.success:
-                                    st.success(
-                                        f"✅ Success ({func_call.execution_time_ms:.1f}ms)"
+                                # Handle both dict and object formats
+                                if isinstance(func_call, dict):
+                                    func_name = func_call.get(
+                                        "function_name", "unknown"
                                     )
+                                    success = func_call.get("success", False)
+                                    exec_time = func_call.get("execution_time_ms", 0.0)
+                                    error_msg = func_call.get("error_message", "")
                                 else:
-                                    st.error(f"❌ Error: {func_call.error_message}")
+                                    func_name = getattr(
+                                        func_call, "function_name", "unknown"
+                                    )
+                                    success = getattr(func_call, "success", False)
+                                    exec_time = getattr(
+                                        func_call, "execution_time_ms", 0.0
+                                    )
+                                    error_msg = getattr(func_call, "error_message", "")
+
+                                st.code(f"Called: {func_name}")
+                                if success:
+                                    st.success(f"✅ Success ({exec_time:.1f}ms)")
+                                else:
+                                    st.error(f"❌ Error: {error_msg}")
 
                     # Show cost info
                     costs = st.session_state.ai_costs
@@ -935,9 +951,17 @@ def display_chat_interface():
                 if message["function_calls"]:
                     with st.expander("🔧 Function Calls"):
                         for func_call in message["function_calls"]:
-                            st.write(
-                                f"**{func_call['function_name']}** - {func_call['execution_time_ms']:.1f}ms"
-                            )
+                            # Handle both dict and object formats
+                            if isinstance(func_call, dict):
+                                func_name = func_call.get("function_name", "unknown")
+                                exec_time = func_call.get("execution_time_ms", 0.0)
+                            else:
+                                func_name = getattr(
+                                    func_call, "function_name", "unknown"
+                                )
+                                exec_time = getattr(func_call, "execution_time_ms", 0.0)
+
+                            st.write(f"**{func_name}** - {exec_time:.1f}ms")
 
                 with st.expander("📊 Response Metadata"):
                     col1, col2 = st.columns(2)

@@ -150,9 +150,14 @@ class BitvavoDataMapper:
                         logger.warning(f"Skipping invalid asset symbol '{symbol_str}': length {len(symbol_str)} (must be 2-10 characters)")
                         continue
 
-                    asset_symbol = AssetSymbol(symbol_str)
-                    asset_amount = AssetAmount(total_amount, asset_symbol)
-                    balances[asset_symbol] = asset_amount
+                # Additional validation: check for valid characters (alphanumeric only)
+                if not symbol_str.isalnum():
+                    logger.warning(f"Skipping invalid asset symbol '{symbol_str}': contains non-alphanumeric characters")
+                    continue
+
+                asset_symbol = AssetSymbol(symbol_str)
+                asset_amount = AssetAmount(total_amount, asset_symbol)
+                balances[asset_symbol] = asset_amount
                     
             except Exception as e:
                 logger.warning(f"Skipping invalid balance data: {e}")
