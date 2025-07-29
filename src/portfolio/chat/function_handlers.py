@@ -248,6 +248,15 @@ class PortfolioFunctionHandler:
                 },
             },
             {
+                "name": "analyze_market_trends",
+                "description": "📈 Analyze comprehensive market trends including overall market direction, sector rotation, market cycle phase, and correlation patterns. Provides macro-level market insights beyond individual asset analysis.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                },
+            },
+            {
                 "name": "search_crypto_news",
                 "description": "Search for latest cryptocurrency news and market analysis using Perplexity AI",
                 "parameters": {
@@ -421,6 +430,12 @@ class PortfolioFunctionHandler:
                 result = self._get_current_holdings()
                 holdings_count = len(result.get("holdings", []))
                 logger.info(f"✅ Retrieved {holdings_count} holdings")
+            elif function_name == "analyze_market_trends":
+                logger.info("📈 Analyzing comprehensive market trends...")
+                result = self._analyze_market_trends()
+                logger.info(
+                    f"✅ Market trend analysis completed: {result.get('market_trend', 'UNKNOWN')}"
+                )
             elif function_name == "search_crypto_news":
                 result = self._search_crypto_news(**args)
             elif function_name == "analyze_market_opportunities":
@@ -1071,6 +1086,34 @@ class PortfolioFunctionHandler:
             "note": "These are your current holdings - consider this when making new investment recommendations",
         }
 
+    def _analyze_market_trends(self) -> Dict[str, Any]:
+        """Analyze comprehensive market trends using the MarketTrendAnalyzer."""
+        try:
+            from ..predictions.market_trends import MarketTrendAnalyzer
+
+            analyzer = MarketTrendAnalyzer()
+            result = analyzer.analyze_market_trends(self.portfolio_data)
+
+            # Add context for AI interpretation
+            result["interpretation_guide"] = {
+                "market_trend": "Overall market direction (STRONG_BULLISH, BULLISH, NEUTRAL, BEARISH, STRONG_BEARISH)",
+                "trend_strength": "Strength of the trend (0.0 to 1.0)",
+                "market_cycle_phase": "Current market cycle (EUPHORIA, BULL_MARKET, EARLY_BULL, ACCUMULATION, CONSOLIDATION, BEAR_MARKET, CAPITULATION)",
+                "sector_rotation": "Which crypto sectors are leading/lagging",
+                "momentum_indicators": "Portfolio momentum analysis",
+                "correlation_insights": "Diversification and correlation patterns",
+            }
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Error in market trend analysis: {e}")
+            return {
+                "error": f"Failed to analyze market trends: {str(e)}",
+                "market_trend": "ERROR",
+                "trend_strength": 0.0,
+            }
+
     def _search_crypto_news(self, query: str, focus: str = "news") -> Dict[str, Any]:
         """Search for cryptocurrency news using Perplexity AI."""
         try:
@@ -1081,6 +1124,24 @@ class PortfolioFunctionHandler:
             api_key = os.getenv("PERPLEXITY_API_KEY")
             if not api_key:
                 return {"error": "Perplexity API key not configured"}
+
+            # Try to get cached result first (30 minute cache)
+            try:
+                from backend.app.core.database import get_dev_cache
+
+                cache = get_dev_cache()
+
+                # Create cache key from query and focus
+                cache_key = f"{query.lower().strip()}_{focus}"
+                cached_result = cache.get_cached_crypto_news(cache_key)
+
+                if cached_result:
+                    logger.info(
+                        f"🔄 Using cached crypto news for: '{query}' (focus: {focus})"
+                    )
+                    return cached_result
+            except Exception as cache_error:
+                logger.warning(f"Cache lookup failed: {cache_error}")
 
             # Enhance query based on focus
             focus_prompts = {
@@ -1122,13 +1183,25 @@ class PortfolioFunctionHandler:
                 result = response.json()
                 content = result["choices"][0]["message"]["content"]
 
-                return {
+                news_result = {
                     "query": query,
                     "focus": focus,
                     "research_results": content,
                     "source": "Perplexity AI",
                     "timestamp": "now",
                 }
+
+                # Cache the successful result for 30 minutes
+                try:
+                    cache_key = f"{query.lower().strip()}_{focus}"
+                    cache.cache_crypto_news(cache_key, news_result, ttl_minutes=30)
+                    logger.info(
+                        f"💾 Crypto news cached for: '{query}' (focus: {focus})"
+                    )
+                except Exception as cache_error:
+                    logger.warning(f"Failed to cache news result: {cache_error}")
+
+                return news_result
             else:
                 return {"error": f"Perplexity API error: {response.status_code}"}
 

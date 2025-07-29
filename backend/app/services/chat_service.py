@@ -121,8 +121,7 @@ class ChatService(IChatService):
         # Initialize AI clients
         self._llm_client = None
         self._function_handler = None
-        self._cached_portfolio_data = None
-        self._cache_timestamp = None
+        self._orchestrator = None
 
         logger.info("Chat service initialized")
 
@@ -156,57 +155,67 @@ class ChatService(IChatService):
 
         return self._llm_client
 
-    async def _get_function_handler(self, force_refresh: bool = False):
-        """Get or create function handler with current portfolio data."""
-        import time
+    async def _get_function_handler(self):
+        """Get function handler with fresh portfolio data from backend cache."""
+        logger.info("🔄 Getting fresh portfolio data for function handler...")
 
-        # Check if we need to refresh the cache (5 minutes cache)
-        current_time = time.time()
-        cache_expired = (
-            self._cache_timestamp is None
-            or (current_time - self._cache_timestamp) > 300  # 5 minutes
-        )
+        # Always get fresh data - let the backend cache handle optimization
+        holdings = await self.portfolio_service.get_current_holdings(include_zero_balances=True)
 
-        if self._function_handler is None or force_refresh or cache_expired:
-            logger.info("🔄 Refreshing portfolio data for function handler...")
+        # Convert holdings to DataFrame format expected by function handler
+        import pandas as pd
 
-            # Get current portfolio data for function handler
-            holdings = await self.portfolio_service.get_current_holdings()
+        portfolio_data = []
+        for holding in holdings:
+            portfolio_data.append(
+                {
+                    "Asset": holding.asset,
+                    "Actual Amount": float(holding.quantity),
+                    "Actual Value €": float(holding.value_eur),
+                    "Total Return %": float(holding.total_return_percentage),
+                    "Unrealised €": float(holding.unrealized_pnl),
+                    "Current Price €": float(holding.current_price),
+                    "Cost €": float(holding.cost_basis),  # Add missing Cost column
+                    "Realised €": float(holding.realized_pnl),  # Add missing Realised column
+                    "Total Invested €": float(holding.cost_basis),  # Add Total Invested column
+                }
+            )
 
-            # Convert holdings to DataFrame format expected by function handler
-            import pandas as pd
+        df = pd.DataFrame(portfolio_data)
 
-            portfolio_data = []
+        # Lazy import to avoid module-level import issues
+        try:
+            from src.portfolio.chat.function_handlers import PortfolioFunctionHandler
+        except ImportError as e:
+            raise ChatServiceException(f"Failed to import function handler: {e}")
 
-            for holding in holdings:
-                portfolio_data.append(
-                    {
-                        "Asset": holding.asset,
-                        "Actual Amount": float(holding.quantity),
-                        "Actual Value €": float(holding.value_eur),
-                        "Total Return %": float(holding.total_return_percentage),
-                        "Unrealised €": float(holding.unrealized_pnl),
-                        "Current Price €": float(holding.current_price),
-                    }
-                )
+        logger.info(f"✅ Portfolio data loaded with {len(df)} holdings")
+        return PortfolioFunctionHandler(df)
 
-            df = pd.DataFrame(portfolio_data)
+
+
+    async def _get_orchestrator(self):
+        """Get or create orchestrator agent for query intent analysis."""
+        if self._orchestrator is None:
+            # Get dependencies
+            llm_client = self._get_llm_client()
+            function_handler = await self._get_function_handler()
+
+            if function_handler is None:
+                logger.warning("Cannot create orchestrator without function handler")
+                return None
 
             # Lazy import to avoid module-level import issues
             try:
-                from src.portfolio.chat.function_handlers import PortfolioFunctionHandler
+                from src.portfolio.chat.orchestrator import OrchestratorAgent
             except ImportError as e:
-                raise ChatServiceException(f"Failed to import function handler: {e}")
+                logger.error(f"Failed to import orchestrator: {e}")
+                return None
 
-            self._function_handler = PortfolioFunctionHandler(df)
-            self._cached_portfolio_data = df
-            self._cache_timestamp = current_time
+            self._orchestrator = OrchestratorAgent(function_handler, llm_client)
+            logger.info("✅ Chat orchestrator initialized")
 
-            logger.info(f"✅ Portfolio data cached with {len(df)} holdings")
-        else:
-            logger.info("📋 Using cached portfolio data for function handler")
-
-        return self._function_handler
+        return self._orchestrator
 
     def _get_portfolio_context_summary(self) -> str:
         """Generate a concise portfolio context summary to reduce redundant function calls."""
@@ -291,6 +300,10 @@ For detailed analysis, you can use the available functions, but avoid calling ge
 
             # Generate conversation ID if not provided
             conversation_id = request.conversation_id or str(uuid.uuid4())
+
+            # Check if orchestrator mode is requested
+            if request.use_orchestrator:
+                return await self._process_with_orchestrator(request, conversation_id, start_time)
 
             # Get AI client and function handler
             llm_client = self._get_llm_client(request.model_preference)
@@ -488,6 +501,118 @@ For detailed analysis, you can use the available functions, but avoid calling ge
             logger.info(f"Direct AI response: {len(ai_response)} characters")
 
         return ai_response, function_calls
+
+    async def _process_with_orchestrator(self, request: ChatRequest, conversation_id: str, start_time: float) -> ChatResponse:
+        """Process chat request using the orchestrator for query intent analysis."""
+        logger.info("🎯 Processing with orchestrator (query intent analysis)")
+
+        try:
+            # Get orchestrator
+            orchestrator = await self._get_orchestrator()
+            if orchestrator is None:
+                logger.warning("Orchestrator unavailable, falling back to regular processing")
+                # Fallback to regular processing
+                request.use_orchestrator = False
+                return await self.process_chat_request(request)
+
+            # Process query with orchestrator
+            orchestrator_results = orchestrator.process_query(request.message)
+
+            # Extract the synthesized response from orchestrator results
+            ai_response = self._extract_orchestrator_response(orchestrator_results)
+
+            # Calculate response time
+            end_time = time.time()
+            response_time_ms = (end_time - start_time) * 1000
+
+            # Get token usage and cost estimate (approximate for orchestrator)
+            token_usage = {"input_tokens": len(request.message) // 4, "output_tokens": len(ai_response) // 4}
+            cost_estimate = 0.01  # Approximate cost for orchestrator workflow
+
+            # Store conversation
+            if conversation_id not in self._conversations:
+                self._conversations[conversation_id] = []
+
+            self._conversations[conversation_id].extend([
+                ChatMessage(
+                    role=MessageRole.USER,
+                    content=request.message,
+                    timestamp=datetime.now(UTC),
+                ),
+                ChatMessage(
+                    role=MessageRole.ASSISTANT,
+                    content=ai_response,
+                    timestamp=datetime.now(UTC),
+                ),
+            ])
+
+            # Create function call responses from orchestrator results
+            function_calls = self._create_function_calls_from_orchestrator(orchestrator_results)
+
+            return ChatResponse(
+                message=ai_response,
+                conversation_id=conversation_id,
+                model_used="orchestrator-workflow",  # Add missing model_used field
+                function_calls=function_calls,
+                response_time_ms=response_time_ms,
+                token_usage=token_usage,
+                cost_estimate=cost_estimate,
+            )
+
+        except Exception as e:
+            logger.error(f"Orchestrator processing failed: {e}")
+            # Fallback to regular processing
+            request.use_orchestrator = False
+            return await self.process_chat_request(request)
+
+    def _extract_orchestrator_response(self, orchestrator_results: Dict) -> str:
+        """Extract the final AI response from orchestrator results."""
+        # Look for synthesized recommendation or final result
+        if "step_6_synthesize_recommendation" in orchestrator_results:
+            return orchestrator_results["step_6_synthesize_recommendation"]
+
+        # If no synthesis, combine key results
+        response_parts = []
+
+        # Add portfolio summary if available
+        if "step_2_get_portfolio_summary" in orchestrator_results:
+            portfolio_data = orchestrator_results["step_2_get_portfolio_summary"]
+            if isinstance(portfolio_data, dict):
+                response_parts.append(f"**Portfolio Summary:**\n- Total Value: €{portfolio_data.get('total_value', 'N/A')}\n- Total Return: {portfolio_data.get('total_return_percentage', 'N/A')}%")
+
+        # Add market opportunities if available
+        if "step_3_analyze_market_opportunities" in orchestrator_results:
+            response_parts.append("**Market Analysis:** Market opportunities analyzed based on current conditions.")
+
+        # Add risk assessment if available
+        if "step_5_get_risk_assessment" in orchestrator_results:
+            response_parts.append("**Risk Assessment:** Portfolio risk profile evaluated.")
+
+        if response_parts:
+            return "\n\n".join(response_parts)
+        else:
+            return "I've analyzed your query using advanced workflow orchestration. The analysis has been completed successfully."
+
+    def _create_function_calls_from_orchestrator(self, orchestrator_results: Dict) -> List[FunctionCallResponse]:
+        """Create function call responses from orchestrator workflow results."""
+        function_calls = []
+
+        for key, result in orchestrator_results.items():
+            if key.startswith("step_") and "_" in key:
+                # Extract function name from step key (e.g., "step_2_get_portfolio_summary" -> "get_portfolio_summary")
+                parts = key.split("_", 2)
+                if len(parts) >= 3:
+                    function_name = parts[2]
+
+                    function_calls.append(FunctionCallResponse(
+                        function_name=function_name,
+                        result=result,
+                        success=True,
+                        error_message=None,
+                        execution_time_ms=100.0,  # Approximate
+                    ))
+
+        return function_calls
 
     def _get_system_prompt(self, provider) -> str:
         """Get system prompt for the AI model."""

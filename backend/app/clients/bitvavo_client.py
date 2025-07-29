@@ -202,14 +202,32 @@ class BitvavoClientDecorator:
         Returns:
             List of deposit data
         """
+        # Try cache first if enabled
+        if self.enable_cache:
+            cached_deposits = self.cache.get_cached_deposit_history(symbol)
+            if cached_deposits:
+                scope = f"for {symbol}" if symbol else "for all assets"
+                logger.info(f"🔄 Using cached deposit history {scope} ({len(cached_deposits)} deposits)")
+                return cached_deposits
+
         try:
             logger.info(f"📡 Fetching deposit history from Bitvavo API{f' for {symbol}' if symbol else ''}")
             deposit_data = await self._client.get_deposit_history(symbol)
+
+            # Cache the successful response
+            if self.enable_cache and deposit_data is not None:
+                self.cache.cache_deposit_history(deposit_data, symbol, ttl_hours=24)
+                scope = f"for {symbol}" if symbol else "for all assets"
+                logger.info(f"💾 Deposit history cached {scope}: {len(deposit_data)} deposits")
+
             return deposit_data
 
         except (RateLimitExceededError, BitvavoAPIException) as e:
             logger.warning(f"Deposit history API call failed: {e}")
-            # For now, return empty list on error
+            # Try to return cached data even if expired as fallback
+            if self.enable_cache:
+                # TODO: Add fallback to expired cache if needed
+                pass
             return []
 
     async def get_withdrawal_history(self, symbol: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -222,14 +240,32 @@ class BitvavoClientDecorator:
         Returns:
             List of withdrawal data
         """
+        # Try cache first if enabled
+        if self.enable_cache:
+            cached_withdrawals = self.cache.get_cached_withdrawal_history(symbol)
+            if cached_withdrawals:
+                scope = f"for {symbol}" if symbol else "for all assets"
+                logger.info(f"🔄 Using cached withdrawal history {scope} ({len(cached_withdrawals)} withdrawals)")
+                return cached_withdrawals
+
         try:
             logger.info(f"📡 Fetching withdrawal history from Bitvavo API{f' for {symbol}' if symbol else ''}")
             withdrawal_data = await self._client.get_withdrawal_history(symbol)
+
+            # Cache the successful response
+            if self.enable_cache and withdrawal_data is not None:
+                self.cache.cache_withdrawal_history(withdrawal_data, symbol, ttl_hours=24)
+                scope = f"for {symbol}" if symbol else "for all assets"
+                logger.info(f"💾 Withdrawal history cached {scope}: {len(withdrawal_data)} withdrawals")
+
             return withdrawal_data
 
         except (RateLimitExceededError, BitvavoAPIException) as e:
             logger.warning(f"Withdrawal history API call failed: {e}")
-            # For now, return empty list on error
+            # Try to return cached data even if expired as fallback
+            if self.enable_cache:
+                # TODO: Add fallback to expired cache if needed
+                pass
             return []
 
     def get_cache_stats(self) -> Dict[str, Any]:
@@ -253,17 +289,98 @@ class BitvavoClientDecorator:
             # Clear all cache to force refresh
             with self.cache._get_connection() as conn:
                 cursor = conn.cursor()
-                tables = ['portfolio_holdings', 'market_prices', 'trade_history']
+                tables = ['portfolio_holdings', 'market_prices', 'trade_history', 'deposit_history', 'withdrawal_history', 'crypto_news']
                 for table in tables:
                     cursor.execute(f"DELETE FROM {table}")
                 conn.commit()
             
             logger.info("All cache cleared - next API calls will fetch fresh data")
     
+    async def get_multiple_ticker_prices(self, markets: List[str]) -> Dict[str, Dict[str, Any]]:
+        """
+        Get ticker prices for multiple markets with rate-limited parallel execution.
+
+        This method respects the existing rate limiting by using a semaphore to control
+        concurrency and ensuring proper delays between API calls.
+
+        Args:
+            markets: List of market symbols (e.g., ['BTC-EUR', 'ETH-EUR'])
+
+        Returns:
+            Dict mapping market symbols to ticker data
+        """
+        import asyncio
+
+        logger.info(f"🚀 Fetching prices for {len(markets)} markets with rate-limited parallel execution")
+
+        # 🛡️ RATE LIMITING: Use semaphore to limit concurrent requests
+        # Bitvavo allows ~10 requests per second, so we limit to 3 concurrent to be safe
+        max_concurrent = min(3, len(markets))  # Never exceed 3 concurrent requests
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        async def rate_limited_price_fetch(market: str):
+            """Fetch price with rate limiting and proper error handling."""
+            async with semaphore:
+                try:
+                    asset_symbol = market.split('-')[0]
+
+                    # 🕐 RATE LIMITING: Respect the underlying client's rate limiting
+                    # The base client already handles rate limiting, but we add extra safety
+                    if hasattr(self._client, '_rate_limit'):
+                        # Let the base client handle its own rate limiting
+                        pass
+                    else:
+                        # Fallback delay if base client doesn't have rate limiting
+                        await asyncio.sleep(0.2)
+
+                    result = await self.get_ticker_price(asset_symbol)
+                    logger.debug(f"✅ Got price for {market}: €{result.get('price', 'N/A')}")
+                    return market, result
+
+                except (RateLimitExceededError, BitvavoAPIException) as e:
+                    logger.warning(f"API call failed for {market}: {e}")
+
+                    # Try cache fallback
+                    asset_symbol = market.split('-')[0]
+                    if self.enable_cache:
+                        cached_price = self.cache.get_cached_market_price(asset_symbol)
+                        if cached_price:
+                            logger.info(f"🔄 Using cached price for {market}: €{cached_price}")
+                            return market, {"price": cached_price}
+
+                    return market, None
+
+                except Exception as e:
+                    logger.error(f"Unexpected error fetching price for {market}: {e}")
+                    return market, None
+
+        # Execute all requests with rate limiting
+        tasks = [rate_limited_price_fetch(market) for market in markets]
+        completed_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Process results
+        results = {}
+        successful_count = 0
+
+        for result in completed_results:
+            if isinstance(result, Exception):
+                logger.error(f"Task failed with exception: {result}")
+                continue
+
+            market, price_data = result
+            if price_data is not None:
+                results[market] = price_data
+                successful_count += 1
+
+        logger.info(f"🎉 Rate-limited parallel fetch completed: {successful_count}/{len(markets)} successful")
+        logger.info(f"⚡ Used max {max_concurrent} concurrent requests with proper rate limiting")
+
+        return results
+
     async def health_check(self) -> Dict[str, Any]:
         """
         Check API and cache health.
-        
+
         Returns:
             Health status information
         """
@@ -273,7 +390,7 @@ class BitvavoClientDecorator:
             "cache_stats": {},
             "last_error": None
         }
-        
+
         # Test API availability
         try:
             await self._client.get_ticker_price("BTC-EUR")
@@ -282,11 +399,11 @@ class BitvavoClientDecorator:
         except Exception as e:
             health["last_error"] = str(e)
             logger.warning(f"❌ Bitvavo API unavailable: {e}")
-        
+
         # Get cache stats
         if self.enable_cache:
             health["cache_stats"] = self.get_cache_stats()
-        
+
         return health
 
 

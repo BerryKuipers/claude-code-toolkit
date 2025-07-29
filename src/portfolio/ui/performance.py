@@ -147,6 +147,51 @@ class PerformanceOptimizer:
         return results
 
     @staticmethod
+    async def parallel_api_calls(
+        api_calls: list, max_concurrent: int = 3, rate_limit_delay: float = 0.2
+    ):
+        """Execute API calls in parallel with concurrency control and rate limiting.
+
+        Args:
+            api_calls: List of async API call coroutines
+            max_concurrent: Maximum number of concurrent calls (default: 3 for Bitvavo safety)
+            rate_limit_delay: Delay between API calls in seconds
+
+        Returns:
+            List of results in the same order as input calls
+        """
+        import asyncio
+        from asyncio import Semaphore
+
+        # 🛡️ RATE LIMITING: Conservative concurrency limit for API safety
+        safe_concurrent = min(max_concurrent, 3)  # Never exceed 3 for Bitvavo
+        semaphore = Semaphore(safe_concurrent)
+
+        async def rate_limited_call(call):
+            async with semaphore:
+                try:
+                    # 🕐 RATE LIMITING: Add delay between requests
+                    await asyncio.sleep(rate_limit_delay)
+                    return await call
+                except Exception as e:
+                    logger.error(f"Rate-limited parallel API call failed: {e}")
+                    return None
+
+        logger.info(
+            f"🚀 Executing {len(api_calls)} API calls with max {safe_concurrent} concurrent (rate-limited)"
+        )
+
+        # Execute all calls with concurrency and rate limiting
+        results = await asyncio.gather(*[rate_limited_call(call) for call in api_calls])
+
+        successful_count = sum(1 for result in results if result is not None)
+        logger.info(
+            f"🎉 Rate-limited parallel execution completed: {successful_count}/{len(api_calls)} successful"
+        )
+
+        return results
+
+    @staticmethod
     def optimize_streamlit_config():
         """Apply Streamlit performance optimizations."""
         # Configure Streamlit for better performance

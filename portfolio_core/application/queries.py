@@ -25,6 +25,7 @@ class GetAssetHoldingsQuery:
     min_value_threshold: Optional[float] = None
     sort_by: str = "value"  # "value", "allocation", "pnl", "symbol"
     sort_descending: bool = True
+    include_zero_balances: bool = False  # Include assets with zero holdings
 
 
 @dataclass(frozen=True)

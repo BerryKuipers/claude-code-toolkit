@@ -16,7 +16,7 @@ from ....models.common import BaseResponse
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/cache", tags=["cache"])
+router = APIRouter(tags=["cache"])
 
 
 @router.get("/stats", response_model=Dict[str, Any])

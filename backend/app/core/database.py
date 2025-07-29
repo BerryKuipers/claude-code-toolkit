@@ -91,6 +91,42 @@ class DevCacheDatabase:
                 )
             """)
             
+            # Deposit history cache
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS deposit_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    asset_symbol TEXT,  -- NULL for all assets
+                    deposit_data TEXT NOT NULL,  -- JSON blob
+                    cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    expires_at TIMESTAMP NOT NULL,
+                    UNIQUE(asset_symbol)
+                )
+            """)
+
+            # Withdrawal history cache
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS withdrawal_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    asset_symbol TEXT,  -- NULL for all assets
+                    withdrawal_data TEXT NOT NULL,  -- JSON blob
+                    cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    expires_at TIMESTAMP NOT NULL,
+                    UNIQUE(asset_symbol)
+                )
+            """)
+
+            # Crypto news cache
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS crypto_news (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    query_hash TEXT UNIQUE NOT NULL,
+                    query TEXT NOT NULL,
+                    news_data TEXT NOT NULL,
+                    cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    expires_at TIMESTAMP NOT NULL
+                )
+            """)
+
             # Cache metadata
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS cache_metadata (
@@ -99,7 +135,7 @@ class DevCacheDatabase:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            
+
             conn.commit()
             logger.debug("Database tables created/verified")
     
@@ -229,21 +265,93 @@ class DevCacheDatabase:
                 return trades
             
             return None
-    
+
+    def cache_deposit_history(self, deposit_data: List[Dict], asset_symbol: Optional[str] = None, ttl_hours: int = 24):
+        """Cache deposit history for an asset or all assets."""
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=ttl_hours)
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                INSERT OR REPLACE INTO deposit_history
+                (asset_symbol, deposit_data, expires_at)
+                VALUES (?, ?, ?)
+            """, (asset_symbol, json.dumps(deposit_data), expires_at))
+
+            conn.commit()
+            scope = f"for {asset_symbol}" if asset_symbol else "for all assets"
+            logger.info(f"Cached {len(deposit_data)} deposits {scope} (TTL: {ttl_hours}h)")
+
+    def get_cached_deposit_history(self, asset_symbol: Optional[str] = None) -> Optional[List[Dict]]:
+        """Get cached deposit history if not expired."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                SELECT deposit_data FROM deposit_history
+                WHERE asset_symbol IS ? AND expires_at > CURRENT_TIMESTAMP
+            """, (asset_symbol,))
+
+            row = cursor.fetchone()
+            if row:
+                deposits = json.loads(row['deposit_data'])
+                scope = f"for {asset_symbol}" if asset_symbol else "for all assets"
+                logger.info(f"Retrieved {len(deposits)} cached deposits {scope}")
+                return deposits
+
+            return None
+
+    def cache_withdrawal_history(self, withdrawal_data: List[Dict], asset_symbol: Optional[str] = None, ttl_hours: int = 24):
+        """Cache withdrawal history for an asset or all assets."""
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=ttl_hours)
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                INSERT OR REPLACE INTO withdrawal_history
+                (asset_symbol, withdrawal_data, expires_at)
+                VALUES (?, ?, ?)
+            """, (asset_symbol, json.dumps(withdrawal_data), expires_at))
+
+            conn.commit()
+            scope = f"for {asset_symbol}" if asset_symbol else "for all assets"
+            logger.info(f"Cached {len(withdrawal_data)} withdrawals {scope} (TTL: {ttl_hours}h)")
+
+    def get_cached_withdrawal_history(self, asset_symbol: Optional[str] = None) -> Optional[List[Dict]]:
+        """Get cached withdrawal history if not expired."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                SELECT withdrawal_data FROM withdrawal_history
+                WHERE asset_symbol IS ? AND expires_at > CURRENT_TIMESTAMP
+            """, (asset_symbol,))
+
+            row = cursor.fetchone()
+            if row:
+                withdrawals = json.loads(row['withdrawal_data'])
+                scope = f"for {asset_symbol}" if asset_symbol else "for all assets"
+                logger.info(f"Retrieved {len(withdrawals)} cached withdrawals {scope}")
+                return withdrawals
+
+            return None
+
     def clear_expired_cache(self):
         """Clear all expired cache entries."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            
-            tables = ['portfolio_holdings', 'market_prices', 'trade_history', 'portfolio_summary']
+
+            tables = ['portfolio_holdings', 'market_prices', 'trade_history', 'portfolio_summary', 'deposit_history', 'withdrawal_history']
             total_cleared = 0
-            
+
             for table in tables:
                 cursor.execute(f"DELETE FROM {table} WHERE expires_at <= CURRENT_TIMESTAMP")
                 cleared = cursor.rowcount
                 total_cleared += cleared
                 logger.debug(f"Cleared {cleared} expired entries from {table}")
-            
+
             conn.commit()
             logger.info(f"Cleared {total_cleared} total expired cache entries")
     
@@ -251,18 +359,60 @@ class DevCacheDatabase:
         """Get cache statistics."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            
+
             stats = {}
-            tables = ['portfolio_holdings', 'market_prices', 'trade_history', 'portfolio_summary']
-            
+            tables = ['portfolio_holdings', 'market_prices', 'trade_history', 'portfolio_summary', 'deposit_history', 'withdrawal_history', 'crypto_news']
+
             for table in tables:
                 cursor.execute(f"SELECT COUNT(*) as count FROM {table}")
                 stats[f"{table}_total"] = cursor.fetchone()['count']
-                
+
                 cursor.execute(f"SELECT COUNT(*) as count FROM {table} WHERE expires_at > CURRENT_TIMESTAMP")
                 stats[f"{table}_valid"] = cursor.fetchone()['count']
-            
+
             return stats
+
+    def cache_crypto_news(self, query: str, news_data: Dict, ttl_minutes: int = 30):
+        """Cache crypto news search results."""
+        import hashlib
+
+        # Create hash of query for unique identification
+        query_hash = hashlib.md5(query.lower().strip().encode()).hexdigest()
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            # Calculate expiration time
+            expires_at = datetime.now(timezone.utc) + timedelta(minutes=ttl_minutes)
+
+            cursor.execute("""
+                INSERT OR REPLACE INTO crypto_news
+                (query_hash, query, news_data, expires_at)
+                VALUES (?, ?, ?, ?)
+            """, (query_hash, query, json.dumps(news_data), expires_at))
+
+            conn.commit()
+
+    def get_cached_crypto_news(self, query: str) -> Optional[Dict]:
+        """Get cached crypto news search results."""
+        import hashlib
+
+        # Create hash of query for lookup
+        query_hash = hashlib.md5(query.lower().strip().encode()).hexdigest()
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                SELECT news_data FROM crypto_news
+                WHERE query_hash = ? AND expires_at > CURRENT_TIMESTAMP
+            """, (query_hash,))
+
+            result = cursor.fetchone()
+            if result:
+                return json.loads(result['news_data'])
+
+            return None
 
 
 # Global cache instance

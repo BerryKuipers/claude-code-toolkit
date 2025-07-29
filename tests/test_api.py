@@ -3,6 +3,7 @@
 
 import os
 import sys
+
 from python_bitvavo_api.bitvavo import Bitvavo
 
 

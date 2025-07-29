@@ -152,7 +152,8 @@ class PortfolioApplicationService:
             total_portfolio_value = updated_portfolio.get_total_value().amount
             
             for asset in updated_portfolio.assets:
-                if not asset.holdings.is_positive():
+                # Filter out zero balances unless explicitly requested
+                if not query.include_zero_balances and not asset.holdings.is_positive():
                     continue
                 
                 # Filter by asset symbols if specified

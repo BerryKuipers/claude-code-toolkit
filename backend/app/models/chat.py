@@ -124,6 +124,9 @@ class ChatRequest(BaseModel):
     use_function_calling: bool = Field(
         True, description="Whether to enable function calling"
     )
+    use_orchestrator: bool = Field(
+        False, description="Whether to use query intent analysis and orchestration"
+    )
     model_preference: Optional[str] = Field(None, description="Preferred AI model")
     temperature: float = Field(0.1, description="Response creativity (0.0-1.0)")
     max_tokens: Optional[int] = Field(None, description="Maximum response tokens")

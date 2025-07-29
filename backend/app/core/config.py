@@ -108,6 +108,12 @@ class Settings(BaseSettings):
     cache_trades_ttl_hours: int = Field(
         24, description="Trade history cache TTL in hours"
     )
+    cache_deposits_ttl_hours: int = Field(
+        24, description="Deposit history cache TTL in hours"
+    )
+    cache_withdrawals_ttl_hours: int = Field(
+        24, description="Withdrawal history cache TTL in hours"
+    )
 
     @field_validator("bitvavo_api_key", "bitvavo_api_secret")
     @classmethod

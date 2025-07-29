@@ -191,10 +191,19 @@ def display_ai_model_selector():
         help="Allow AI to call portfolio functions for accurate data",
     )
 
+    # Orchestrator toggle
+    use_orchestrator = st.sidebar.checkbox(
+        "🎯 Enable Query Orchestration",
+        value=False,
+        key="use_orchestrator",
+        help="Use advanced query intent analysis and multi-step workflows for complex queries",
+    )
+
     return {
         "model": selected_model,
         "temperature": temperature,
         "use_functions": use_functions,
+        "use_orchestrator": use_orchestrator,
     }
 
 
@@ -308,18 +317,38 @@ def filter_holdings_by_selection(holdings, filter_type):
     return holdings
 
 
-@st.cache_data(ttl=300)  # Cache for 5 minutes
+@st.cache_data(ttl=3600)  # Cache for 1 hour (matches backend cache)
 def _fetch_portfolio_data():
-    """Internal function to fetch portfolio data from API backend."""
+    """Internal function to fetch portfolio data from API backend with parallel loading."""
     try:
         client = get_api_client()
-        logger.info("Fetching fresh portfolio data from API...")
+        logger.info(
+            "Fetching portfolio data from API (backend will use cache if available)..."
+        )
 
-        # Load data sequentially to avoid threading issues with asyncio
-        summary = client.get_portfolio_summary()
-        holdings = client.get_current_holdings()
+        # 🚀 PARALLEL LOADING OPTIMIZATION: Use the combined endpoint for better performance
+        # This endpoint fetches both summary and holdings in parallel on the backend
+        try:
+            # Try the optimized combined endpoint first
+            combined_data = client._run_async(
+                client._get_or_create_client().get_portfolio_holdings()
+            )
+            summary = combined_data.summary
+            holdings = combined_data.holdings
+            logger.info(
+                "Portfolio data fetched successfully using optimized parallel endpoint"
+            )
+        except (AttributeError, Exception) as e:
+            # Fallback to individual calls if combined endpoint not available
+            logger.warning(
+                f"Combined endpoint not available, falling back to individual calls: {e}"
+            )
+            summary = client.get_portfolio_summary()
+            holdings = client.get_current_holdings()
+            logger.info(
+                "Portfolio data fetched successfully using individual endpoints"
+            )
 
-        logger.info("Portfolio data fetched successfully")
         return summary, holdings
 
     except APIException as e:
@@ -331,7 +360,9 @@ def _fetch_portfolio_data():
 
 
 def load_portfolio_data(show_progress=True):
-    """Load portfolio data with optional progress indicators."""
+    """Load portfolio data with optional progress indicators and performance tracking."""
+    import time
+
     # Check if we should show progress (only for first load or explicit refresh)
     if show_progress and not st.session_state.get("_portfolio_data_loaded", False):
         progress_placeholder = st.empty()
@@ -339,19 +370,32 @@ def load_portfolio_data(show_progress=True):
         try:
             with progress_placeholder:
                 st.info(
-                    "🔄 Step 1/2: Loading portfolio summary (may take 20-30 seconds)..."
+                    "🚀 Loading portfolio data with parallel optimization (5-10 seconds)..."
                 )
 
-            # This will either fetch from cache or make API call
+            # Track loading performance
+            start_time = time.time()
+
+            # This will either fetch from cache or make API call with parallel optimization
             summary, holdings = _fetch_portfolio_data()
 
+            end_time = time.time()
+            load_time = end_time - start_time
+
             with progress_placeholder:
-                st.info(
-                    "🔄 Step 2/2: Loading current holdings (may take 10-15 seconds)..."
+                st.success(
+                    f"✅ Portfolio data loaded successfully in {load_time:.1f} seconds!"
                 )
+                time.sleep(1)  # Show success message briefly
 
             # Clear progress indicator
             progress_placeholder.empty()
+
+            # Store performance metrics
+            st.session_state["_last_load_time"] = load_time
+            st.session_state["_load_performance"] = (
+                "optimized" if load_time < 10 else "standard"
+            )
             return summary, holdings
 
         except Exception as e:
@@ -696,6 +740,7 @@ def render_sticky_chat_interface(df=None):
                     )  # Let backend choose default
                     temperature = st.session_state.get("ai_temperature", 0.1)
                     use_functions = st.session_state.get("use_function_calling", True)
+                    use_orchestrator = st.session_state.get("use_orchestrator", False)
 
                     # Use execute_query if available, otherwise use user_input
                     query_message = execute_query if execute_query else user_input
@@ -704,6 +749,7 @@ def render_sticky_chat_interface(df=None):
                     chat_params = {
                         "message": query_message,
                         "use_function_calling": use_functions,
+                        "use_orchestrator": use_orchestrator,
                         "temperature": temperature,
                     }
                     if model:  # Only add model if explicitly selected
@@ -936,10 +982,14 @@ def display_chat_interface():
 
             # Send to backend
             with st.spinner("🤔 Thinking..."):
+                # Get orchestrator setting from session state
+                use_orchestrator = st.session_state.get("use_orchestrator", False)
+
                 response = client.chat_query(
                     message=user_message,
                     conversation_id=st.session_state.conversation_id,
                     use_function_calling=True,
+                    use_orchestrator=use_orchestrator,
                 )
 
             # Update conversation ID
@@ -1034,11 +1084,23 @@ def main():
                 del st.session_state._portfolio_load_time
             st.rerun()
     with col2:
-        # Show last refresh time if data is loaded
+        # Show last refresh time and performance metrics if data is loaded
         if hasattr(st.session_state, "_portfolio_data_loaded") and hasattr(
             st.session_state, "_portfolio_load_time"
         ):
             st.caption(f"📊 Data loaded at {st.session_state._portfolio_load_time}")
+
+            # Show performance metrics if available
+            if st.session_state.get("_last_load_time"):
+                load_time = st.session_state["_last_load_time"]
+                performance = st.session_state.get("_load_performance", "standard")
+
+                if load_time < 10:
+                    st.caption(
+                        f"⚡ Optimized loading: {load_time:.1f}s ({performance})"
+                    )
+                else:
+                    st.caption(f"⏱️ Standard loading: {load_time:.1f}s")
         else:
             st.caption("📊 No data loaded yet")
 

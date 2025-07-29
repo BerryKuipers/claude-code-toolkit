@@ -102,8 +102,8 @@ class AssetSymbol:
         # Convert to uppercase for consistency
         object.__setattr__(self, 'symbol', self.symbol.upper())
         
-        if len(self.symbol) < 2 or len(self.symbol) > 10:
-            raise ValueError("Asset symbol must be between 2 and 10 characters")
+        if len(self.symbol) < 1 or len(self.symbol) > 15:
+            raise ValueError("Asset symbol must be between 1 and 15 characters")
     
     def __str__(self) -> str:
         """String representation of asset symbol."""

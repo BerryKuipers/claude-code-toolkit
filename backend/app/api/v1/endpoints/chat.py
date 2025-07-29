@@ -25,6 +25,7 @@ from ....models.chat import (
     RefreshDataResponse,
 )
 
+
 router = APIRouter()
 
 
@@ -223,3 +224,6 @@ async def delete_conversation(
         raise HTTPException(status_code=404, detail=str(e))
     except ChatServiceException as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+

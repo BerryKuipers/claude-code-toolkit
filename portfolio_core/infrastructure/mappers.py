@@ -141,8 +141,9 @@ class BitvavoDataMapper:
                     continue
 
                 # Validate symbol before creating AssetSymbol
-                if len(symbol_str) < 2 or len(symbol_str) > 10:
-                    logger.warning(f"Skipping invalid asset symbol '{symbol_str}': length {len(symbol_str)} (must be 2-10 characters)")
+                # Allow 1-character symbols (e.g., 'A' for Aave) but be more permissive
+                if len(symbol_str) < 1 or len(symbol_str) > 15:
+                    logger.warning(f"Skipping invalid asset symbol '{symbol_str}': length {len(symbol_str)} (must be 1-15 characters)")
                     continue
 
                 # Additional validation: check for valid characters (alphanumeric only)

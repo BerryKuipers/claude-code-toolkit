@@ -80,6 +80,7 @@ async def get_portfolio_summary(
 )
 async def get_current_holdings(
     portfolio_service: PortfolioServiceDep,
+    include_zero_balances: bool = Query(False, description="Include assets with zero balances"),
 ) -> List[HoldingResponse]:
     """
     Get all current portfolio holdings.
@@ -100,7 +101,7 @@ async def get_current_holdings(
         HTTPException: If holdings data cannot be retrieved
     """
     try:
-        return await portfolio_service.get_current_holdings()
+        return await portfolio_service.get_current_holdings(include_zero_balances=include_zero_balances)
     except PortfolioServiceException as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -119,6 +120,37 @@ async def get_portfolio_holdings(
 
     This endpoint combines portfolio summary and holdings data
     for efficient frontend data loading.
+
+    Args:
+        portfolio_service: Injected portfolio service
+
+    Returns:
+        PortfolioHoldingsResponse: Complete portfolio data
+
+    Raises:
+        HTTPException: If portfolio data cannot be retrieved
+    """
+    try:
+        return await portfolio_service.get_portfolio_holdings()
+    except PortfolioServiceException as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/data",
+    response_model=PortfolioHoldingsResponse,
+    summary="Get Complete Portfolio Data (Parallel Optimized)",
+    description="Get complete portfolio data including holdings and summary with parallel loading optimization",
+)
+async def get_portfolio_data_optimized(
+    portfolio_service: PortfolioServiceDep,
+) -> PortfolioHoldingsResponse:
+    """
+    Get complete portfolio data including holdings and summary with parallel loading optimization.
+
+    This endpoint combines portfolio summary and holdings data
+    for efficient frontend data loading. The backend fetches both
+    summary and holdings data in parallel for improved performance.
 
     Args:
         portfolio_service: Injected portfolio service

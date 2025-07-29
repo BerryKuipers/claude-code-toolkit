@@ -68,6 +68,8 @@ class PortfolioDataVerifier:
                 return self._verify_current_holdings(result_data)
             elif function_name == "get_price_prediction":
                 return self._verify_price_prediction(args, result_data)
+            elif function_name == "search_crypto_news":
+                return self._verify_search_crypto_news(result_data)
             else:
                 # Unknown function - allow but log
                 logger.warning(f"Unknown function for verification: {function_name}")
@@ -443,3 +445,42 @@ class PortfolioDataVerifier:
                 json.dumps(result_data),
                 f"Price prediction verification error: {str(e)}",
             )
+
+    def _verify_search_crypto_news(
+        self, result_data: Dict[str, Any]
+    ) -> Tuple[bool, str, Optional[str]]:
+        """Verify search_crypto_news function results."""
+        # For external API calls like Perplexity, we mainly verify structure
+        if "error" in result_data:
+            # Error responses are valid - API might be down or key missing
+            return True, json.dumps(result_data), None
+
+        # Check for expected fields in successful response
+        required_fields = ["query", "research_results", "source"]
+        missing_fields = [
+            field for field in required_fields if field not in result_data
+        ]
+
+        if missing_fields:
+            error_msg = f"Missing required fields in search results: {missing_fields}"
+            logger.warning(error_msg)
+            return False, json.dumps(result_data), error_msg
+
+        # Verify research_results is not empty
+        research_results = result_data.get("research_results", "")
+        if not research_results or len(research_results.strip()) < 10:
+            error_msg = "Research results are empty or too short"
+            logger.warning(error_msg)
+            return False, json.dumps(result_data), error_msg
+
+        # Log successful verification
+        self.verification_log.append(
+            {
+                "function": "search_crypto_news",
+                "status": "verified",
+                "timestamp": pd.Timestamp.now(),
+                "details": f"Verified search for '{result_data.get('query', 'unknown')}' - {len(research_results)} chars",
+            }
+        )
+
+        return True, json.dumps(result_data), None

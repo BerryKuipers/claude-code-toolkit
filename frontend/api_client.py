@@ -88,7 +88,7 @@ class CryptoPortfolioAPIClient:
     with proper error handling and response parsing.
     """
     
-    def __init__(self, base_url: str = "http://localhost:8000", timeout: float = 60.0):
+    def __init__(self, base_url: str = "http://localhost:8000", timeout: float = 120.0):
         """
         Initialize API client.
         
@@ -138,10 +138,24 @@ class CryptoPortfolioAPIClient:
         data = await self._request("GET", "/api/v1/portfolio/summary")
         return PortfolioSummary(data)
     
-    async def get_current_holdings(self) -> List[Holding]:
+    async def get_current_holdings(self, include_zero_balances: bool = True) -> List[Holding]:
         """Get list of all current holdings."""
-        data = await self._request("GET", "/api/v1/portfolio/holdings")
+        params = {"include_zero_balances": include_zero_balances}
+        data = await self._request("GET", "/api/v1/portfolio/holdings", params=params)
         return [Holding(holding) for holding in data]
+
+    async def get_portfolio_holdings(self) -> "PortfolioHoldingsData":
+        """Get complete portfolio data including holdings and summary with parallel loading."""
+        data = await self._request("GET", "/api/v1/portfolio/data")
+
+        # Create a simple data container for the combined response
+        class PortfolioHoldingsData:
+            def __init__(self, data):
+                self.summary = PortfolioSummary(data["summary"])
+                self.holdings = [Holding(holding) for holding in data["holdings"]]
+                self.last_updated = data.get("last_updated")
+
+        return PortfolioHoldingsData(data)
     
     async def get_asset_performance(self, asset: str) -> Holding:
         """Get performance data for a specific asset."""
@@ -158,6 +172,10 @@ class CryptoPortfolioAPIClient:
         """Force refresh of portfolio data."""
         data = await self._request("POST", "/api/v1/portfolio/refresh")
         return data.get("success", False)
+
+    async def get_cache_stats(self) -> Dict:
+        """Get cache statistics and health information."""
+        return await self._request("GET", "/api/v1/cache/stats")
     
     # Market endpoints
     async def get_market_data(self) -> Dict:
@@ -175,12 +193,13 @@ class CryptoPortfolioAPIClient:
     
     # Chat endpoints
     async def chat_query(self, message: str, conversation_id: Optional[str] = None,
-                        use_function_calling: bool = True, temperature: float = 0.1,
-                        model: Optional[str] = None) -> ChatResponse:
-        """Send chat query to AI assistant."""
+                        use_function_calling: bool = True, use_orchestrator: bool = False,
+                        temperature: float = 0.1, model: Optional[str] = None) -> ChatResponse:
+        """Send chat query to AI assistant with optional orchestrator support."""
         data = {
             "message": message,
             "use_function_calling": use_function_calling,
+            "use_orchestrator": use_orchestrator,
             "temperature": temperature
         }
         if conversation_id:
@@ -223,7 +242,7 @@ class SyncCryptoPortfolioAPIClient:
     while maintaining the same type safety.
     """
 
-    def __init__(self, base_url: str = "http://localhost:8000", timeout: float = 60.0):
+    def __init__(self, base_url: str = "http://localhost:8000", timeout: float = 120.0):
         self.base_url = base_url
         self.timeout = timeout
         self._loop = None
@@ -257,7 +276,21 @@ class SyncCryptoPortfolioAPIClient:
 
         except Exception as e:
             logger.error(f"Error running async operation: {e}")
-            raise
+            logger.error(f"Exception type: {type(e)}")
+            logger.error(f"Exception details: {str(e)}")
+
+            # Get more detailed error information
+            if hasattr(e, '__cause__') and e.__cause__:
+                logger.error(f"Root cause: {e.__cause__}")
+            if hasattr(e, 'args') and e.args:
+                logger.error(f"Error args: {e.args}")
+
+            # Check for specific error types
+            error_msg = str(e)
+            if not error_msg or error_msg.strip() == "":
+                error_msg = f"Unknown {type(e).__name__} error occurred"
+
+            raise APIException(f"Request failed: {error_msg}")
     
     def health_check(self) -> Dict:
         """Check API health status."""
@@ -269,10 +302,15 @@ class SyncCryptoPortfolioAPIClient:
         client = self._get_or_create_client()
         return self._run_async(client.get_portfolio_summary())
 
-    def get_current_holdings(self) -> List[Holding]:
+    def get_current_holdings(self, include_zero_balances: bool = True) -> List[Holding]:
         """Get list of all current holdings."""
         client = self._get_or_create_client()
-        return self._run_async(client.get_current_holdings())
+        return self._run_async(client.get_current_holdings(include_zero_balances=include_zero_balances))
+
+    def get_portfolio_holdings(self):
+        """Get complete portfolio data including holdings and summary with parallel loading."""
+        client = self._get_or_create_client()
+        return self._run_async(client.get_portfolio_holdings())
 
     def get_asset_performance(self, asset: str) -> Holding:
         """Get performance data for a specific asset."""
@@ -289,18 +327,23 @@ class SyncCryptoPortfolioAPIClient:
         client = self._get_or_create_client()
         return self._run_async(client.refresh_portfolio_data())
 
+    def get_cache_stats(self) -> Dict:
+        """Get cache statistics and health information."""
+        client = self._get_or_create_client()
+        return self._run_async(client.get_cache_stats())
+
     def get_market_data(self) -> Dict:
         """Get comprehensive market data."""
         client = self._get_or_create_client()
         return self._run_async(client.get_market_data())
     
     def chat_query(self, message: str, conversation_id: Optional[str] = None,
-                   use_function_calling: bool = True, temperature: float = 0.1,
-                   model: Optional[str] = None) -> ChatResponse:
-        """Send chat query to AI assistant."""
+                   use_function_calling: bool = True, use_orchestrator: bool = False,
+                   temperature: float = 0.1, model: Optional[str] = None) -> ChatResponse:
+        """Send chat query to AI assistant with optional orchestrator support."""
         client = self._get_or_create_client()
         return self._run_async(client.chat_query(
-            message, conversation_id, use_function_calling, temperature, model
+            message, conversation_id, use_function_calling, use_orchestrator, temperature, model
         ))
 
     def get_available_functions(self) -> Dict:

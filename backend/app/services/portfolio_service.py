@@ -121,36 +121,38 @@ class PortfolioAPIService(BaseService, IPortfolioService):
         except Exception as e:
             self._handle_service_error("get portfolio summary", e, Exception)
     
-    async def get_current_holdings(self, assets: Optional[List[str]] = None) -> List[HoldingResponse]:
+    async def get_current_holdings(self, assets: Optional[List[str]] = None, include_zero_balances: bool = False) -> List[HoldingResponse]:
         """
         Get asset holdings using Clean Architecture.
-        
+
         Args:
             assets: Optional list of asset symbols to filter by
-            
+            include_zero_balances: Whether to include assets with zero holdings
+
         Returns:
             List of asset holding responses
         """
         try:
             self._log_operation_start("Getting asset holdings")
-            
+
             # Create query using Clean Architecture
             query = GetAssetHoldingsQuery(
                 portfolio_id=self.default_portfolio_id,
                 asset_symbols=assets,
                 sort_by="value",
-                sort_descending=True
+                sort_descending=True,
+                include_zero_balances=include_zero_balances
             )
-            
+
             # Execute query through application service
             holdings_dto = await self.portfolio_app_service.get_asset_holdings(query)
-            
+
             # Map DTOs to API response models
             responses = [self._map_holding_dto_to_response(dto) for dto in holdings_dto]
-            
+
             self._log_operation_success("Getting asset holdings", f"Found {len(responses)} holdings")
             return responses
-            
+
         except Exception as e:
             self._handle_service_error("get asset holdings", e, Exception)
     
@@ -182,13 +184,17 @@ class PortfolioAPIService(BaseService, IPortfolioService):
         )
     
     async def get_portfolio_holdings(self) -> "PortfolioHoldingsResponse":
-        """Get complete portfolio data including holdings and summary."""
+        """Get complete portfolio data including holdings and summary with parallel loading."""
         try:
             self._log_operation_start("Getting complete portfolio holdings")
 
-            # Get both summary and holdings
-            summary = await self.get_portfolio_summary()
-            holdings = await self.get_current_holdings()
+            # 🚀 PARALLEL LOADING OPTIMIZATION: Get both summary and holdings concurrently
+            import asyncio
+            summary_task = asyncio.create_task(self.get_portfolio_summary())
+            holdings_task = asyncio.create_task(self.get_current_holdings(include_zero_balances=True))
+
+            # Wait for both tasks to complete in parallel
+            summary, holdings = await asyncio.gather(summary_task, holdings_task)
 
             from ..models.portfolio import PortfolioHoldingsResponse
             response = PortfolioHoldingsResponse(
