@@ -17,7 +17,7 @@ from ..core.exceptions import (
     InvalidAPIKeyError,
     RateLimitExceededError,
 )
-from ..services.interfaces.bitvavo_client import IBitvavoClient
+# Import moved to avoid circular imports - will implement interface implicitly
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ except ImportError:
     Bitvavo = None
 
 
-class BitvavoAPIClient(IBitvavoClient):
+class BitvavoAPIClient:
     """
     Strongly typed Bitvavo API client implementation.
 
@@ -44,6 +44,7 @@ class BitvavoAPIClient(IBitvavoClient):
         """
         self.settings = settings
         self._client: Optional["Bitvavo"] = None
+        self._last_request_time = 0.0
 
         if Bitvavo is None:
             raise BitvavoAPIException("python-bitvavo-api package not installed")
@@ -70,17 +71,17 @@ class BitvavoAPIClient(IBitvavoClient):
         return self._client
 
     def _check_rate_limit(self) -> None:
-        """Enforce rate limit using existing rate limiter."""
-        # Import here to avoid circular imports
-        import os
-        import sys
+        """Enforce rate limit with simple time-based approach."""
+        import time
 
-        sys.path.insert(
-            0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "src")
-        )
-        from src.portfolio.api import default_rate_limiter
+        # Simple rate limiting - 200ms delay between requests
+        current_time = time.time()
+        if hasattr(self, '_last_request_time'):
+            time_since_last = current_time - self._last_request_time
+            if time_since_last < 0.2:  # 200ms minimum delay
+                time.sleep(0.2 - time_since_last)
 
-        default_rate_limiter.enforce_rate_limit(self._get_client())
+        self._last_request_time = time.time()
 
     def _decimal(self, value: str | float | int | Decimal) -> Decimal:
         """Convert value to Decimal safely."""
