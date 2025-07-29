@@ -85,7 +85,13 @@ class PortfolioService(BaseService, IPortfolioService):
         """Round a Decimal value to specified decimal places."""
         if not isinstance(value, Decimal):
             value = Decimal(str(value))
-        quantizer = Decimal('0.01') if places == 2 else Decimal('0.' + '0' * places)
+
+        # Create proper quantizer for the specified decimal places
+        if places == 0:
+            quantizer = Decimal('1')
+        else:
+            quantizer = Decimal('0.' + '0' * places)
+
         return value.quantize(quantizer, rounding=ROUND_HALF_UP)
     
     async def get_portfolio_summary(self) -> PortfolioSummaryResponse:
