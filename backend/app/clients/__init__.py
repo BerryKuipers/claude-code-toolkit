@@ -5,8 +5,8 @@ This module provides strongly typed clients for external APIs
 with proper error handling and rate limiting.
 """
 
-from .bitvavo_client import BitvavoClient
+from .bitvavo_client import BitvavoAPIClient
 
 __all__ = [
-    "BitvavoClient",
+    "BitvavoAPIClient",
 ]

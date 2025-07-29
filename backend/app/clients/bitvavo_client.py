@@ -27,7 +27,7 @@ except ImportError:
     Bitvavo = None
 
 
-class BitvavoClient(IBitvavoClient):
+class BitvavoAPIClient(IBitvavoClient):
     """
     Strongly typed Bitvavo API client implementation.
 
