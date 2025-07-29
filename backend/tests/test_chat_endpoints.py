@@ -267,3 +267,91 @@ class TestChatEndpoints:
 
         assert response.status_code == 404
         assert "Conversation not found" in response.json()["detail"]
+
+    def test_get_function_definition_success(self, client, mock_chat_service, sample_function_definition):
+        """Test successful function definition retrieval."""
+        mock_chat_service.get_function_definition.return_value = sample_function_definition
+
+        response = client.get("/api/v1/chat/functions/get_portfolio_summary")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "get_portfolio_summary"
+        assert data["description"] == "Get portfolio summary with total value and holdings"
+        assert "parameters" in data
+
+    def test_get_function_definition_not_found(self, client, mock_chat_service):
+        """Test function definition for non-existent function."""
+        mock_chat_service.get_function_definition.side_effect = FunctionNotFoundException("Function not found")
+
+        response = client.get("/api/v1/chat/functions/invalid_function")
+
+        assert response.status_code == 404
+        assert "Function not found" in response.json()["detail"]
+
+    def test_get_function_definition_service_error(self, client, mock_chat_service):
+        """Test function definition with service error."""
+        mock_chat_service.get_function_definition.side_effect = ChatServiceException("Service unavailable")
+
+        response = client.get("/api/v1/chat/functions/get_portfolio_summary")
+
+        assert response.status_code == 500
+        assert "Service unavailable" in response.json()["detail"]
+
+    def test_process_chat_query_invalid_temperature(self, client, mock_chat_service):
+        """Test chat query with invalid temperature value."""
+        invalid_request = {
+            "message": "Test message",
+            "temperature": 2.0,  # Invalid: should be between 0.0 and 1.0
+        }
+
+        response = client.post("/api/v1/chat/query", json=invalid_request)
+
+        assert response.status_code == 422  # Validation error
+
+    def test_process_chat_query_empty_message(self, client, mock_chat_service):
+        """Test chat query with empty message."""
+        invalid_request = {
+            "message": "",  # Empty message should be invalid
+            "model": "claude-sonnet-4",
+        }
+
+        response = client.post("/api/v1/chat/query", json=invalid_request)
+
+        assert response.status_code == 422  # Validation error
+
+    def test_process_chat_query_invalid_request_exception(self, client, mock_chat_service, sample_chat_request):
+        """Test chat query with invalid request exception."""
+        mock_chat_service.process_chat_request.side_effect = InvalidRequestException("Invalid request format")
+
+        response = client.post("/api/v1/chat/query", json=sample_chat_request)
+
+        assert response.status_code == 400
+        assert "Invalid request format" in response.json()["detail"]
+
+    def test_create_conversation_service_error(self, client, mock_chat_service):
+        """Test conversation creation with service error."""
+        mock_chat_service.create_conversation.side_effect = ChatServiceException("Failed to create conversation")
+
+        response = client.post("/api/v1/chat/conversations")
+
+        assert response.status_code == 500
+        assert "Failed to create conversation" in response.json()["detail"]
+
+    def test_get_conversation_history_service_error(self, client, mock_chat_service):
+        """Test conversation history with service error."""
+        mock_chat_service.get_conversation_history.side_effect = ChatServiceException("Database unavailable")
+
+        response = client.get("/api/v1/chat/conversations/conv-123")
+
+        assert response.status_code == 500
+        assert "Database unavailable" in response.json()["detail"]
+
+    def test_delete_conversation_service_error(self, client, mock_chat_service):
+        """Test conversation deletion with service error."""
+        mock_chat_service.delete_conversation.side_effect = ChatServiceException("Failed to delete")
+
+        response = client.delete("/api/v1/chat/conversations/conv-123")
+
+        assert response.status_code == 500
+        assert "Failed to delete" in response.json()["detail"]

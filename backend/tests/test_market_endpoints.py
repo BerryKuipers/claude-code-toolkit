@@ -240,3 +240,44 @@ class TestMarketEndpoints:
 
         assert response.status_code == 500
         assert "Service unavailable" in response.json()["detail"]
+
+    def test_get_current_prices_with_specific_assets(self, client, mock_market_service, sample_price_response):
+        """Test getting current prices for specific assets."""
+        prices = {"BTC": sample_price_response, "ETH": sample_price_response}
+        mock_market_service.get_current_prices.return_value = prices
+
+        response = client.get("/api/v1/market/prices?assets=BTC&assets=ETH")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "BTC" in data
+        assert "ETH" in data
+        mock_market_service.get_current_prices.assert_called_once()
+
+    def test_get_current_prices_empty_result(self, client, mock_market_service):
+        """Test getting current prices when no data is available."""
+        mock_market_service.get_current_prices.return_value = {}
+
+        response = client.get("/api/v1/market/prices")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data == {}
+
+    def test_get_market_data_service_exception(self, client, mock_market_service):
+        """Test market data endpoint with service exception."""
+        mock_market_service.get_market_data.side_effect = MarketServiceException("External API unavailable")
+
+        response = client.get("/api/v1/market/data")
+
+        assert response.status_code == 500
+        assert "External API unavailable" in response.json()["detail"]
+
+    def test_refresh_market_data_service_exception(self, client, mock_market_service):
+        """Test market data refresh with service exception."""
+        mock_market_service.refresh_market_data.side_effect = MarketServiceException("Refresh failed")
+
+        response = client.post("/api/v1/market/refresh")
+
+        assert response.status_code == 500
+        assert "Refresh failed" in response.json()["detail"]
