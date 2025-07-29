@@ -5,6 +5,10 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 from ..ai_explanations import generate_coin_explanation
 from ..data.dataframe_utils import SafeDataFrameOperations

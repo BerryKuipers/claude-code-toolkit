@@ -429,15 +429,15 @@ def display_holdings_table(holdings):
             "Current Price €": st.column_config.NumberColumn(
                 "Current Price €", format="€%.4f"
             ),
-            "Value €": st.column_config.NumberColumn("Value €", format="€%,.2f"),
+            "Value €": st.column_config.NumberColumn("Value €", format="€%.2f"),
             "Cost Basis €": st.column_config.NumberColumn(
-                "Cost Basis €", format="€%,.2f"
+                "Cost Basis €", format="€%.2f"
             ),
             "Unrealized P&L €": st.column_config.NumberColumn(
-                "Unrealized P&L €", format="€%,.2f"
+                "Unrealized P&L €", format="€%.2f"
             ),
             "Realized P&L €": st.column_config.NumberColumn(
-                "Realized P&L €", format="€%,.2f"
+                "Realized P&L €", format="€%.2f"
             ),
             "Portfolio %": st.column_config.NumberColumn(
                 "Portfolio %", format="%.2f%%"
@@ -661,18 +661,18 @@ def render_sticky_chat_interface(df=None):
                     response = client.chat_query(**chat_params)
 
                     # Display the AI response
-                    st.success(f"🤖 **AI Response:**\n\n{response.response}")
+                    st.success(f"🤖 **AI Response:**\n\n{response.message}")
 
                     # Save to chat history
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     st.session_state.chat_history.append(
-                        (user_input, response.response, timestamp)
+                        (user_input, response.message, timestamp)
                     )
 
                     # Update cost tracking (estimate tokens)
                     estimated_tokens = (
                         len(user_input.split()) * 1.3
-                        + len(response.response.split()) * 1.3
+                        + len(response.message.split()) * 1.3
                     )
                     update_cost_tracking(model, int(estimated_tokens))
 
