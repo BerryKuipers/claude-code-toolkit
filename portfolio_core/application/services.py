@@ -153,8 +153,12 @@ class PortfolioApplicationService:
             
             for asset in updated_portfolio.assets:
                 # Filter out zero balances unless explicitly requested
-                if not query.include_zero_balances and not asset.holdings.is_positive():
-                    continue
+                # Use a very small threshold instead of exact zero to handle precision issues
+                if not query.include_zero_balances:
+                    # Consider amounts smaller than 0.000000001 as zero (dust threshold)
+                    dust_threshold = Decimal("0.000000001")
+                    if asset.holdings.amount <= dust_threshold:
+                        continue
                 
                 # Filter by asset symbols if specified
                 if query.asset_symbols and str(asset.symbol) not in query.asset_symbols:

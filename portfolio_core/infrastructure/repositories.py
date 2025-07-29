@@ -109,9 +109,9 @@ class BitvavoPortfolioRepository(IPortfolioRepository):
             trades_by_asset = {}
             for asset in assets:
                 trades = await self.get_trades_for_asset(portfolio_id, asset, start_time, end_time)
-                if trades:  # Only include assets with trades
-                    trades_by_asset[asset] = trades
-            
+                # Include ALL assets, even those without trades (transfers, airdrops, etc.)
+                trades_by_asset[asset] = trades  # Empty list if no trades
+
             return trades_by_asset
             
         except Exception as e:

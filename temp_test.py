@@ -130,12 +130,11 @@ class TestAssetCountIntegration:
         """Test that cache stores all holdings including zeros."""
         cache = temp_cache_db
 
-        # The cache expects 'symbol' field, but our sample data uses 'asset'
-        # Convert to the format that matches the real Bitvavo API response
+        # Convert sample data to format expected by cache (asset -> symbol)
         cache_format_data = []
         for holding in sample_holdings_data:
             cache_format_data.append({
-                'symbol': holding['asset'],  # Cache database uses 'symbol' field
+                'symbol': holding['asset'],  # Cache expects 'symbol' field
                 'available': holding['available'],
                 'inOrder': holding['inOrder']
             })
@@ -182,9 +181,7 @@ class TestAssetCountIntegration:
                 from backend.app.services.chat_service import ChatService
 
                 # Get real services
-                from backend.app.core.config import get_settings
-                settings = get_settings()
-                container = DependencyContainer(settings)
+                container = DependencyContainer()
                 portfolio_service = container.get_portfolio_service()
                 chat_service = container.get_chat_service()
 

@@ -155,10 +155,11 @@ class BitvavoDataMapper:
                 in_order = Decimal(str(balance_item.get("inOrder", "0")))
                 total_amount = available + in_order
 
-                if total_amount > 0:
-                    asset_symbol = AssetSymbol(symbol_str)
-                    asset_amount = AssetAmount(total_amount, asset_symbol)
-                    balances[asset_symbol] = asset_amount
+                # Include ALL assets, even those with zero balances
+                # Filtering should happen at the application layer based on include_zero_balances parameter
+                asset_symbol = AssetSymbol(symbol_str)
+                asset_amount = AssetAmount(total_amount, asset_symbol)
+                balances[asset_symbol] = asset_amount
                     
             except Exception as e:
                 logger.warning(f"Skipping invalid balance data: {e}")
