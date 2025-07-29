@@ -152,6 +152,13 @@ Thumbs.db
 logs/
 *.log
 .env.local
+
+# Development cache databases
+data/
+backend/data/
+*.db
+dev_cache.db
+cache.db
 .env.production
 config.json
 secrets.json
