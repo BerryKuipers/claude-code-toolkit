@@ -427,23 +427,23 @@ def display_holdings_table(holdings):
             "Asset": st.column_config.TextColumn("Asset", width="small"),
             "Quantity": st.column_config.NumberColumn("Quantity", format="%.6f"),
             "Current Price €": st.column_config.NumberColumn(
-                "Current Price €", format="€{:.4f}"
+                "Current Price €", format="€%.4f"
             ),
-            "Value €": st.column_config.NumberColumn("Value €", format="€{:,.2f}"),
+            "Value €": st.column_config.NumberColumn("Value €", format="€%,.2f"),
             "Cost Basis €": st.column_config.NumberColumn(
-                "Cost Basis €", format="€{:,.2f}"
+                "Cost Basis €", format="€%,.2f"
             ),
             "Unrealized P&L €": st.column_config.NumberColumn(
-                "Unrealized P&L €", format="€{:,.2f}"
+                "Unrealized P&L €", format="€%,.2f"
             ),
             "Realized P&L €": st.column_config.NumberColumn(
-                "Realized P&L €", format="€{:,.2f}"
+                "Realized P&L €", format="€%,.2f"
             ),
             "Portfolio %": st.column_config.NumberColumn(
-                "Portfolio %", format="{:.2f}%"
+                "Portfolio %", format="%.2f%%"
             ),
             "Total Return %": st.column_config.NumberColumn(
-                "Total Return %", format="{:.2f}%"
+                "Total Return %", format="%.2f%%"
             ),
         },
     )
