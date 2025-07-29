@@ -7,7 +7,7 @@ to reduce API calls and provide resilience during development.
 
 import logging
 from typing import List, Dict, Any, Optional
-from decimal import Decimal
+
 
 from .bitvavo_client import BitvavoAPIClient
 from ..core.database import get_dev_cache
@@ -128,14 +128,17 @@ class CachedBitvavoAPIClient:
             # Re-raise if no cache available
             raise
     
-    async def get_trades(self, market: str, limit: int = 500) -> List[Dict[str, Any]]:
+    async def get_trades(self, market: str, limit: int = 1000, start: Optional[int] = None,
+                        end: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Get trade history with caching.
-        
+
         Args:
             market: Market symbol (e.g., 'BTC-EUR')
             limit: Maximum number of trades to return
-            
+            start: Start timestamp for trade history (optional)
+            end: End timestamp for trade history (optional)
+
         Returns:
             List of trade data
         """
@@ -151,7 +154,7 @@ class CachedBitvavoAPIClient:
         # Try API call
         try:
             logger.info(f"📡 Fetching fresh trades for {market} from Bitvavo API")
-            trades_data = await self.api_client.get_trades(market, limit)
+            trades_data = await self.api_client.get_trades(market, limit, start, end)
             
             # Cache the successful response
             if self.enable_cache and trades_data:
