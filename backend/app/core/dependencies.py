@@ -57,9 +57,9 @@ def get_portfolio_service(
         container: Clean Architecture dependency container
 
     Returns:
-        Portfolio application service
+        Portfolio service (adapter layer)
     """
-    return container.get_portfolio_application_service()
+    return container.get_portfolio_service()
 
 
 def get_market_service(
