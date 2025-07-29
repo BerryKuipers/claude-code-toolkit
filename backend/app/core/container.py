@@ -9,7 +9,7 @@ import logging
 import sys
 import os
 from uuid import UUID, uuid4
-from typing import Optional
+from typing import Optional, Union
 
 # Add project root to Python path for portfolio_core imports
 _current_file = os.path.abspath(__file__)
@@ -27,6 +27,7 @@ from portfolio_core.domain.services import FIFOCalculationService, PortfolioCalc
 from portfolio_core.infrastructure.repositories import BitvavoPortfolioRepository, BitvavoMarketDataRepository
 from portfolio_core.infrastructure.mappers import BitvavoDataMapper
 from portfolio_core.infrastructure.clients import BitvavoAPIClient
+from ..clients.cached_bitvavo_client import CachedBitvavoAPIClient
 
 logger = logging.getLogger(__name__)
 
@@ -48,21 +49,27 @@ class DependencyContainer:
         
         logger.info("Initializing Clean Architecture dependency container")
     
-    def get_bitvavo_api_client(self) -> BitvavoAPIClient:
-        """Get or create Bitvavo API client."""
+    def get_bitvavo_api_client(self) -> Union[BitvavoAPIClient, CachedBitvavoAPIClient]:
+        """Get or create Bitvavo API client with caching for development."""
         if "bitvavo_api_client" not in self._instances:
             try:
-                client = BitvavoAPIClient(
-                    api_key=self.settings.bitvavo_api_key,
-                    api_secret=self.settings.bitvavo_api_secret,
-                    rate_limit_delay=self.settings.bitvavo_rate_limit_delay
-                )
+                # Use cached client for development resilience
+                if self.settings.enable_dev_cache:
+                    client = CachedBitvavoAPIClient(self.settings)
+                    logger.info("✅ Created cached Bitvavo API client")
+                else:
+                    client = BitvavoAPIClient(
+                        api_key=self.settings.bitvavo_api_key,
+                        api_secret=self.settings.bitvavo_api_secret,
+                        rate_limit_delay=self.settings.bitvavo_rate_limit_delay
+                    )
+                    logger.info("✅ Created standard Bitvavo API client")
+
                 self._instances["bitvavo_api_client"] = client
-                logger.info("✅ Created Bitvavo API client")
             except Exception as e:
                 logger.error(f"❌ Failed to create Bitvavo API client: {e}")
                 raise
-        
+
         return self._instances["bitvavo_api_client"]
     
     def get_bitvavo_data_mapper(self) -> BitvavoDataMapper:
