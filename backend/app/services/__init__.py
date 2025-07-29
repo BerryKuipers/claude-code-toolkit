@@ -10,7 +10,7 @@ from .chat_service import ChatService
 from .interfaces import *
 from .market_service import MarketService
 from .portfolio_service import PortfolioService
-from .service_factory import ServiceFactory
+# ServiceFactory removed - using Clean Architecture container
 
 __all__ = [
     # Interfaces
@@ -20,7 +20,6 @@ __all__ = [
     "IBitvavoClient",
     # Base classes
     "BaseService",
-    "ServiceFactory",
     # Implementations
     "PortfolioService",
     "MarketService",

@@ -1,8 +1,8 @@
 """
-Dependency injection setup for FastAPI.
+Dependency injection setup for FastAPI using Clean Architecture.
 
 Provides C#-like dependency injection patterns with proper service lifetimes
-and interface-based dependency resolution using the Service Factory pattern.
+using the Clean Architecture dependency container.
 """
 
 from functools import lru_cache
@@ -10,97 +10,75 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from ..services.interfaces import (
-    IBitvavoClient,
-    IChatService,
-    IMarketService,
-    IPortfolioService,
-)
-from ..services.service_factory import ServiceFactory
+from .container import DependencyContainer, get_container
 from .config import Settings, get_settings
 
-# Service factory functions with proper dependency injection
+# Clean Architecture dependency injection
 
 
 @lru_cache()
-def get_service_factory(
+def get_dependency_container(
     settings: Annotated[Settings, Depends(get_settings)],
-) -> ServiceFactory:
+) -> DependencyContainer:
     """
-    Get service factory instance with dependency injection.
+    Get Clean Architecture dependency container.
 
     Args:
         settings: Application settings
 
     Returns:
-        ServiceFactory: Service factory for creating services
+        DependencyContainer: Clean Architecture container
     """
-    return ServiceFactory(settings)
+    return get_container(settings)
 
 
 def get_bitvavo_client(
-    factory: Annotated[ServiceFactory, Depends(get_service_factory)],
-) -> IBitvavoClient:
+    container: Annotated[DependencyContainer, Depends(get_dependency_container)],
+):
     """
-    Get Bitvavo client instance via service factory.
+    Get Bitvavo client instance from Clean Architecture container.
 
     Args:
-        factory: Service factory
+        container: Clean Architecture dependency container
 
     Returns:
-        IBitvavoClient: Bitvavo client implementation
+        Bitvavo client implementation (cached or standard)
     """
-    return factory.get_bitvavo_client()
+    return container.get_bitvavo_api_client()
 
 
 def get_portfolio_service(
-    factory: Annotated[ServiceFactory, Depends(get_service_factory)],
-) -> IPortfolioService:
+    container: Annotated[DependencyContainer, Depends(get_dependency_container)],
+):
     """
-    Get portfolio service instance via service factory.
+    Get portfolio service instance from Clean Architecture container.
 
     Args:
-        factory: Service factory
+        container: Clean Architecture dependency container
 
     Returns:
-        IPortfolioService: Portfolio service implementation
+        Portfolio application service
     """
-    return factory.get_portfolio_service()
+    return container.get_portfolio_application_service()
 
 
 def get_market_service(
-    factory: Annotated[ServiceFactory, Depends(get_service_factory)],
-) -> IMarketService:
+    container: Annotated[DependencyContainer, Depends(get_dependency_container)],
+):
     """
-    Get market service instance via service factory.
+    Get market service instance from Clean Architecture container.
 
     Args:
-        factory: Service factory
+        container: Clean Architecture dependency container
 
     Returns:
-        IMarketService: Market service implementation
+        Market data application service
     """
-    return factory.get_market_service()
-
-
-def get_chat_service(
-    factory: Annotated[ServiceFactory, Depends(get_service_factory)],
-) -> IChatService:
-    """
-    Get chat service instance via service factory.
-
-    Args:
-        factory: Service factory
-
-    Returns:
-        IChatService: Chat service implementation
-    """
-    return factory.get_chat_service()
+    return container.get_market_data_application_service()
 
 
 # Type aliases for cleaner dependency injection
-BitvavoClientDep = Annotated[IBitvavoClient, Depends(get_bitvavo_client)]
-PortfolioServiceDep = Annotated[IPortfolioService, Depends(get_portfolio_service)]
-MarketServiceDep = Annotated[IMarketService, Depends(get_market_service)]
-ChatServiceDep = Annotated[IChatService, Depends(get_chat_service)]
+BitvavoClientDep = Annotated[object, Depends(get_bitvavo_client)]
+PortfolioServiceDep = Annotated[object, Depends(get_portfolio_service)]
+MarketServiceDep = Annotated[object, Depends(get_market_service)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]

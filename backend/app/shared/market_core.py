@@ -24,27 +24,24 @@ logger = logging.getLogger(__name__)
 # Get settings for API credentials
 from ..core.config import get_settings
 
-# Import from the working crypto_portfolio package
-logger.info("🔄 Importing market data from crypto_portfolio package...")
-print("🔄 Importing market data from crypto_portfolio package...")
+# Import from Clean Architecture
+logger.info("🔄 Importing market data from Clean Architecture...")
+print("🔄 Importing market data from Clean Architecture...")
 
-from crypto_portfolio.core.bitvavo_client import BitvavoClient
-from crypto_portfolio.core.exceptions import (
-    PortfolioException,
-    BitvavoAPIException,
-)
+from portfolio_core.infrastructure.clients import BitvavoAPIClient, BitvavoAPIException
 
 logger.info("✅ Successfully imported crypto_portfolio package for market data")
 print("✅ Successfully imported crypto_portfolio package for market data")
 
 # Create market data service using crypto_portfolio
 class MarketDataService:
-    """Market data service using the crypto_portfolio package."""
+    """Market data service using Clean Architecture."""
     def __init__(self):
         settings = get_settings()
-        self.bitvavo_client = BitvavoClient(
+        self.bitvavo_client = BitvavoAPIClient(
             api_key=settings.bitvavo_api_key,
-            api_secret=settings.bitvavo_api_secret
+            api_secret=settings.bitvavo_api_secret,
+            rate_limit_delay=settings.bitvavo_rate_limit_delay
         )
 
 # Create service instance
