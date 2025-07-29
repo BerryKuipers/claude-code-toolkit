@@ -10,7 +10,7 @@ import os
 import sys
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Dict, List, Optional
 
 # Set environment variables from backend config at module level
@@ -344,12 +344,12 @@ class ChatService(IChatService):
                     ChatMessage(
                         role=MessageRole.USER,
                         content=request.message,
-                        timestamp=datetime.utcnow(),
+                        timestamp=datetime.now(UTC),
                     ),
                     ChatMessage(
                         role=MessageRole.ASSISTANT,
                         content=ai_response,
-                        timestamp=datetime.utcnow(),
+                        timestamp=datetime.now(UTC),
                     ),
                 ]
             )
@@ -497,8 +497,8 @@ Always provide detailed, accurate analysis based on the function call results. B
                 messages=messages,
                 total_messages=len(messages),
                 total_cost=len(messages) * 0.001,  # Mock cost calculation
-                created_at=messages[0].timestamp if messages else datetime.utcnow(),
-                last_updated=messages[-1].timestamp if messages else datetime.utcnow(),
+                created_at=messages[0].timestamp if messages else datetime.now(UTC),
+                last_updated=messages[-1].timestamp if messages else datetime.now(UTC),
             )
 
         except ConversationNotFoundException:

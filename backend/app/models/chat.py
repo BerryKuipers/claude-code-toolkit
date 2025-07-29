@@ -5,7 +5,7 @@ These models provide strongly typed interfaces for AI chat interactions,
 function calling, and response handling with full validation.
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
@@ -40,7 +40,7 @@ class ChatMessage(BaseModel):
     role: MessageRole = Field(..., description="Message role")
     content: str = Field(..., description="Message content")
     timestamp: datetime = Field(
-        default_factory=datetime.utcnow, description="Message timestamp"
+        default_factory=lambda: datetime.now(UTC), description="Message timestamp"
     )
     function_call: Optional[Dict[str, Any]] = Field(
         None, description="Function call data"

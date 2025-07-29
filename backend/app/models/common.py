@@ -5,7 +5,7 @@ These provide shared data structures and validation patterns
 similar to C# base classes and common types.
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from decimal import Decimal
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
@@ -30,7 +30,7 @@ class BaseResponse(BaseModel):
 
     success: bool = Field(True, description="Whether the request was successful")
     timestamp: datetime = Field(
-        default_factory=datetime.utcnow, description="Response timestamp"
+        default_factory=lambda: datetime.now(UTC), description="Response timestamp"
     )
 
     model_config = {

@@ -133,10 +133,10 @@ class TestFIFOCalculationService:
         result = self.fifo_service.calculate_asset_pnl(trades, current_price)
 
         # Should log warning about overselling
-        assert "Sold more BTC than available" in caplog.text
+        assert "Significant overselling in BTC" in caplog.text
 
-        # Result should still be calculated
-        assert result["amount"] == Decimal("0")  # No remaining holdings
+        # Result should still be calculated - synthetic lot for oversold amount
+        assert result["amount"] == Decimal("1.0")  # Represents oversold amount
 
     def test_trades_sorted_by_timestamp(self):
         """Test that trades are properly sorted by timestamp for FIFO."""

@@ -6,7 +6,7 @@ and integration with existing market analysis logic.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from decimal import Decimal
 from typing import Dict, List, Optional
 
@@ -93,7 +93,7 @@ class MarketService(BaseService, IMarketService):
                         price_eur=price_data["price_eur"],
                         price_change_24h=price_change_24h,
                         volume_24h=volume_24h,
-                        last_updated=datetime.utcnow(),
+                        last_updated=datetime.now(UTC),
                     )
                 except Exception as e:
                     self.logger.warning(f"Error processing price for {asset}: {e}")
@@ -145,7 +145,7 @@ class MarketService(BaseService, IMarketService):
                 fear_greed_index=market_summary["fear_greed_index"],
                 top_gainers=sorted_prices[:3] if len(sorted_prices) >= 3 else sorted_prices,
                 top_losers=sorted_prices[-2:] if len(sorted_prices) >= 2 else [],
-                last_updated=datetime.utcnow(),
+                last_updated=datetime.now(UTC),
             )
 
         except Exception as e:
@@ -176,7 +176,7 @@ class MarketService(BaseService, IMarketService):
                     opportunities=[],
                     market_sentiment="Unknown",
                     analysis_summary="No market data available for analysis",
-                    last_updated=datetime.utcnow(),
+                    last_updated=datetime.now(UTC),
                 )
 
             # Find opportunities based on real price movements
@@ -226,7 +226,7 @@ class MarketService(BaseService, IMarketService):
                 opportunities=opportunities[:5],  # Limit to top 5 opportunities
                 market_sentiment=sentiment,
                 analysis_summary=summary,
-                last_updated=datetime.utcnow(),
+                last_updated=datetime.now(UTC),
             )
 
         except Exception as e:
@@ -318,7 +318,7 @@ class MarketService(BaseService, IMarketService):
                 resistance_levels=resistance_levels,
                 recommendation=recommendation,
                 risk_level=risk_level,
-                analysis_timestamp=datetime.utcnow(),
+                analysis_timestamp=datetime.now(UTC),
             )
 
         except AssetNotFoundException:

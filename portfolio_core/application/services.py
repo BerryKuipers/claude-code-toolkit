@@ -7,7 +7,7 @@ the application workflow.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from decimal import Decimal
 from typing import Dict, List, Optional
 from uuid import UUID
@@ -109,7 +109,7 @@ class PortfolioApplicationService:
                 total_pnl=updated_portfolio.get_total_pnl().amount,
                 return_percentage=updated_portfolio.get_return_percentage(),
                 asset_count=updated_portfolio.get_asset_count(),
-                last_updated=datetime.utcnow(),
+                last_updated=datetime.now(UTC),
             )
             
         except Exception as e:

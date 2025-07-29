@@ -139,7 +139,7 @@ class TestPortfolioDataIntegrity:
         print(f"DEBUG: Captured logs = {caplog.text}")
 
         # Should generate warning and create synthetic lot
-        assert "Sold more BTC than available" in caplog.text
+        assert "Significant overselling in BTC" in caplog.text
         # For now, let's comment out the synthetic lot assertion to see what's happening
         # assert "Created synthetic purchase lot" in caplog.text
 
