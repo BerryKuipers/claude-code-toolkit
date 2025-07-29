@@ -613,9 +613,7 @@ def render_sticky_chat_interface(df=None):
                 key=f"tech_analysis_{st.session_state.session_id}",
             ):
                 user_input = "Perform technical analysis on my top 3 holdings with price trends, support/resistance levels, and trading signals"
-                st.session_state[
-                    f"portfolio_chat_input_{st.session_state.session_id}"
-                ] = user_input
+                st.session_state["pending_chat_query"] = user_input
                 st.rerun()
 
         with col2:
@@ -624,9 +622,7 @@ def render_sticky_chat_interface(df=None):
                 key=f"risk_assessment_{st.session_state.session_id}",
             ):
                 user_input = "Analyze the risk profile of my portfolio including diversification, volatility, and correlation analysis"
-                st.session_state[
-                    f"portfolio_chat_input_{st.session_state.session_id}"
-                ] = user_input
+                st.session_state["pending_chat_query"] = user_input
                 st.rerun()
 
         with col3:
@@ -635,9 +631,7 @@ def render_sticky_chat_interface(df=None):
                 key=f"price_predictions_{st.session_state.session_id}",
             ):
                 user_input = "Provide price predictions for my holdings based on technical indicators and market sentiment"
-                st.session_state[
-                    f"portfolio_chat_input_{st.session_state.session_id}"
-                ] = user_input
+                st.session_state["pending_chat_query"] = user_input
                 st.rerun()
 
         with col4:
@@ -646,17 +640,20 @@ def render_sticky_chat_interface(df=None):
                 key=f"market_research_{st.session_state.session_id}",
             ):
                 user_input = "Research latest news and developments for my portfolio assets and their potential impact"
-                st.session_state[
-                    f"portfolio_chat_input_{st.session_state.session_id}"
-                ] = user_input
+                st.session_state["pending_chat_query"] = user_input
                 st.rerun()
 
-        # Chat input - available immediately
-        user_input = st.text_input(
-            "Ask about your portfolio",
-            placeholder="Ask about your portfolio performance, holdings, or get analysis...",
-            key=f"portfolio_chat_input_{st.session_state.session_id}",
-        )
+        # Handle pending chat query from buttons
+        if "pending_chat_query" in st.session_state:
+            user_input = st.session_state["pending_chat_query"]
+            del st.session_state["pending_chat_query"]
+        else:
+            # Chat input - available immediately
+            user_input = st.text_input(
+                "Ask about your portfolio",
+                placeholder="Ask about your portfolio performance, holdings, or get analysis...",
+                key=f"portfolio_chat_input_{st.session_state.session_id}",
+            )
 
         # Ask button
         ask_button = st.button(
@@ -740,10 +737,7 @@ def render_sticky_chat_interface(df=None):
                         f"💰 Query cost: ~${estimated_tokens * 15.0 / 1_000_000:.6f} | Session total: ${costs['total_cost']:.4f}"
                     )
 
-                    # Clear input for next question
-                    st.session_state[
-                        f"portfolio_chat_input_{st.session_state.session_id}"
-                    ] = ""
+                    # Input will be cleared automatically on next render
 
                 except Exception as e:
                     st.error(f"❌ Error: {str(e)}")

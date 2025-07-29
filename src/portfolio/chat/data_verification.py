@@ -66,6 +66,8 @@ class PortfolioDataVerifier:
                 return self._verify_transfer_analysis(args, result_data)
             elif function_name == "get_current_holdings":
                 return self._verify_current_holdings(result_data)
+            elif function_name == "get_price_prediction":
+                return self._verify_price_prediction(args, result_data)
             else:
                 # Unknown function - allow but log
                 logger.warning(f"Unknown function for verification: {function_name}")
@@ -383,3 +385,61 @@ class PortfolioDataVerifier:
                 )
 
         return True, json.dumps(result_data), None
+
+    def _verify_price_prediction(
+        self, args: Dict[str, Any], result_data: Dict[str, Any]
+    ) -> Tuple[bool, str, Optional[str]]:
+        """Verify price prediction function results."""
+        try:
+            # Basic structure validation
+            if not isinstance(result_data, dict):
+                return (
+                    False,
+                    json.dumps(result_data),
+                    "Price prediction result must be a dictionary",
+                )
+
+            # Check for required fields
+            required_fields = ["asset", "prediction"]
+            for field in required_fields:
+                if field not in result_data:
+                    return (
+                        False,
+                        json.dumps(result_data),
+                        f"Missing required field: {field}",
+                    )
+
+            # Validate asset matches request
+            requested_asset = args.get("asset", "")
+            if result_data.get("asset") != requested_asset:
+                return (
+                    False,
+                    json.dumps(result_data),
+                    f"Asset mismatch: requested {requested_asset}, got {result_data.get('asset')}",
+                )
+
+            # Validate prediction structure
+            prediction = result_data.get("prediction", {})
+            if not isinstance(prediction, dict):
+                return False, json.dumps(result_data), "Prediction must be a dictionary"
+
+            # Check for prediction fields (flexible validation)
+            prediction_fields = ["direction", "confidence", "timeframe", "reasoning"]
+            missing_fields = [
+                field for field in prediction_fields if field not in prediction
+            ]
+            if len(missing_fields) > 2:  # Allow some flexibility
+                return (
+                    False,
+                    json.dumps(result_data),
+                    f"Prediction missing too many fields: {missing_fields}",
+                )
+
+            return True, json.dumps(result_data), None
+
+        except Exception as e:
+            return (
+                False,
+                json.dumps(result_data),
+                f"Price prediction verification error: {str(e)}",
+            )

@@ -136,28 +136,28 @@ class BitvavoDataMapper:
                 if not symbol_str:
                     continue
                 
-                available = Decimal(str(balance_item.get("available", "0")))
-                in_order = Decimal(str(balance_item.get("inOrder", "0")))
-                total_amount = available + in_order
-                
-                if total_amount > 0:
-                    # Skip EUR as it's the base currency, not a tradeable asset
-                    if symbol_str.upper() == "EUR":
-                        continue
+                # Skip EUR as it's the base currency, not a tradeable asset
+                if symbol_str.upper() == "EUR":
+                    continue
 
-                    # Validate symbol before creating AssetSymbol
-                    if len(symbol_str) < 2 or len(symbol_str) > 10:
-                        logger.warning(f"Skipping invalid asset symbol '{symbol_str}': length {len(symbol_str)} (must be 2-10 characters)")
-                        continue
+                # Validate symbol before creating AssetSymbol
+                if len(symbol_str) < 2 or len(symbol_str) > 10:
+                    logger.warning(f"Skipping invalid asset symbol '{symbol_str}': length {len(symbol_str)} (must be 2-10 characters)")
+                    continue
 
                 # Additional validation: check for valid characters (alphanumeric only)
                 if not symbol_str.isalnum():
                     logger.warning(f"Skipping invalid asset symbol '{symbol_str}': contains non-alphanumeric characters")
                     continue
 
-                asset_symbol = AssetSymbol(symbol_str)
-                asset_amount = AssetAmount(total_amount, asset_symbol)
-                balances[asset_symbol] = asset_amount
+                available = Decimal(str(balance_item.get("available", "0")))
+                in_order = Decimal(str(balance_item.get("inOrder", "0")))
+                total_amount = available + in_order
+
+                if total_amount > 0:
+                    asset_symbol = AssetSymbol(symbol_str)
+                    asset_amount = AssetAmount(total_amount, asset_symbol)
+                    balances[asset_symbol] = asset_amount
                     
             except Exception as e:
                 logger.warning(f"Skipping invalid balance data: {e}")
