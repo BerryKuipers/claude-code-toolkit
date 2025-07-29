@@ -78,11 +78,12 @@ class TestCleanArchitectureIntegration:
         return PortfolioCalculationService(fifo_service)
 
     @pytest.fixture
-    def application_service(self, portfolio_repository, portfolio_calculation_service):
+    def application_service(self, portfolio_repository, portfolio_calculation_service, fifo_service):
         """Create application service."""
         return PortfolioApplicationService(
             portfolio_repository=portfolio_repository,
             market_data_repository=AsyncMock(),
+            fifo_service=fifo_service,
             portfolio_calculation_service=portfolio_calculation_service,
         )
 
@@ -246,15 +247,17 @@ class TestCleanArchitectureIntegration:
         # Test that application service accepts repositories
         mock_portfolio_repo = AsyncMock()
         mock_market_repo = AsyncMock()
-        
+
         app_service = PortfolioApplicationService(
             portfolio_repository=mock_portfolio_repo,
             market_data_repository=mock_market_repo,
+            fifo_service=fifo_service,
             portfolio_calculation_service=portfolio_service,
         )
-        
+
         assert app_service.portfolio_repository is mock_portfolio_repo
         assert app_service.market_data_repository is mock_market_repo
+        assert app_service.fifo_service is fifo_service
         assert app_service.portfolio_calculation_service is portfolio_service
 
     @pytest.mark.integration

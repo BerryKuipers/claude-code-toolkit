@@ -309,42 +309,72 @@ def filter_holdings_by_selection(holdings, filter_type):
 
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes
-def load_portfolio_data():
-    """Load portfolio data from API backend."""
+def _fetch_portfolio_data():
+    """Internal function to fetch portfolio data from API backend."""
     try:
         client = get_api_client()
-
-        # Create a progress placeholder
-        progress_placeholder = st.empty()
+        logger.info("Fetching fresh portfolio data from API...")
 
         # Load data sequentially to avoid threading issues with asyncio
-        with progress_placeholder:
-            st.info(
-                "🔄 Step 1/2: Loading portfolio summary (may take 20-30 seconds)..."
-            )
-        logger.info("Loading portfolio summary...")
         summary = client.get_portfolio_summary()
-
-        with progress_placeholder:
-            st.info("🔄 Step 2/2: Loading current holdings (may take 10-15 seconds)...")
-        logger.info("Loading current holdings...")
         holdings = client.get_current_holdings()
 
-        # Clear progress indicator
-        progress_placeholder.empty()
-        logger.info("Portfolio data loaded successfully")
+        logger.info("Portfolio data fetched successfully")
         return summary, holdings
 
     except APIException as e:
         logger.error(f"API Error: {e.message}")
-        st.error(f"API Error: {e.message}")
-        if e.status_code:
-            st.error(f"Status Code: {e.status_code}")
-        return None, None
+        raise e
     except Exception as e:
         logger.error(f"Unexpected error loading portfolio data: {e}")
-        st.error(f"Unexpected error loading portfolio data: {e}")
-        return None, None
+        raise e
+
+
+def load_portfolio_data(show_progress=True):
+    """Load portfolio data with optional progress indicators."""
+    # Check if we should show progress (only for first load or explicit refresh)
+    if show_progress and not st.session_state.get("_portfolio_data_loaded", False):
+        progress_placeholder = st.empty()
+
+        try:
+            with progress_placeholder:
+                st.info(
+                    "🔄 Step 1/2: Loading portfolio summary (may take 20-30 seconds)..."
+                )
+
+            # This will either fetch from cache or make API call
+            summary, holdings = _fetch_portfolio_data()
+
+            with progress_placeholder:
+                st.info(
+                    "🔄 Step 2/2: Loading current holdings (may take 10-15 seconds)..."
+                )
+
+            # Clear progress indicator
+            progress_placeholder.empty()
+            return summary, holdings
+
+        except Exception as e:
+            progress_placeholder.empty()
+            if isinstance(e, APIException):
+                st.error(f"API Error: {e.message}")
+                if e.status_code:
+                    st.error(f"Status Code: {e.status_code}")
+            else:
+                st.error(f"Unexpected error loading portfolio data: {e}")
+            return None, None
+    else:
+        # Load silently (from cache or fresh)
+        try:
+            return _fetch_portfolio_data()
+        except Exception as e:
+            if isinstance(e, APIException):
+                st.error(f"API Error: {e.message}")
+                if e.status_code:
+                    st.error(f"Status Code: {e.status_code}")
+            else:
+                st.error(f"Unexpected error loading portfolio data: {e}")
+            return None, None
 
 
 def display_portfolio_summary(summary):
@@ -992,14 +1022,27 @@ def main():
                 "⏳ The backend is processing all your trades and calculating FIFO P&L - please be patient!"
             )
 
-    try:
-        summary, holdings = load_portfolio_data()
-        loading_placeholder.empty()  # Clear loading message
-        # Mark that data has been loaded at least once in this session
-        from datetime import datetime
+    # Check if this is a row selection rerun (data already loaded)
+    is_row_selection_rerun = (
+        st.session_state.get("_portfolio_data_loaded", False)
+        and "holdings_table" in st.session_state
+        and hasattr(st.session_state.holdings_table, "selection")
+    )
 
-        st.session_state._portfolio_data_loaded = True
-        st.session_state._portfolio_load_time = datetime.now().strftime("%H:%M:%S")
+    try:
+        # Only show progress indicators for initial load, not for row selection reruns
+        show_progress = not is_row_selection_rerun
+        summary, holdings = load_portfolio_data(show_progress=show_progress)
+
+        loading_placeholder.empty()  # Clear loading message
+
+        # Mark that data has been loaded at least once in this session
+        if not st.session_state.get("_portfolio_data_loaded", False):
+            from datetime import datetime
+
+            st.session_state._portfolio_data_loaded = True
+            st.session_state._portfolio_load_time = datetime.now().strftime("%H:%M:%S")
+
     except Exception as e:
         loading_placeholder.empty()
         st.error(f"❌ Failed to load portfolio data: {str(e)}")

@@ -10,7 +10,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, field_serializer
 
 
 class SortOrder(str, Enum):
@@ -33,12 +33,20 @@ class BaseResponse(BaseModel):
         default_factory=lambda: datetime.now(UTC), description="Response timestamp"
     )
 
+    @field_serializer('timestamp')
+    def serialize_timestamp(self, value: datetime) -> str:
+        """Serialize datetime to ISO format string."""
+        return value.isoformat()
+
     model_config = {
-        # Note: json_encoders is deprecated in Pydantic v2
-        # Using custom serializers would be the v2 way, but this works for now
-        "json_encoders": {
-            Decimal: str,  # Serialize Decimals as strings for precision
-            datetime: lambda v: v.isoformat(),
+        # Pydantic v2 configuration - removed deprecated json_encoders
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "success": True,
+                    "timestamp": "2025-07-29T14:30:00Z"
+                }
+            ]
         }
     }
 
