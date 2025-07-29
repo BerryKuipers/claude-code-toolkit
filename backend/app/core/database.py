@@ -122,11 +122,11 @@ class DevCacheDatabase:
             
             for holding in holdings_data:
                 cursor.execute("""
-                    INSERT OR REPLACE INTO portfolio_holdings 
+                    INSERT OR REPLACE INTO portfolio_holdings
                     (asset_symbol, quantity, available, in_order, expires_at)
                     VALUES (?, ?, ?, ?, ?)
                 """, (
-                    holding.get('asset', ''),
+                    holding.get('symbol', ''),
                     str(holding.get('available', '0')),
                     str(holding.get('available', '0')),
                     str(holding.get('inOrder', '0')),
@@ -155,7 +155,7 @@ class DevCacheDatabase:
             holdings = []
             for row in rows:
                 holdings.append({
-                    'asset': row['asset_symbol'],
+                    'symbol': row['asset_symbol'],
                     'available': row['available'],
                     'inOrder': row['in_order']
                 })
