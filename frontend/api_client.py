@@ -218,72 +218,104 @@ class CryptoPortfolioAPIClient:
 class SyncCryptoPortfolioAPIClient:
     """
     Synchronous wrapper for the async API client.
-    
+
     This provides a synchronous interface for use in Streamlit
     while maintaining the same type safety.
     """
-    
+
     def __init__(self, base_url: str = "http://localhost:8000", timeout: float = 60.0):
-        self._async_client = CryptoPortfolioAPIClient(base_url, timeout)
-    
+        self.base_url = base_url
+        self.timeout = timeout
+        self._loop = None
+        self._async_client = None
+
+    def _get_or_create_client(self):
+        """Get or create async client with proper event loop management."""
+        if self._async_client is None:
+            self._async_client = CryptoPortfolioAPIClient(self.base_url, self.timeout)
+        return self._async_client
+
     def _run_async(self, coro):
-        """Run async coroutine in sync context."""
+        """Run async coroutine in sync context with proper event loop management."""
         try:
-            # Always create a new event loop to avoid conflicts
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            # Try to get existing event loop
             try:
-                return loop.run_until_complete(coro)
-            finally:
-                # Clean up the loop
-                try:
-                    loop.close()
-                except Exception:
-                    pass
+                loop = asyncio.get_event_loop()
+                if loop.is_closed():
+                    raise RuntimeError("Event loop is closed")
+            except RuntimeError:
+                # No event loop exists or it's closed, create a new one
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                self._loop = loop
+
+            # Ensure we have a client
+            self._get_or_create_client()
+
+            # Run the coroutine
+            return loop.run_until_complete(coro)
+
         except Exception as e:
             logger.error(f"Error running async operation: {e}")
             raise
     
     def health_check(self) -> Dict:
         """Check API health status."""
-        return self._run_async(self._async_client.health_check())
+        client = self._get_or_create_client()
+        return self._run_async(client.health_check())
     
     def get_portfolio_summary(self) -> PortfolioSummary:
         """Get comprehensive portfolio summary."""
-        return self._run_async(self._async_client.get_portfolio_summary())
-    
+        client = self._get_or_create_client()
+        return self._run_async(client.get_portfolio_summary())
+
     def get_current_holdings(self) -> List[Holding]:
         """Get list of all current holdings."""
-        return self._run_async(self._async_client.get_current_holdings())
-    
+        client = self._get_or_create_client()
+        return self._run_async(client.get_current_holdings())
+
     def get_asset_performance(self, asset: str) -> Holding:
         """Get performance data for a specific asset."""
-        return self._run_async(self._async_client.get_asset_performance(asset))
-    
+        client = self._get_or_create_client()
+        return self._run_async(client.get_asset_performance(asset))
+
     def get_transaction_history(self, asset: Optional[str] = None) -> List[Transaction]:
         """Get transaction history."""
-        return self._run_async(self._async_client.get_transaction_history(asset))
-    
+        client = self._get_or_create_client()
+        return self._run_async(client.get_transaction_history(asset))
+
     def refresh_portfolio_data(self) -> bool:
         """Force refresh of portfolio data."""
-        return self._run_async(self._async_client.refresh_portfolio_data())
-    
+        client = self._get_or_create_client()
+        return self._run_async(client.refresh_portfolio_data())
+
     def get_market_data(self) -> Dict:
         """Get comprehensive market data."""
-        return self._run_async(self._async_client.get_market_data())
+        client = self._get_or_create_client()
+        return self._run_async(client.get_market_data())
     
     def chat_query(self, message: str, conversation_id: Optional[str] = None,
                    use_function_calling: bool = True, temperature: float = 0.1,
                    model: Optional[str] = None) -> ChatResponse:
         """Send chat query to AI assistant."""
-        return self._run_async(self._async_client.chat_query(
+        client = self._get_or_create_client()
+        return self._run_async(client.chat_query(
             message, conversation_id, use_function_calling, temperature, model
         ))
-    
+
     def get_available_functions(self) -> Dict:
         """Get list of available AI functions."""
-        return self._run_async(self._async_client.get_available_functions())
+        client = self._get_or_create_client()
+        return self._run_async(client.get_available_functions())
     
     def close(self):
-        """Close the HTTP client."""
-        self._run_async(self._async_client.close())
+        """Close the HTTP client and cleanup resources."""
+        if self._async_client:
+            self._run_async(self._async_client.close())
+            self._async_client = None
+        if self._loop and not self._loop.is_closed():
+            try:
+                self._loop.close()
+            except Exception:
+                pass
+            self._loop = None

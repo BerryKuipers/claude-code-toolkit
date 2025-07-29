@@ -145,6 +145,11 @@ class BitvavoDataMapper:
                     if symbol_str.upper() == "EUR":
                         continue
 
+                    # Validate symbol before creating AssetSymbol
+                    if len(symbol_str) < 2 or len(symbol_str) > 10:
+                        logger.warning(f"Skipping invalid asset symbol '{symbol_str}': length {len(symbol_str)} (must be 2-10 characters)")
+                        continue
+
                     asset_symbol = AssetSymbol(symbol_str)
                     asset_amount = AssetAmount(total_amount, asset_symbol)
                     balances[asset_symbol] = asset_amount
