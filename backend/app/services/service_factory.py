@@ -8,6 +8,7 @@ service creation and managing dependencies centrally.
 from typing import Dict, Optional
 
 from ..clients.bitvavo_client import BitvavoAPIClient
+from ..clients.cached_bitvavo_client import CachedBitvavoAPIClient
 from ..core.config import Settings
 from .interfaces.bitvavo_client import IBitvavoClient
 from .interfaces.chat_service import IChatService
@@ -42,7 +43,11 @@ class ServiceFactory:
             IBitvavoClient: Bitvavo client instance
         """
         if "bitvavo" not in self._clients:
-            self._clients["bitvavo"] = BitvavoAPIClient(self.settings)
+            # Use cached client for development resilience
+            if self.settings.enable_dev_cache:
+                self._clients["bitvavo"] = CachedBitvavoAPIClient(self.settings)
+            else:
+                self._clients["bitvavo"] = BitvavoAPIClient(self.settings)
         return self._clients["bitvavo"]
 
     def get_portfolio_service(self) -> IPortfolioService:

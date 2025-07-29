@@ -7,7 +7,7 @@ organization and documentation.
 
 from fastapi import APIRouter
 
-from .endpoints import chat, market, portfolio
+from .endpoints import chat, market, portfolio, cache
 
 # Create main API router
 api_router = APIRouter()
@@ -29,4 +29,10 @@ api_router.include_router(
     chat.router,
     prefix="/chat",
     tags=["Chat"],
+)
+
+api_router.include_router(
+    cache.router,
+    prefix="/cache",
+    tags=["Cache"],
 )

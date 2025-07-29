@@ -5,7 +5,6 @@ This provides C#-like configuration management with validation and
 environment variable support.
 """
 
-import os
 from functools import lru_cache
 from typing import Optional
 
@@ -91,6 +90,23 @@ class Settings(BaseSettings):
     # Database Configuration (for future use)
     database_url: Optional[str] = Field(
         None, description="Database URL for caching/persistence"
+    )
+
+    # Development Cache Configuration
+    enable_dev_cache: bool = Field(
+        True, description="Enable local SQLite cache for development"
+    )
+    dev_cache_path: str = Field(
+        "data/dev_cache.db", description="Path to development cache database"
+    )
+    cache_portfolio_ttl_hours: int = Field(
+        1, description="Portfolio data cache TTL in hours"
+    )
+    cache_prices_ttl_minutes: int = Field(
+        5, description="Price data cache TTL in minutes"
+    )
+    cache_trades_ttl_hours: int = Field(
+        24, description="Trade history cache TTL in hours"
     )
 
     @field_validator("bitvavo_api_key", "bitvavo_api_secret")
