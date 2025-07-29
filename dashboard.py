@@ -549,6 +549,9 @@ def render_sticky_chat_interface(df=None):
         st.session_state.session_id = str(int(time.time()))
 
     if st.session_state.sticky_chat_open:
+        # Debug: Confirm we're in the chat interface
+        st.write("🔍 DEBUG: Chat interface is open")
+
         # Initialize chat history
         if "chat_history" not in st.session_state:
             st.session_state.chat_history = []
@@ -584,23 +587,23 @@ def render_sticky_chat_interface(df=None):
                 st.session_state.sticky_chat_open = False
                 st.rerun()
 
-        # Show chat history
+        # Show chat history (collapsible by default)
         if st.session_state.chat_history:
-            st.markdown("#### 📜 Chat History")
-            chat_container = st.container()
-            with chat_container:
-                for i, (user_msg, ai_msg, timestamp) in enumerate(
-                    st.session_state.chat_history
-                ):
-                    with st.expander(
-                        f"💬 {timestamp} - {user_msg[:50]}...",
-                        expanded=(i == len(st.session_state.chat_history) - 1),
+            with st.expander("📜 Chat History", expanded=False):
+                chat_container = st.container()
+                with chat_container:
+                    for i, (user_msg, ai_msg, timestamp) in enumerate(
+                        st.session_state.chat_history
                     ):
-                        st.markdown(f"**👤 You:** {user_msg}")
-                        st.markdown(f"**🤖 AI:** {ai_msg}")
+                        with st.expander(
+                            f"💬 {timestamp} - {user_msg[:50]}...",
+                            expanded=(i == len(st.session_state.chat_history) - 1),
+                        ):
+                            st.markdown(f"**👤 You:** {user_msg}")
+                            st.markdown(f"**🤖 AI:** {ai_msg}")
         else:
             st.info(
-                "💡 **AI Assistant Ready!** Ask me about your portfolio, market analysis, or crypto insights."
+                "💡 **AI Assistant Ready!** Ask me about your portfolio, market analysis, or crypto insights. You can ask follow-up questions to dive deeper into any topic!"
             )
 
         # Advanced AI function buttons
@@ -612,8 +615,9 @@ def render_sticky_chat_interface(df=None):
                 "📊 Technical Analysis",
                 key=f"tech_analysis_{st.session_state.session_id}",
             ):
-                user_input = "Perform technical analysis on my top 3 holdings with price trends, support/resistance levels, and trading signals"
-                st.session_state["pending_chat_query"] = user_input
+                # Execute the query immediately instead of just pre-filling
+                query = "Perform technical analysis on my top 3 holdings with price trends, support/resistance levels, and trading signals"
+                st.session_state["execute_chat_query"] = query
                 st.rerun()
 
         with col2:
@@ -621,8 +625,9 @@ def render_sticky_chat_interface(df=None):
                 "⚠️ Risk Assessment",
                 key=f"risk_assessment_{st.session_state.session_id}",
             ):
-                user_input = "Analyze the risk profile of my portfolio including diversification, volatility, and correlation analysis"
-                st.session_state["pending_chat_query"] = user_input
+                # Execute the query immediately instead of just pre-filling
+                query = "Analyze the risk profile of my portfolio including diversification, volatility, and correlation analysis"
+                st.session_state["execute_chat_query"] = query
                 st.rerun()
 
         with col3:
@@ -630,8 +635,9 @@ def render_sticky_chat_interface(df=None):
                 "🔮 Price Predictions",
                 key=f"price_predictions_{st.session_state.session_id}",
             ):
-                user_input = "Provide price predictions for my holdings based on technical indicators and market sentiment"
-                st.session_state["pending_chat_query"] = user_input
+                # Execute the query immediately instead of just pre-filling
+                query = "Provide price predictions for my holdings based on technical indicators and market sentiment"
+                st.session_state["execute_chat_query"] = query
                 st.rerun()
 
         with col4:
@@ -639,21 +645,30 @@ def render_sticky_chat_interface(df=None):
                 "📰 Market Research",
                 key=f"market_research_{st.session_state.session_id}",
             ):
-                user_input = "Research latest news and developments for my portfolio assets and their potential impact"
-                st.session_state["pending_chat_query"] = user_input
+                # Execute the query immediately instead of just pre-filling
+                query = "Research latest news and developments for my portfolio assets and their potential impact"
+                st.session_state["execute_chat_query"] = query
                 st.rerun()
 
-        # Handle pending chat query from buttons
+        # Handle pending chat query from buttons (old method - for backward compatibility)
+        pending_query = st.session_state.get("pending_chat_query", "")
         if "pending_chat_query" in st.session_state:
-            user_input = st.session_state["pending_chat_query"]
             del st.session_state["pending_chat_query"]
-        else:
-            # Chat input - available immediately
-            user_input = st.text_input(
-                "Ask about your portfolio",
-                placeholder="Ask about your portfolio performance, holdings, or get analysis...",
-                key=f"portfolio_chat_input_{st.session_state.session_id}",
-            )
+
+        # Handle immediate execution from quick analysis buttons
+        execute_query = st.session_state.get("execute_chat_query", "")
+        if "execute_chat_query" in st.session_state:
+            del st.session_state["execute_chat_query"]
+
+        # Chat input - always show, but pre-fill with pending query if exists
+        # Debug: Add some info to help troubleshoot
+        st.write(f"Debug: Session ID = {st.session_state.get('session_id', 'NOT_SET')}")
+        user_input = st.text_input(
+            "Ask about your portfolio",
+            value=pending_query,  # Pre-fill with pending query
+            placeholder="Ask about your portfolio performance, holdings, or get analysis...",
+            key=f"portfolio_chat_input_{st.session_state.session_id}",
+        )
 
         # Ask button
         ask_button = st.button(
@@ -662,8 +677,14 @@ def render_sticky_chat_interface(df=None):
             type="primary",
         )
 
-        # Process the question
-        if ask_button and user_input:
+        # Handle case where Ask AI is clicked without input
+        if ask_button and not user_input and not execute_query:
+            st.warning(
+                "💡 Please enter a question or use one of the quick analysis buttons above."
+            )
+
+        # Process the question - either from button click or immediate execution
+        elif execute_query or (ask_button and user_input):
             with st.spinner("🤖 Analyzing your portfolio..."):
                 try:
                     # Use the backend AI chat service with user-selected settings
@@ -676,9 +697,12 @@ def render_sticky_chat_interface(df=None):
                     temperature = st.session_state.get("ai_temperature", 0.1)
                     use_functions = st.session_state.get("use_function_calling", True)
 
+                    # Use execute_query if available, otherwise use user_input
+                    query_message = execute_query if execute_query else user_input
+
                     # Only pass model if user explicitly selected one
                     chat_params = {
-                        "message": user_input,
+                        "message": query_message,
                         "use_function_calling": use_functions,
                         "temperature": temperature,
                     }
@@ -693,12 +717,12 @@ def render_sticky_chat_interface(df=None):
                     # Save to chat history
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     st.session_state.chat_history.append(
-                        (user_input, response.message, timestamp)
+                        (query_message, response.message, timestamp)
                     )
 
                     # Update cost tracking (estimate tokens)
                     estimated_tokens = (
-                        len(user_input.split()) * 1.3
+                        len(query_message.split()) * 1.3
                         + len(response.message.split()) * 1.3
                     )
                     update_cost_tracking(model, int(estimated_tokens))

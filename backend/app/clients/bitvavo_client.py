@@ -61,12 +61,19 @@ class BitvavoClientDecorator:
         try:
             logger.info("📡 Fetching fresh portfolio holdings from Bitvavo API")
             balance_data = await self._client.get_balance()
-            
+
+            # Debug logging to see what we got
+            logger.info(f"🔍 Bitvavo API returned {len(balance_data) if balance_data else 0} balance entries")
+            if balance_data:
+                logger.info(f"🔍 First few balance entries: {balance_data[:3]}")
+            else:
+                logger.warning("⚠️ Bitvavo API returned empty balance data")
+
             # Cache the successful response
             if self.enable_cache and balance_data:
                 self.cache.cache_portfolio_holdings(balance_data, ttl_hours=1)
                 logger.info("💾 Portfolio holdings cached successfully")
-            
+
             return balance_data
             
         except (RateLimitExceededError, BitvavoAPIException) as e:
@@ -184,7 +191,47 @@ class BitvavoClientDecorator:
             
             # Re-raise if no cache available
             raise
-    
+
+    async def get_deposit_history(self, symbol: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Get deposit history with caching.
+
+        Args:
+            symbol: Optional asset symbol to filter by
+
+        Returns:
+            List of deposit data
+        """
+        try:
+            logger.info(f"📡 Fetching deposit history from Bitvavo API{f' for {symbol}' if symbol else ''}")
+            deposit_data = await self._client.get_deposit_history(symbol)
+            return deposit_data
+
+        except (RateLimitExceededError, BitvavoAPIException) as e:
+            logger.warning(f"Deposit history API call failed: {e}")
+            # For now, return empty list on error
+            return []
+
+    async def get_withdrawal_history(self, symbol: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Get withdrawal history with caching.
+
+        Args:
+            symbol: Optional asset symbol to filter by
+
+        Returns:
+            List of withdrawal data
+        """
+        try:
+            logger.info(f"📡 Fetching withdrawal history from Bitvavo API{f' for {symbol}' if symbol else ''}")
+            withdrawal_data = await self._client.get_withdrawal_history(symbol)
+            return withdrawal_data
+
+        except (RateLimitExceededError, BitvavoAPIException) as e:
+            logger.warning(f"Withdrawal history API call failed: {e}")
+            # For now, return empty list on error
+            return []
+
     def get_cache_stats(self) -> Dict[str, Any]:
         """Get cache statistics for monitoring."""
         if not self.enable_cache:

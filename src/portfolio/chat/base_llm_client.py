@@ -196,21 +196,9 @@ class BaseLLMClient(ABC):
             query_type: Type of query (chat, function_call, etc.)
         """
         try:
-            # Only try to use Streamlit if we're in a Streamlit context
-            import streamlit as st
-            from streamlit.runtime.scriptrunner import get_script_run_ctx
-
-            # Check if we're in a Streamlit context
-            if get_script_run_ctx() is not None and "cost_tracker" in st.session_state:
-                cost = self.estimate_cost(prompt_tokens, completion_tokens)
-                st.session_state.cost_tracker.track_usage(
-                    self.provider,
-                    self.model_id,
-                    prompt_tokens,
-                    completion_tokens,
-                    cost,
-                    query_type,
-                )
+            # Note: Cost tracking moved to frontend to avoid Streamlit context issues
+            # The backend should not access Streamlit session state directly
+            pass
         except Exception as e:
             # Don't fail if cost tracking fails - this is expected when running from backend
             import logging

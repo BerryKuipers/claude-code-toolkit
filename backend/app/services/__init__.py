@@ -9,7 +9,7 @@ from .base_service import BaseService
 from .chat_service import ChatService
 from .interfaces import *
 from .market_service import MarketService
-from .portfolio_service import PortfolioService
+from .portfolio_service import PortfolioAPIService
 # ServiceFactory removed - using Clean Architecture container
 
 __all__ = [
@@ -21,7 +21,7 @@ __all__ = [
     # Base classes
     "BaseService",
     # Implementations
-    "PortfolioService",
+    "PortfolioAPIService",
     "MarketService",
     "ChatService",
 ]

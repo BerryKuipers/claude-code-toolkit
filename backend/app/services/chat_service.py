@@ -315,10 +315,20 @@ For detailed analysis, you can use the available functions, but avoid calling ge
                 # Add notice about limited functionality when API is unavailable
                 system_prompt += "\n\nNOTE: Portfolio data is currently unavailable due to API limitations. You can still provide general crypto advice and analysis, but cannot access specific portfolio information."
 
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": request.message},
-            ]
+            # Prepare messages with conversation context
+            messages = [{"role": "system", "content": system_prompt}]
+
+            # Add previous conversation context (last 10 messages to avoid token limits)
+            if conversation_id in self._conversations:
+                recent_messages = self._conversations[conversation_id][-10:]  # Last 10 messages
+                for msg in recent_messages:
+                    messages.append({
+                        "role": msg.role.value,
+                        "content": msg.content
+                    })
+
+            # Add current user message
+            messages.append({"role": "user", "content": request.message})
 
             # Get available functions if function calling is enabled
             functions = (
@@ -337,47 +347,10 @@ For detailed analysis, you can use the available functions, but avoid calling ge
                 function_calls = []  # Function calls are handled internally
             else:
                 # OpenAI-style or no function calling
-                response = llm_client.chat_completion(
-                    messages=messages,
-                    functions=functions if function_handler else None,
-                    function_call="auto" if function_handler else None,
-                    temperature=request.temperature,
-                    max_tokens=request.max_tokens,
+                # Handle OpenAI-style function calling with proper response generation
+                ai_response, function_calls = await self._handle_openai_function_calling(
+                    llm_client, messages, functions, function_handler, request
                 )
-
-                ai_response = llm_client.get_response_content(response)
-
-                # Handle function calls if any
-                function_calls = []
-                if function_handler:
-                    raw_function_calls = llm_client.get_function_calls(response)
-                    for func_call in raw_function_calls:
-                        try:
-                            func_start_time = time.time()
-                            result = function_handler.handle_function_call(
-                                func_call["name"], func_call["arguments"]
-                            )
-                            func_end_time = time.time()
-
-                            function_calls.append(
-                                FunctionCallResponse(
-                                    function_name=func_call["name"],
-                                    result=result,
-                                    success=True,
-                                    execution_time_ms=(func_end_time - func_start_time)
-                                    * 1000,
-                                )
-                            )
-                        except Exception as e:
-                            function_calls.append(
-                                FunctionCallResponse(
-                                    function_name=func_call["name"],
-                                    result=None,
-                                    success=False,
-                                    error_message=str(e),
-                                    execution_time_ms=0.0,
-                                )
-                            )
 
             # Calculate response time
             end_time = time.time()
@@ -428,6 +401,93 @@ For detailed analysis, you can use the available functions, but avoid calling ge
         except Exception as e:
             logger.error(f"Error processing chat request: {e}")
             raise ChatServiceException(f"Failed to process chat request: {str(e)}")
+
+    async def _handle_openai_function_calling(
+        self, llm_client, messages, functions, function_handler, request
+    ):
+        """Handle OpenAI-style function calling with proper response generation."""
+        # Make initial API call
+        response = llm_client.chat_completion(
+            messages=messages,
+            functions=functions if function_handler else None,
+            function_call="auto" if function_handler else None,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens,
+        )
+
+        # Check if function calls were made
+        raw_function_calls = llm_client.get_function_calls(response)
+        function_calls = []
+
+        if raw_function_calls and function_handler:
+            logger.info(f"Processing {len(raw_function_calls)} function calls...")
+
+            # Execute function calls and build conversation
+            for func_call in raw_function_calls:
+                try:
+                    func_start_time = time.time()
+                    result = function_handler.handle_function_call(
+                        func_call["name"], func_call["arguments"]
+                    )
+                    func_end_time = time.time()
+
+                    function_calls.append(
+                        FunctionCallResponse(
+                            function_name=func_call["name"],
+                            result=result,
+                            success=True,
+                            execution_time_ms=(func_end_time - func_start_time) * 1000,
+                        )
+                    )
+
+                    # Add function call and result to conversation for final response
+                    messages.append({
+                        "role": "assistant",
+                        "content": None,
+                        "tool_calls": [{
+                            "id": func_call["id"],
+                            "type": "function",
+                            "function": {
+                                "name": func_call["name"],
+                                "arguments": func_call["arguments"],
+                            },
+                        }],
+                    })
+
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": func_call["id"],
+                        "content": result,
+                    })
+
+                except Exception as e:
+                    logger.error(f"Function call {func_call['name']} failed: {e}")
+                    function_calls.append(
+                        FunctionCallResponse(
+                            function_name=func_call["name"],
+                            result=None,
+                            success=False,
+                            error_message=str(e),
+                            execution_time_ms=0.0,
+                        )
+                    )
+
+            # Get final response with function results
+            logger.info("Getting final AI response with function results...")
+            final_response = llm_client.chat_completion(
+                messages=messages,
+                temperature=request.temperature,
+                max_tokens=request.max_tokens,
+            )
+            ai_response = llm_client.get_response_content(final_response)
+            logger.info(f"Final AI response: {len(ai_response)} characters")
+
+        else:
+            # No function calls, return direct response
+            ai_response = llm_client.get_response_content(response)
+            logger.info(f"Direct AI response: {len(ai_response)} characters")
+
+        return ai_response, function_calls
 
     def _get_system_prompt(self, provider) -> str:
         """Get system prompt for the AI model."""

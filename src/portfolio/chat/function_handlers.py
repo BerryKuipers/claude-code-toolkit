@@ -829,15 +829,35 @@ class PortfolioFunctionHandler:
             predictions = analysis.get("predictions", {})
             technical_analysis = analysis.get("technical_analysis", {})
 
+            # Extract key prediction data
+            price_targets = predictions.get("price_targets", {})
+            short_term_outlook = predictions.get("short_term_outlook", {})
+            confidence_level = predictions.get("confidence_level", {})
+            technical_signals = technical_analysis.get("technical_signals", {})
+
+            # Create the main prediction summary required by data verification
+            prediction_summary = {
+                "direction": short_term_outlook.get(
+                    "direction", technical_signals.get("signal", "HOLD")
+                ),
+                "confidence": confidence_level.get("overall", "MEDIUM"),
+                "timeframe": "short_term",
+                "reasoning": f"Based on technical analysis: {technical_signals.get('signal', 'HOLD')} signal with {short_term_outlook.get('direction', 'neutral')} outlook",
+                "price_targets": price_targets,
+                "support_resistance": predictions.get("support_resistance", {}),
+                "risk_reward_ratio": predictions.get("risk_reward_ratio", {}),
+            }
+
             return {
                 "asset": asset,
+                "prediction": prediction_summary,  # Required field for data verification
                 "current_price_eur": technical_analysis.get("current_price_eur", 0),
-                "price_targets": predictions.get("price_targets", {}),
+                "price_targets": price_targets,
                 "support_resistance": predictions.get("support_resistance", {}),
-                "short_term_outlook": predictions.get("short_term_outlook", {}),
+                "short_term_outlook": short_term_outlook,
                 "risk_reward_ratio": predictions.get("risk_reward_ratio", {}),
-                "confidence_level": predictions.get("confidence_level", {}),
-                "technical_signals": technical_analysis.get("technical_signals", {}),
+                "confidence_level": confidence_level,
+                "technical_signals": technical_signals,
                 "momentum_indicators": technical_analysis.get(
                     "momentum_indicators", {}
                 ),

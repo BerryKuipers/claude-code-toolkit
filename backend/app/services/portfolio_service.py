@@ -49,10 +49,10 @@ logger = logging.getLogger(__name__)
 # Force reload timestamp: 2025-07-28 16:46 - Clean Architecture is now mandatory
 
 
-class PortfolioService(BaseService, IPortfolioService):
+class PortfolioAPIService(BaseService, IPortfolioService):
     """
-    Clean Architecture Portfolio Service.
-    
+    Clean Architecture Portfolio API Service.
+
     This service eliminates all duplicate code by using the Clean Architecture
     application services. It acts as a thin adapter layer between FastAPI
     and the domain logic.

@@ -28,7 +28,7 @@ from portfolio_core.infrastructure.repositories import BitvavoPortfolioRepositor
 from portfolio_core.infrastructure.mappers import BitvavoDataMapper
 from ..clients.bitvavo_client import create_bitvavo_client
 from ..services.chat_service import ChatService
-from ..services.portfolio_service import PortfolioService
+from ..services.portfolio_service import PortfolioAPIService
 
 logger = logging.getLogger(__name__)
 
@@ -154,8 +154,8 @@ class DependencyContainer:
         
         return self._instances["market_data_application_service"]
 
-    def get_portfolio_service(self) -> PortfolioService:
-        """Get or create portfolio service (adapter layer)."""
+    def get_portfolio_service(self) -> PortfolioAPIService:
+        """Get or create portfolio API service (adapter layer)."""
         if "portfolio_service" not in self._instances:
             # Portfolio service needs all Clean Architecture dependencies
             bitvavo_client = self.get_bitvavo_api_client()
@@ -163,7 +163,7 @@ class DependencyContainer:
             market_app_service = self.get_market_data_application_service()
             default_portfolio_id = self.get_default_portfolio_id()
 
-            service = PortfolioService(
+            service = PortfolioAPIService(
                 settings=self.settings,
                 bitvavo_client=bitvavo_client,
                 portfolio_app_service=portfolio_app_service,
@@ -178,8 +178,8 @@ class DependencyContainer:
     def get_chat_service(self) -> ChatService:
         """Get or create chat service."""
         if "chat_service" not in self._instances:
-            # Chat service needs settings and portfolio service
-            portfolio_service = self.get_portfolio_application_service()
+            # Chat service needs settings and portfolio service (API layer, not application service)
+            portfolio_service = self.get_portfolio_service()
 
             service = ChatService(
                 settings=self.settings,
