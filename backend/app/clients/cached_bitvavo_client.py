@@ -6,10 +6,10 @@ to reduce API calls and provide resilience during development.
 """
 
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 
 
-from .bitvavo_client import BitvavoAPIClient
+from portfolio_core.infrastructure.clients import BitvavoAPIClient
 from ..core.database import get_dev_cache
 from ..core.exceptions import BitvavoAPIException, RateLimitExceededError
 from ..core.config import Settings
@@ -19,22 +19,30 @@ logger = logging.getLogger(__name__)
 
 class CachedBitvavoAPIClient:
     """
-    Bitvavo API client with local database caching for development.
-    
-    This client provides:
-    - Automatic caching of API responses in SQLite
-    - Fallback to cached data when API is unavailable
-    - Configurable TTL for different data types
-    - Development-friendly error handling
+    Decorator for Bitvavo API client that adds intelligent caching.
+
+    Uses the Decorator Pattern to wrap any BitvavoAPIClient implementation
+    with caching capabilities without duplicating API logic.
+
+    Benefits:
+    - No code duplication - delegates all API calls to wrapped client
+    - Interface compatibility - same methods as underlying client
+    - Transparent caching - cache logic is separate from API logic
+    - Easy testing - can wrap real or mock clients
     """
-    
-    def __init__(self, settings: Settings, enable_cache: bool = True):
-        """Initialize cached client."""
-        self.settings = settings
+
+    def __init__(self, base_client: BitvavoAPIClient, enable_cache: bool = True):
+        """
+        Initialize cached client using Decorator Pattern.
+
+        Args:
+            base_client: The actual BitvavoAPIClient to wrap
+            enable_cache: Whether to enable caching functionality
+        """
+        self._client = base_client  # Composition over inheritance
         self.enable_cache = enable_cache
-        self.api_client = BitvavoAPIClient(settings)
         self.cache = get_dev_cache() if enable_cache else None
-        
+
         logger.info(f"CachedBitvavoAPIClient initialized (cache: {'enabled' if enable_cache else 'disabled'})")
     
     async def get_balance(self) -> List[Dict[str, Any]]:
@@ -53,7 +61,7 @@ class CachedBitvavoAPIClient:
         # Try API call
         try:
             logger.info("📡 Fetching fresh portfolio holdings from Bitvavo API")
-            balance_data = await self.api_client.get_balance()
+            balance_data = await self._client.get_balance()
             
             # Cache the successful response
             if self.enable_cache and balance_data:
@@ -99,7 +107,7 @@ class CachedBitvavoAPIClient:
         # Try API call
         try:
             logger.debug(f"📡 Fetching fresh price for {market} from Bitvavo API")
-            ticker_data = await self.api_client.get_ticker_price(market)
+            ticker_data = await self._client.get_ticker_price(market)
             
             # Cache the successful response
             if self.enable_cache and ticker_data and "price" in ticker_data:
@@ -154,7 +162,7 @@ class CachedBitvavoAPIClient:
         # Try API call
         try:
             logger.info(f"📡 Fetching fresh trades for {market} from Bitvavo API")
-            trades_data = await self.api_client.get_trades(market, limit, start, end)
+            trades_data = await self._client.get_trades(market, limit, start, end)
             
             # Cache the successful response
             if self.enable_cache and trades_data:
@@ -222,7 +230,7 @@ class CachedBitvavoAPIClient:
         
         # Test API availability
         try:
-            await self.api_client.get_ticker_price("BTC-EUR")
+            await self._client.get_ticker_price("BTC-EUR")
             health["api_available"] = True
             logger.info("✅ Bitvavo API is available")
         except Exception as e:
@@ -236,23 +244,29 @@ class CachedBitvavoAPIClient:
         return health
 
 
-def create_cached_bitvavo_client(settings: Settings) -> CachedBitvavoAPIClient:
+def create_bitvavo_client(settings: Settings, enable_cache: bool = True) -> Union[BitvavoAPIClient, CachedBitvavoAPIClient]:
     """
-    Factory function to create cached Bitvavo client.
-    
+    Factory function to create Bitvavo client with optional caching.
+
     Args:
         settings: Application settings
-        
+        enable_cache: Whether to wrap with cache decorator
+
     Returns:
-        Configured cached client
+        BitvavoAPIClient (cached or standard)
     """
-    # Enable cache for development, can be controlled via settings
-    enable_cache = getattr(settings, 'enable_dev_cache', True)
-    
-    client = CachedBitvavoAPIClient(settings, enable_cache=enable_cache)
-    
-    # Clear expired cache on startup
+    # Create base client
+    base_client = BitvavoAPIClient(
+        api_key=settings.bitvavo_api_key,
+        api_secret=settings.bitvavo_api_secret,
+        rate_limit_delay=settings.bitvavo_rate_limit_delay
+    )
+
+    # Wrap with cache decorator if requested
     if enable_cache:
-        client.clear_expired_cache()
-    
-    return client
+        cached_client = CachedBitvavoAPIClient(base_client, enable_cache=True)
+        # Clear expired cache on startup
+        cached_client.clear_expired_cache()
+        return cached_client
+
+    return base_client
