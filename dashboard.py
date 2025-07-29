@@ -1008,10 +1008,19 @@ def main():
         )
         # Don't stop - allow chat to work even if portfolio fails
 
-    # Create tabs for different views (removed separate AI Chat tab)
-    tab1, tab2 = st.tabs(["📊 Overview", "💰 Holdings"])
+    # Use radio buttons instead of tabs to maintain state during reruns
+    # This prevents the navigation jump when clicking on table rows
+    selected_view = st.radio(
+        "Select View:",
+        ["📊 Overview", "💰 Holdings"],
+        horizontal=True,
+        key="main_view_selector",
+    )
 
-    with tab1:
+    st.markdown("---")  # Visual separator
+
+    # Display content based on selected view
+    if selected_view == "📊 Overview":
         if summary:
             display_portfolio_summary(summary)
 
@@ -1021,7 +1030,7 @@ def main():
         else:
             st.warning("Portfolio summary is loading...")
 
-    with tab2:
+    elif selected_view == "💰 Holdings":
         if holdings:
             # Apply asset filters
             filtered_holdings = filter_holdings_by_selection(holdings, asset_filter)
@@ -1036,8 +1045,8 @@ def main():
         else:
             st.warning("Portfolio holdings are loading...")
 
-        # Always show sticky chat - even if portfolio data is loading
-        render_sticky_chat(holdings or [])
+    # Always show sticky chat - even if portfolio data is loading
+    render_sticky_chat(holdings or [])
 
 
 if __name__ == "__main__":
