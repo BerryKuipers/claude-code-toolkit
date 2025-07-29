@@ -48,7 +48,11 @@ class BitvavoClient(IBitvavoClient):
         if Bitvavo is None:
             raise BitvavoAPIException("python-bitvavo-api package not installed")
 
-        logger.info("Bitvavo client initialized")
+        # Check if we have valid credentials
+        if not settings.bitvavo_api_key or not settings.bitvavo_api_secret:
+            logger.warning("Bitvavo API credentials not provided - running in development mode")
+        else:
+            logger.info("Bitvavo client initialized with API credentials")
 
     def _get_client(self) -> "Bitvavo":
         """Get or create Bitvavo client instance."""

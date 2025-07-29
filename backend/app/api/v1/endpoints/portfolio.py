@@ -5,9 +5,12 @@ Provides strongly typed REST endpoints for portfolio management operations
 with comprehensive error handling and documentation.
 """
 
+import logging
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
+
+logger = logging.getLogger(__name__)
 
 from ....core.dependencies import PortfolioServiceDep
 from ....core.exceptions import AssetNotFoundException, PortfolioServiceException
@@ -50,10 +53,23 @@ async def get_portfolio_summary(
     Raises:
         HTTPException: If portfolio data cannot be retrieved
     """
+    logger.info("📊 GET /api/v1/portfolio/summary - Starting portfolio summary request")
     try:
-        return await portfolio_service.get_portfolio_summary()
+        logger.debug("🔄 Calling portfolio_service.get_portfolio_summary()")
+        result = await portfolio_service.get_portfolio_summary()
+        logger.info(f"✅ Portfolio summary retrieved successfully: {result.total_value}")
+        return result
     except PortfolioServiceException as e:
+        logger.error(f"❌ Portfolio service error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"💥 DETAILED ERROR in get_portfolio_summary:")
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Error message: {str(e)}")
+        logger.error(f"Full traceback:\n{error_details}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {type(e).__name__}: {str(e)}")
 
 
 @router.get(

@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     debug: bool = Field(False, description="Debug mode")
 
     # Server Configuration
-    host: str = Field("0.0.0.0", description="Server host")
+    host: str = Field("localhost", description="Server host")
     port: int = Field(8000, description="Server port")
     reload: bool = Field(True, description="Auto-reload on code changes")
 
@@ -52,6 +52,14 @@ class Settings(BaseSettings):
     bitvavo_api_secret: str = Field(..., description="Bitvavo API secret")
     bitvavo_rate_limit_delay: float = Field(
         0.2, description="Rate limit delay in seconds"
+    )
+
+    # Clean Architecture Configuration
+    use_clean_architecture: bool = Field(
+        default=True, description="Use Clean Architecture implementation"
+    )
+    portfolio_cache_ttl: int = Field(
+        default=300, description="Portfolio data cache TTL in seconds"
     )
 
     # AI Configuration
@@ -118,7 +126,7 @@ class Settings(BaseSettings):
         return v.upper()
 
     model_config = {
-        "env_file": ".env",
+        "env_file": [".env", "../.env", "../../.env"],
         "env_file_encoding": "utf-8",
         "case_sensitive": False,
         "env_prefix": "",

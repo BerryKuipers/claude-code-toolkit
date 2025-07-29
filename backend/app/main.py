@@ -115,6 +115,12 @@ def create_application() -> FastAPI:
     # Include API routes
     app.include_router(api_router, prefix="/api/v1")
 
+    # Debug: Log all registered routes
+    logger.info("🔗 Registered API routes:")
+    for route in app.routes:
+        if hasattr(route, 'path') and hasattr(route, 'methods'):
+            logger.info(f"  {route.methods} {route.path}")
+
     return app
 
 

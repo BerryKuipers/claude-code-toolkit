@@ -337,9 +337,27 @@ def render_optimized_dataframe(df: pd.DataFrame, key: str, **kwargs):
     # Optimize DataFrame for display
     optimized_df = PerformanceOptimizer.optimize_dataframe_display(df)
 
+    # Extract title if provided (for display above the dataframe)
+    title = kwargs.pop("title", None)
+
+    # Display title if provided
+    if title:
+        st.subheader(title)
+
+    # Filter kwargs to only include supported st.dataframe parameters
+    supported_kwargs = {
+        k: v
+        for k, v in kwargs.items()
+        if k in ["width", "height", "column_config", "column_order"]
+    }
+
     # Use Streamlit's built-in optimization features
     return st.dataframe(
-        optimized_df, key=key, use_container_width=True, hide_index=True, **kwargs
+        optimized_df,
+        key=key,
+        use_container_width=True,
+        hide_index=True,
+        **supported_kwargs,
     )
 
 

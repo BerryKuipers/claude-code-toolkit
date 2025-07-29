@@ -56,6 +56,7 @@ class ServiceFactory:
             # Import here to avoid circular imports
             from .portfolio_service import PortfolioService
 
+            # Use Clean Architecture service
             self._services["portfolio"] = PortfolioService(
                 self.settings, self.get_bitvavo_client()
             )

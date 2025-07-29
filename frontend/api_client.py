@@ -88,7 +88,7 @@ class CryptoPortfolioAPIClient:
     with proper error handling and response parsing.
     """
     
-    def __init__(self, base_url: str = "http://localhost:8000", timeout: float = 30.0):
+    def __init__(self, base_url: str = "http://localhost:8000", timeout: float = 60.0):
         """
         Initialize API client.
         
@@ -174,8 +174,9 @@ class CryptoPortfolioAPIClient:
         return await self._request("GET", "/api/v1/market/opportunities")
     
     # Chat endpoints
-    async def chat_query(self, message: str, conversation_id: Optional[str] = None, 
-                        use_function_calling: bool = True, temperature: float = 0.1) -> ChatResponse:
+    async def chat_query(self, message: str, conversation_id: Optional[str] = None,
+                        use_function_calling: bool = True, temperature: float = 0.1,
+                        model: Optional[str] = None) -> ChatResponse:
         """Send chat query to AI assistant."""
         data = {
             "message": message,
@@ -184,7 +185,9 @@ class CryptoPortfolioAPIClient:
         }
         if conversation_id:
             data["conversation_id"] = conversation_id
-        
+        if model:
+            data["model_preference"] = model
+
         response_data = await self._request("POST", "/api/v1/chat/query", json=data)
         return ChatResponse(response_data)
     
@@ -220,18 +223,26 @@ class SyncCryptoPortfolioAPIClient:
     while maintaining the same type safety.
     """
     
-    def __init__(self, base_url: str = "http://localhost:8000", timeout: float = 30.0):
+    def __init__(self, base_url: str = "http://localhost:8000", timeout: float = 60.0):
         self._async_client = CryptoPortfolioAPIClient(base_url, timeout)
     
     def _run_async(self, coro):
         """Run async coroutine in sync context."""
         try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
+            # Always create a new event loop to avoid conflicts
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-        
-        return loop.run_until_complete(coro)
+            try:
+                return loop.run_until_complete(coro)
+            finally:
+                # Clean up the loop
+                try:
+                    loop.close()
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.error(f"Error running async operation: {e}")
+            raise
     
     def health_check(self) -> Dict:
         """Check API health status."""
@@ -261,11 +272,12 @@ class SyncCryptoPortfolioAPIClient:
         """Get comprehensive market data."""
         return self._run_async(self._async_client.get_market_data())
     
-    def chat_query(self, message: str, conversation_id: Optional[str] = None, 
-                   use_function_calling: bool = True, temperature: float = 0.1) -> ChatResponse:
+    def chat_query(self, message: str, conversation_id: Optional[str] = None,
+                   use_function_calling: bool = True, temperature: float = 0.1,
+                   model: Optional[str] = None) -> ChatResponse:
         """Send chat query to AI assistant."""
         return self._run_async(self._async_client.chat_query(
-            message, conversation_id, use_function_calling, temperature
+            message, conversation_id, use_function_calling, temperature, model
         ))
     
     def get_available_functions(self) -> Dict:

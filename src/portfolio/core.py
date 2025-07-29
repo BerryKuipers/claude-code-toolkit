@@ -167,6 +167,9 @@ def calculate_pnl(
 ) -> Dict[str, Decimal]:
     """Process *trades* (chronological list) under FIFO and return P&L metrics.
 
+    DEPRECATED: This function now delegates to the Clean Architecture implementation.
+    The single source of truth is portfolio_core.domain.services.FIFOCalculationService.
+
     Args:
         trades: List of trade dictionaries with keys: side, amount, price, fee, timestamp
         current_price: Current market price for unrealized P&L calculation
@@ -180,9 +183,67 @@ def calculate_pnl(
         - unrealised_eur: Unrealized P&L in EUR
         - total_buys_eur: Total amount invested (for return % calculation)
     """
-    lots: Deque[PurchaseLot] = deque()
-    realised_eur = Decimal("0")
-    total_buys_eur = Decimal("0")  # denominator for true return %%
+    # Import Clean Architecture components
+    try:
+        import os
+        import sys
+
+        # Add project root to path
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+        if project_root not in sys.path:
+            sys.path.insert(0, project_root)
+
+        from portfolio_core.domain.entities import Trade
+        from portfolio_core.domain.services import FIFOCalculationService
+        from portfolio_core.domain.value_objects import (
+            AssetAmount,
+            AssetSymbol,
+            Money,
+            Timestamp,
+            TradeType,
+        )
+
+        # Convert legacy trade format to Clean Architecture format
+        clean_trades = []
+        for trade in trades:
+            # Validate trade side first (for backward compatibility)
+            side = trade["side"].lower()
+            if side not in ["buy", "sell"]:
+                raise ValueError(f"Unknown trade side: {side}")
+
+            # Extract asset symbol from trade data (assuming BTC for backward compatibility)
+            asset_symbol = AssetSymbol(
+                "BTC"
+            )  # Default, should be passed as parameter in real usage
+
+            trade_type = TradeType.BUY if side == "buy" else TradeType.SELL
+            amount = AssetAmount(_decimal(trade["amount"]), asset_symbol)
+            price = Money(_decimal(trade["price"]), "EUR")
+            fee = Money(_decimal(trade.get("fee", "0")), "EUR")
+            timestamp = Timestamp(int(trade.get("timestamp", "0")))
+
+            clean_trade = Trade(
+                asset=asset_symbol,
+                trade_type=trade_type,
+                amount=amount,
+                price=price,
+                fee=fee,
+                timestamp=timestamp,
+            )
+            clean_trades.append(clean_trade)
+
+        # Use Clean Architecture FIFO service
+        fifo_service = FIFOCalculationService()
+        current_price_money = Money(current_price, "EUR")
+
+        return fifo_service.calculate_asset_pnl(clean_trades, current_price_money)
+
+    except ImportError:
+        # Fallback to original implementation if Clean Architecture not available
+        lots: Deque[PurchaseLot] = deque()
+        realised_eur = Decimal("0")
+        total_buys_eur = Decimal("0")  # denominator for true return %%
 
     for trade in trades:
         amt = _decimal(trade["amount"])

@@ -13,12 +13,64 @@ import uuid
 from datetime import datetime
 from typing import Dict, List, Optional
 
+# Set environment variables from backend config at module level
+# This ensures they're available before any LLM client imports
+try:
+    from ..core.config import get_settings
+    _settings = get_settings()
+    if _settings.openai_api_key:
+        os.environ["OPENAI_API_KEY"] = _settings.openai_api_key
+    if _settings.anthropic_api_key:
+        os.environ["ANTHROPIC_API_KEY"] = _settings.anthropic_api_key
+except Exception:
+    # If config loading fails, continue without setting env vars
+    pass
+
 # Add src to path to import existing chat logic
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "src"))
+# Find the project root and add src to path
+current_file = os.path.abspath(__file__)
+# Go up: file -> services -> app -> backend -> project_root
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
+src_path = os.path.join(project_root, "src")
+
+# Verify src directory exists and add to path
+if os.path.exists(src_path):
+    if src_path not in sys.path:
+        sys.path.insert(0, src_path)
+else:
+    # Try alternative locations
+    alternative_paths = [
+        os.path.join(os.getcwd(), "src"),  # From current working directory
+        os.path.join(os.path.dirname(os.getcwd()), "src"),  # One level up
+        os.path.abspath("../src"),  # Relative to current directory
+    ]
+
+    src_found = False
+    for alt_path in alternative_paths:
+        if os.path.exists(alt_path):
+            src_path = alt_path
+            if src_path not in sys.path:
+                sys.path.insert(0, src_path)
+            src_found = True
+            break
+
+    if not src_found:
+        # Create a more informative error message
+        current_dir = os.getcwd()
+        file_dir = os.path.dirname(os.path.abspath(__file__))
+        raise ImportError(
+            f"Could not find 'src' directory.\n"
+            f"Current working directory: {current_dir}\n"
+            f"Current file directory: {file_dir}\n"
+            f"Project root (calculated): {project_root}\n"
+            f"Expected src path: {src_path}\n"
+            f"Tried alternative paths: {alternative_paths}\n"
+            f"Please ensure you're running from the project root directory."
+        )
 
 # Import existing chat functionality
-from src.portfolio.chat.base_llm_client import LLMClientFactory, LLMProvider
-from src.portfolio.chat.function_handlers import PortfolioFunctionHandler
+# Import will be done lazily in _get_llm_client method to avoid import issues
+# Import will be done lazily to avoid import issues
 
 from ..core.config import Settings
 from ..core.exceptions import (
@@ -72,28 +124,33 @@ class ChatService(IChatService):
 
         logger.info("Chat service initialized")
 
-    def _get_llm_client(self):
-        """Get or create LLM client instance."""
-        if self._llm_client is None:
-            # Determine which provider to use based on available API keys
-            if self.settings.anthropic_api_key:
-                provider = LLMProvider.ANTHROPIC
-                api_key = self.settings.anthropic_api_key
-                model = "claude-3-5-sonnet-20241022"
-            elif self.settings.openai_api_key:
-                provider = LLMProvider.OPENAI
-                api_key = self.settings.openai_api_key
-                model = "gpt-4"
-            else:
-                raise ChatServiceException("No AI API keys configured")
+    def _get_llm_client(self, model_preference: Optional[str] = None):
+        """Get or create LLM client instance using backend configuration."""
 
-            self._llm_client = LLMClientFactory.create_client(
-                provider=provider,
-                api_key=api_key,
-                model_id=model,
-                temperature=self.settings.ai_temperature,
-                max_tokens=self.settings.ai_max_tokens,
-            )
+        # If model preference is provided, create a new client for that model
+        if model_preference:
+            try:
+                from src.portfolio.chat.base_llm_client import LLMClientFactory
+                return LLMClientFactory.create_client(model_preference)
+            except Exception as e:
+                logger.warning(f"Failed to create client for preferred model {model_preference}: {e}")
+                # Fall back to default behavior
+
+        if self._llm_client is None:
+            # Lazy import to avoid module-level import issues
+            try:
+                from src.portfolio.chat.base_llm_client import LLMClientFactory
+            except ImportError as e:
+                raise ChatServiceException(f"Failed to import LLM client: {e}")
+
+
+
+            # Use the factory's default model selection based on available API keys
+            try:
+                model_key = LLMClientFactory.get_default_model()
+                self._llm_client = LLMClientFactory.create_client(model_key)
+            except Exception as e:
+                raise ChatServiceException(f"Failed to create LLM client: {e}")
 
         return self._llm_client
 
@@ -121,6 +178,13 @@ class ChatService(IChatService):
                 )
 
             df = pd.DataFrame(portfolio_data)
+
+            # Lazy import to avoid module-level import issues
+            try:
+                from src.portfolio.chat.function_handlers import PortfolioFunctionHandler
+            except ImportError as e:
+                raise ChatServiceException(f"Failed to import function handler: {e}")
+
             self._function_handler = PortfolioFunctionHandler(df)
 
         return self._function_handler
@@ -183,7 +247,7 @@ class ChatService(IChatService):
             conversation_id = request.conversation_id or str(uuid.uuid4())
 
             # Get AI client and function handler
-            llm_client = self._get_llm_client()
+            llm_client = self._get_llm_client(request.model_preference)
             function_handler = (
                 await self._get_function_handler()
                 if request.use_function_calling
