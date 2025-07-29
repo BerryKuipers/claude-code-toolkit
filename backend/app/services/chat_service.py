@@ -294,11 +294,15 @@ For detailed analysis, you can use the available functions, but avoid calling ge
 
             # Get AI client and function handler
             llm_client = self._get_llm_client(request.model_preference)
-            function_handler = (
-                await self._get_function_handler()
-                if request.use_function_calling
-                else None
-            )
+            function_handler = None
+
+            if request.use_function_calling:
+                try:
+                    function_handler = await self._get_function_handler()
+                except Exception as e:
+                    logger.warning(f"Failed to initialize function handler: {e}")
+                    # Continue without function calling if portfolio data unavailable
+                    logger.info("Continuing chat without function calling due to data unavailability")
 
             # Prepare messages with portfolio context
             system_prompt = self._get_system_prompt(llm_client.provider)
@@ -307,6 +311,9 @@ For detailed analysis, you can use the available functions, but avoid calling ge
             if request.use_function_calling and self._cached_portfolio_data is not None:
                 portfolio_summary = self._get_portfolio_context_summary()
                 system_prompt += f"\n\nCURRENT PORTFOLIO CONTEXT:\n{portfolio_summary}"
+            elif request.use_function_calling and function_handler is None:
+                # Add notice about limited functionality when API is unavailable
+                system_prompt += "\n\nNOTE: Portfolio data is currently unavailable due to API limitations. You can still provide general crypto advice and analysis, but cannot access specific portfolio information."
 
             messages = [
                 {"role": "system", "content": system_prompt},

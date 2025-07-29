@@ -71,17 +71,32 @@ class BitvavoAPIClient:
         return self._client
 
     def _check_rate_limit(self) -> None:
-        """Enforce rate limit with simple time-based approach."""
+        """Enforce strict rate limit to prevent API bans."""
         import time
 
-        # Simple rate limiting - 200ms delay between requests
+        # Much more conservative rate limiting - 1 second delay between requests
+        # This prevents the aggressive rate limiting that caused the ban
         current_time = time.time()
         if hasattr(self, '_last_request_time'):
             time_since_last = current_time - self._last_request_time
-            if time_since_last < 0.2:  # 200ms minimum delay
-                time.sleep(0.2 - time_since_last)
+            if time_since_last < 1.0:  # 1 second minimum delay
+                sleep_time = 1.0 - time_since_last
+                logger.info(f"Rate limiting: sleeping {sleep_time:.2f}s to prevent API ban")
+                time.sleep(sleep_time)
 
         self._last_request_time = time.time()
+
+        # Additional check: if we have a client, check remaining limit
+        try:
+            if hasattr(self, '_client') and self._client:
+                remaining = self._client.getRemainingLimit()
+                if isinstance(remaining, (int, str)) and int(remaining) < 10:
+                    logger.warning(f"Low API limit remaining: {remaining}, sleeping 15s")
+                    time.sleep(15)
+        except Exception as e:
+            logger.warning(f"Could not check remaining limit: {e}")
+            # Sleep anyway to be safe
+            time.sleep(2)
 
     def _decimal(self, value: str | float | int | Decimal) -> Decimal:
         """Convert value to Decimal safely."""
@@ -114,10 +129,16 @@ class BitvavoAPIClient:
 
             if isinstance(balance, dict) and "errorCode" in balance:
                 error_code = balance.get("errorCode")
+                error_msg = balance.get("error", "Unknown error")
+
                 if error_code == 304:
                     raise InvalidAPIKeyError("API key / time sync issue")
                 elif error_code == 105:
                     raise RateLimitExceededError("Hit Bitvavo rate limit")
+                elif "banned" in error_msg.lower() or "rate limit" in error_msg.lower():
+                    # Handle API ban situation
+                    logger.error(f"API key banned due to rate limit violations: {error_msg}")
+                    raise RateLimitExceededError(f"API key banned: {error_msg}")
                 else:
                     raise BitvavoAPIException(f"Bitvavo API error: {balance}")
 
