@@ -27,6 +27,8 @@ from portfolio_core.domain.services import FIFOCalculationService, PortfolioCalc
 from portfolio_core.infrastructure.repositories import BitvavoPortfolioRepository, BitvavoMarketDataRepository
 from portfolio_core.infrastructure.mappers import BitvavoDataMapper
 from ..clients.bitvavo_client import create_bitvavo_client
+from ..services.chat_service import ChatService
+from ..services.portfolio_service import PortfolioService
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +153,42 @@ class DependencyContainer:
             logger.debug("Created market data application service")
         
         return self._instances["market_data_application_service"]
+
+    def get_portfolio_service(self) -> PortfolioService:
+        """Get or create portfolio service (adapter layer)."""
+        if "portfolio_service" not in self._instances:
+            # Portfolio service needs all Clean Architecture dependencies
+            bitvavo_client = self.get_bitvavo_api_client()
+            portfolio_app_service = self.get_portfolio_application_service()
+            market_app_service = self.get_market_data_application_service()
+            default_portfolio_id = self.get_default_portfolio_id()
+
+            service = PortfolioService(
+                settings=self.settings,
+                bitvavo_client=bitvavo_client,
+                portfolio_app_service=portfolio_app_service,
+                market_app_service=market_app_service,
+                default_portfolio_id=default_portfolio_id
+            )
+            self._instances["portfolio_service"] = service
+            logger.info("✅ Created portfolio service")
+
+        return self._instances["portfolio_service"]
+
+    def get_chat_service(self) -> ChatService:
+        """Get or create chat service."""
+        if "chat_service" not in self._instances:
+            # Chat service needs settings and portfolio service
+            portfolio_service = self.get_portfolio_application_service()
+
+            service = ChatService(
+                settings=self.settings,
+                portfolio_service=portfolio_service
+            )
+            self._instances["chat_service"] = service
+            logger.info("✅ Created chat service")
+
+        return self._instances["chat_service"]
     
     def get_default_portfolio_id(self) -> UUID:
         """Get the default portfolio ID for single-user scenarios."""

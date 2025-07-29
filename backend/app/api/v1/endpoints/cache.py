@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 
 from ....core.dependencies import get_bitvavo_client
-from ....clients.cached_bitvavo_client import CachedBitvavoAPIClient
+from ....clients.bitvavo_client import BitvavoClientDecorator
 from ....models.common import BaseResponse
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ async def get_cache_stats(
     """
     try:
         # Check if we're using the cached client
-        if isinstance(bitvavo_client, CachedBitvavoAPIClient):
+        if isinstance(bitvavo_client, BitvavoClientDecorator):
             stats = bitvavo_client.get_cache_stats()
             health = await bitvavo_client.health_check()
             
@@ -63,7 +63,7 @@ async def clear_expired_cache(
         Success response
     """
     try:
-        if isinstance(bitvavo_client, CachedBitvavoAPIClient):
+        if isinstance(bitvavo_client, BitvavoClientDecorator):
             bitvavo_client.clear_expired_cache()
             
             return BaseResponse(
@@ -94,7 +94,7 @@ async def force_refresh_cache(
         Success response
     """
     try:
-        if isinstance(bitvavo_client, CachedBitvavoAPIClient):
+        if isinstance(bitvavo_client, BitvavoClientDecorator):
             bitvavo_client.force_refresh_cache()
             
             return BaseResponse(
@@ -123,7 +123,7 @@ async def get_cache_health(
         Health status including API availability and cache status
     """
     try:
-        if isinstance(bitvavo_client, CachedBitvavoAPIClient):
+        if isinstance(bitvavo_client, BitvavoClientDecorator):
             health = await bitvavo_client.health_check()
             return health
         else:
@@ -162,7 +162,7 @@ async def warm_up_cache(
         Success response with cache warming results
     """
     try:
-        if not isinstance(bitvavo_client, CachedBitvavoAPIClient):
+        if not isinstance(bitvavo_client, BitvavoClientDecorator):
             return BaseResponse(
                 success=False,
                 message="Cache is not enabled - cannot warm up cache"
@@ -218,7 +218,7 @@ async def get_cache_config(
         Cache configuration settings
     """
     try:
-        if isinstance(bitvavo_client, CachedBitvavoAPIClient):
+        if isinstance(bitvavo_client, BitvavoClientDecorator):
             return {
                 "cache_enabled": True,
                 "settings": {

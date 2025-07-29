@@ -24,7 +24,7 @@ from ..models.portfolio import (
     ReconciliationResponse as ReconciliationResultResponse,
     TransferSummaryResponse,
 )
-from ..core.container import get_container
+# Removed circular import - dependencies passed directly
 # Import Clean Architecture components directly
 import sys
 import os
@@ -58,28 +58,27 @@ class PortfolioService(BaseService, IPortfolioService):
     and the domain logic.
     """
     
-    def __init__(self, settings: Settings, bitvavo_client: IBitvavoClient):
+    def __init__(self, settings: Settings, bitvavo_client: IBitvavoClient,
+                 portfolio_app_service, market_app_service, default_portfolio_id):
         """
         Initialize with Clean Architecture components.
-        
+
         Args:
             settings: Application settings
             bitvavo_client: Bitvavo client (kept for backward compatibility)
+            portfolio_app_service: Portfolio application service from Clean Architecture
+            market_app_service: Market data application service from Clean Architecture
+            default_portfolio_id: Default portfolio ID
         """
         super().__init__(settings, "PortfolioService")
         self.bitvavo_client = bitvavo_client  # Keep for backward compatibility
 
-        # Get Clean Architecture components from container
-        try:
-            container = get_container(settings)
-            self.portfolio_app_service = container.get_portfolio_application_service()
-            self.market_app_service = container.get_market_data_application_service()
-            self.default_portfolio_id = container.get_default_portfolio_id()
+        # Store Clean Architecture components (passed directly to avoid circular imports)
+        self.portfolio_app_service = portfolio_app_service
+        self.market_app_service = market_app_service
+        self.default_portfolio_id = default_portfolio_id
 
-            self.logger.info("Initialized Clean Architecture portfolio service")
-        except Exception as e:
-            self.logger.error(f"Failed to initialize Clean Architecture components: {e}")
-            raise
+        self.logger.info("Initialized Clean Architecture portfolio service")
 
     def _round_decimal(self, value: Decimal, places: int = 2) -> Decimal:
         """Round a Decimal value to specified decimal places."""

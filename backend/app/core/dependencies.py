@@ -77,8 +77,24 @@ def get_market_service(
     return container.get_market_data_application_service()
 
 
+def get_chat_service(
+    container: Annotated[DependencyContainer, Depends(get_dependency_container)],
+):
+    """
+    Get chat service instance from Clean Architecture container.
+
+    Args:
+        container: Clean Architecture dependency container
+
+    Returns:
+        Chat service implementation
+    """
+    return container.get_chat_service()
+
+
 # Type aliases for cleaner dependency injection
 BitvavoClientDep = Annotated[object, Depends(get_bitvavo_client)]
 PortfolioServiceDep = Annotated[object, Depends(get_portfolio_service)]
 MarketServiceDep = Annotated[object, Depends(get_market_service)]
+ChatServiceDep = Annotated[object, Depends(get_chat_service)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
