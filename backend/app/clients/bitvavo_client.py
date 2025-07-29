@@ -1,13 +1,12 @@
 """
-Cached Bitvavo API client for development.
+Bitvavo API client using Decorator Pattern.
 
-This client wraps the regular Bitvavo client with local database caching
+This client decorates any Bitvavo client implementation with intelligent caching
 to reduce API calls and provide resilience during development.
 """
 
 import logging
 from typing import List, Dict, Any, Optional, Union
-
 
 from portfolio_core.infrastructure.clients import BitvavoAPIClient
 from ..core.database import get_dev_cache
@@ -17,24 +16,24 @@ from ..core.config import Settings
 logger = logging.getLogger(__name__)
 
 
-class CachedBitvavoAPIClient:
+class BitvavoClientDecorator:
     """
     Decorator for Bitvavo API client that adds intelligent caching.
-
+    
     Uses the Decorator Pattern to wrap any BitvavoAPIClient implementation
     with caching capabilities without duplicating API logic.
-
+    
     Benefits:
     - No code duplication - delegates all API calls to wrapped client
     - Interface compatibility - same methods as underlying client
     - Transparent caching - cache logic is separate from API logic
     - Easy testing - can wrap real or mock clients
     """
-
+    
     def __init__(self, base_client: BitvavoAPIClient, enable_cache: bool = True):
         """
         Initialize cached client using Decorator Pattern.
-
+        
         Args:
             base_client: The actual BitvavoAPIClient to wrap
             enable_cache: Whether to enable caching functionality
@@ -42,8 +41,8 @@ class CachedBitvavoAPIClient:
         self._client = base_client  # Composition over inheritance
         self.enable_cache = enable_cache
         self.cache = get_dev_cache() if enable_cache else None
-
-        logger.info(f"CachedBitvavoAPIClient initialized (cache: {'enabled' if enable_cache else 'disabled'})")
+        
+        logger.info(f"BitvavoClientDecorator initialized (cache: {'enabled' if enable_cache else 'disabled'})")
     
     async def get_balance(self) -> List[Dict[str, Any]]:
         """
@@ -136,17 +135,17 @@ class CachedBitvavoAPIClient:
             # Re-raise if no cache available
             raise
     
-    async def get_trades(self, market: str, limit: int = 1000, start: Optional[int] = None,
+    async def get_trades(self, market: str, limit: int = 1000, start: Optional[int] = None, 
                         end: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Get trade history with caching.
-
+        
         Args:
             market: Market symbol (e.g., 'BTC-EUR')
             limit: Maximum number of trades to return
             start: Start timestamp for trade history (optional)
             end: End timestamp for trade history (optional)
-
+            
         Returns:
             List of trade data
         """
@@ -244,14 +243,14 @@ class CachedBitvavoAPIClient:
         return health
 
 
-def create_bitvavo_client(settings: Settings, enable_cache: bool = True) -> Union[BitvavoAPIClient, CachedBitvavoAPIClient]:
+def create_bitvavo_client(settings: Settings, enable_cache: bool = True) -> Union[BitvavoAPIClient, BitvavoClientDecorator]:
     """
     Factory function to create Bitvavo client with optional caching.
-
+    
     Args:
         settings: Application settings
         enable_cache: Whether to wrap with cache decorator
-
+        
     Returns:
         BitvavoAPIClient (cached or standard)
     """
@@ -261,12 +260,12 @@ def create_bitvavo_client(settings: Settings, enable_cache: bool = True) -> Unio
         api_secret=settings.bitvavo_api_secret,
         rate_limit_delay=settings.bitvavo_rate_limit_delay
     )
-
+    
     # Wrap with cache decorator if requested
     if enable_cache:
-        cached_client = CachedBitvavoAPIClient(base_client, enable_cache=True)
+        cached_client = BitvavoClientDecorator(base_client, enable_cache=True)
         # Clear expired cache on startup
         cached_client.clear_expired_cache()
         return cached_client
-
+    
     return base_client

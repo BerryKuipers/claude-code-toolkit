@@ -26,7 +26,7 @@ from portfolio_core.application.services import PortfolioApplicationService, Mar
 from portfolio_core.domain.services import FIFOCalculationService, PortfolioCalculationService
 from portfolio_core.infrastructure.repositories import BitvavoPortfolioRepository, BitvavoMarketDataRepository
 from portfolio_core.infrastructure.mappers import BitvavoDataMapper
-from ..clients.cached_bitvavo_client import create_bitvavo_client
+from ..clients.bitvavo_client import create_bitvavo_client
 
 logger = logging.getLogger(__name__)
 
