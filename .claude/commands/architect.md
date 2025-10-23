@@ -1,38 +1,29 @@
-# TribeVibe Architecture Review Command
+# Architecture Review Command
 
-**Arguments:** --scope=<whole|backend|frontend|db> --include-docs=<true|false> --include-db=<true|false> --severity=<critical|all> --create-issues=<true|false>
+**Arguments:** [--scope=whole|backend|frontend|db] [--severity=critical|all] [--create-issues]
 
 **Success Criteria:** Comprehensive architectural analysis report with severity-grouped findings
 
-**Description:** Analysis-only architectural review tool that validates TribeVibe's adherence to contract-first, vertical slice, SOLID, and DRY principles. Produces structured reports for actionable improvements.
+**Description:** User-facing command that delegates to the architect agent for comprehensive architectural validation. Thin wrapper providing convenient CLI interface.
 
 ---
 
-## ⚠️ Important: Analysis Tool Only
+## ⚠️ Important: Command Purpose
 
-**This command performs ANALYSIS ONLY** - it does NOT orchestrate other commands.
+**This command is a USER INTERFACE** - it delegates all actual work to the **architect agent**.
 
-**Scope:**
-- ✅ Read codebase and documentation
-- ✅ Validate architectural principles
-- ✅ Generate findings report
-- ✅ Optionally create GitHub issues via `/issue-create`
-- ❌ Does NOT orchestrate other commands
-- ❌ Does NOT modify code
+**What this command does:**
+- ✅ Parse user arguments
+- ✅ Validate input parameters
+- ✅ Delegate to architect agent with context
+- ✅ Display results to user
 
-**Intended to be called by:** OrchestratorAgent, workflows, or direct user invocation
+**What this command does NOT do:**
+- ❌ Does NOT analyze code itself
+- ❌ Does NOT validate architecture directly
+- ❌ Does NOT generate reports itself
 
----
-
-## Core Capabilities
-
-- **VSA Compliance**: Validate Vertical Slice Architecture patterns
-- **SOLID Principles**: Enforce Single Responsibility, Open/Closed, etc.
-- **Layer Boundaries**: Check Controller → Service → Repository separation
-- **Contract-First**: Validate TypeScript interfaces defined before implementation
-- **DRY Analysis**: Identify code duplication
-- **Documentation Cross-Check**: Compare docs vs. actual implementation
-- **Database Review**: Migration safety, schema consistency
+**All actual work is done by:** `.claude/agents/architect.md`
 
 ---
 
@@ -46,335 +37,235 @@
 /architect --scope=backend
 
 # Critical findings only with GitHub issue creation
-/architect --severity=critical --create-issues=true
-
-# Database-focused review
-/architect --scope=db --include-db=true
+/architect --severity=critical --create-issues
 ```
 
 ---
 
-## Analysis Workflow
+## Workflow
 
-### Step 1: Load Architectural Context
-
-Read TribeVibe's architectural principles:
-```bash
-cat .claude/context/architectural-principles.json
-cat .claude/context/environment-rules.md
-```
-
-Reference implementation:
-```bash
-ls -R services/api/src/features/profile/
-```
-
-### Step 2: Determine Analysis Scope
-
-Based on `--scope` argument:
-
-**--scope=whole** (default): Analyze entire codebase
-```bash
-find services/api/src/features -type f -name "*.ts"
-find packages -type f -name "*.ts"
-```
-
-**--scope=backend**: API services only
-```bash
-find services/api -type f -name "*.ts"
-find packages/types packages/database packages/logger -type f -name "*.ts"
-```
-
-**--scope=frontend**: Frontend apps only
-```bash
-find apps/web -type f -name "*.ts" -o -name "*.tsx"
-find packages/sdk -type f -name "*.ts"
-```
-
-**--scope=db**: Database and migrations only
-```bash
-find packages/database -type f -name "*.ts"
-find packages/database/migrations -type f -name "*.sql"
-```
-
-### Step 3: Run Architectural Checks
-
-#### Check 1: VSA Structure Validation
-
-For each feature in `services/api/src/features/`:
-```bash
-FEATURE="profile"
-ls services/api/src/features/$FEATURE/controllers/*.ts
-ls services/api/src/features/$FEATURE/services/I*.ts
-ls services/api/src/features/$FEATURE/repositories/I*.ts
-```
-
-**Report findings:**
-- ✅ Complete VSA structure
-- ⚠️  Missing service interface
-- ❌ Missing repository implementation
-
-#### Check 2: Layer Boundary Violations
+### Step 1: Parse Arguments
 
 ```bash
-# Controllers directly accessing database (FORBIDDEN)
-grep -r "db\." services/api/src/features/*/controllers/
+# Extract arguments from command invocation
+SCOPE="${1:-whole}"  # Default to whole
+SEVERITY="${2:-all}"  # Default to all
+CREATE_ISSUES=false
 
-# Services bypassing repositories (FORBIDDEN)
-grep -r "db\." services/api/src/features/*/services/ | grep -v "Repository"
+# Parse flags
+for arg in "$@"; do
+  case $arg in
+    --scope=*)
+      SCOPE="${arg#*=}"
+      ;;
+    --severity=*)
+      SEVERITY="${arg#*=}"
+      ;;
+    --create-issues)
+      CREATE_ISSUES=true
+      ;;
+  esac
+done
+
+# Validate scope
+if [[ ! "$SCOPE" =~ ^(whole|backend|frontend|db)$ ]]; then
+  echo "❌ Invalid scope: $SCOPE"
+  echo "Valid options: whole, backend, frontend, db"
+  exit 1
+fi
+
+# Validate severity
+if [[ ! "$SCOPE" =~ ^(critical|all)$ ]]; then
+  echo "❌ Invalid severity: $SEVERITY"
+  echo "Valid options: critical, all"
+  exit 1
+fi
 ```
 
-**Report example:**
-```markdown
-### ❌ Layer Violation
-**File**: `MatchController.ts:45`
-**Issue**: Controller directly accessing database
-**Severity**: CRITICAL
-**Fix**: Create MatchRepository and delegate data access
-```
-
-#### Check 3: Contract-First Validation
+### Step 2: Prepare Context
 
 ```bash
-# Find all interface definitions
-grep -r "^export interface" packages/types/src/
-
-# Check if services implement interfaces
-grep -r "implements I.*Service" services/api/src/features/*/services/
+echo "🏗️  Architecture Review"
+echo "======================"
+echo "Scope: $SCOPE"
+echo "Severity: $SEVERITY"
+echo "Create Issues: $CREATE_ISSUES"
+echo ""
 ```
 
-#### Check 4: SOLID Principles
+### Step 3: Delegate to Architect Agent
 
-**Single Responsibility**:
-```bash
-# Find large classes (potential SRP violations)
-find services/api/src/features -type f -name "*.ts" -exec wc -l {} \; | sort -rn | head -10
-```
-
-**Dependency Inversion**:
-```bash
-# Check constructor injection patterns
-grep -r "constructor(" services/api/src/features/*/controllers/ -A 5
-```
-
-#### Check 5: DRY Violations
-
-```bash
-# Find similar patterns
-grep -r "function validateEmail" services/api/src/
-```
-
-### Step 4: Documentation Analysis (if --include-docs=true)
-
-```bash
-cat docs/ARCHITECTURAL_ENFORCEMENT.md
-grep -r "Contract-first" services/api/src/
-```
-
-Compare documentation claims vs. actual implementation.
-
-### Step 5: Database Analysis (if --include-db=true)
-
-```bash
-ls -ltr packages/database/migrations/*.sql
-grep -r "DROP TABLE\|ALTER TABLE DROP" packages/database/migrations/
-```
-
-### Step 6: Generate Report
-
-Format findings by severity:
+Use natural language to describe the task for the architect agent:
 
 ```markdown
-# 🏗️ Architectural Review Report
+"I need comprehensive architectural validation from the architect specialist.
 
-**Scope**: ${scope}
-**Date**: ${timestamp}
+Review Request:
+- **Scope**: $SCOPE (analyze entire codebase / backend only / frontend only / database only)
+- **Severity Filter**: $SEVERITY (show all findings / only critical issues)
+- **Issue Creation**: $CREATE_ISSUES (create GitHub issues for findings if true)
 
-## Executive Summary
-- **Total Findings**: 12
-- **Critical**: 2
-- **High**: 4
-- **Medium**: 5
-- **Low**: 1
+Focus Areas:
+1. **VSA Compliance**: Validate Vertical Slice Architecture patterns
+   - Feature organization (features/<domain>/)
+   - Controller → Service → Repository flow
+   - No cross-feature dependencies
 
-## Critical Findings
+2. **SOLID Principles**: Enforce design principles
+   - Single Responsibility
+   - Open/Closed
+   - Liskov Substitution
+   - Interface Segregation
+   - Dependency Inversion
 
-### 1. ❌ Layer Boundary Violation
-**File**: `MatchController.ts:45`
-**Severity**: CRITICAL
-**Issue**: Controller directly accessing database
-**Fix**: Create MatchRepository and delegate
+3. **Layer Boundaries**: Check proper separation
+   - Controllers: HTTP handling only
+   - Services: Business logic
+   - Repositories: Data access
+   - Entities: Data models
+   - No layer violations
 
-### 2. ❌ Missing Contract
-**Feature**: notification
-**Severity**: CRITICAL
-**Issue**: Service implemented without interface
-**Fix**: Define INotificationService in @tribevibe/types
+4. **Contract-First Development**:
+   - TypeScript interfaces defined in @types before implementation
+   - Clear contracts between layers
+   - Type safety enforced
 
-## High Priority Findings
-[...]
+5. **DRY Analysis**: Identify code duplication
+   - Duplicate logic across features
+   - Opportunities for shared utilities
+   - Extract common patterns
 
-## Medium Priority Findings
-[...]
+6. **Documentation Cross-Check**:
+   - Compare documented architecture vs actual implementation
+   - Identify documentation gaps
+   - Flag architecture drift
 
-## Low Priority Findings
-[...]
+7. **Database Review** (if scope includes db):
+   - Migration safety
+   - Schema consistency
+   - Foreign key relationships
+   - Index strategy
 
-## Recommendations
-1. **Immediate**: Fix 2 critical violations
-2. **This Sprint**: Address 4 high-priority findings
-3. **Next Sprint**: Resolve medium-priority tech debt
+Expected Output:
+- Comprehensive findings report grouped by severity
+- Specific file/line references for each finding
+- Actionable recommendations with examples
+- Summary statistics (violations by category)
+- Optionally create GitHub issues for tracking
 
-## Reference Implementation
-✅ **Perfect Example**: `services/api/src/features/profile/`
-Use as template for all features.
+Current Working Directory: $(pwd)
+Project Root: $(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 ```
 
-### Step 7: Create Issues (if --create-issues=true and critical findings exist)
-
-For each critical finding, invoke `/issue-create`:
+### Step 4: Display Results
 
 ```bash
-# Claude Code uses SlashCommand tool to create issues
-SlashCommand("/issue-create", {
-  title: "[Architecture] ${finding.issue}",
-  body: formatIssueBody(finding),
-  labels: "architecture,tech-debt,critical"
-})
+# The architect agent will provide comprehensive output
+# This command simply ensures user sees the results
+
+echo ""
+echo "✅ Architecture review complete"
+echo ""
+echo "📄 Report generated by architect agent"
+echo "Review the findings above for architectural improvements"
+
+if [ "$CREATE_ISSUES" = true ]; then
+  echo ""
+  echo "📝 GitHub issues created for tracking"
+  echo "View issues: gh issue list --label=architecture"
+fi
 ```
 
 ---
 
-## Output Formats
+## Arguments
 
-### Markdown (Default)
-Human-readable report with severity sections, findings, and recommendations.
+### `--scope=<value>`
 
-### JSON (if --output-format=json)
-```json
-{
-  "scope": "whole",
-  "timestamp": "2025-09-30T12:00:00Z",
-  "summary": {
-    "totalFindings": 12,
-    "critical": 2,
-    "high": 4,
-    "medium": 5,
-    "low": 1
-  },
-  "findings": [
-    {
-      "id": "VSA-001",
-      "severity": "critical",
-      "category": "layer-violation",
-      "file": "MatchController.ts",
-      "line": 45,
-      "issue": "Controller directly accessing database",
-      "fix": "Create MatchRepository"
-    }
-  ]
-}
+Controls what part of the codebase to analyze:
+
+- **whole** (default): Analyze entire codebase
+- **backend**: Backend services only (services/api/)
+- **frontend**: Frontend code only (services/web/)
+- **db**: Database schema and migrations only
+
+**Example**:
+```bash
+/architect --scope=backend
 ```
+
+### `--severity=<value>`
+
+Filter findings by severity level:
+
+- **all** (default): Show all findings
+- **critical**: Show only critical violations
+
+**Example**:
+```bash
+/architect --severity=critical
+```
+
+### `--create-issues`
+
+Flag to automatically create GitHub issues for findings:
+
+**Example**:
+```bash
+/architect --create-issues
+```
+
+---
+
+## Related Components
+
+**Agents:**
+- **architect.md** - The specialist agent that performs actual analysis (THIS COMMAND DELEGATES TO IT)
+- **refactor.md** - For implementing architectural improvements
+- **implementation.md** - For feature implementation following architecture
+
+**Commands:**
+- **/refactor** - Refactor code to address architectural findings
+- **/audit** - Comprehensive quality audit (includes architecture)
+- **/design-review** - UI/UX design review
 
 ---
 
 ## Success Criteria
 
-An architectural review is successful when:
-1. ✅ All specified scopes analyzed
-2. ✅ Violations identified with severity levels
-3. ✅ Concrete fix recommendations provided
-4. ✅ Reference implementations highlighted
-5. ✅ Report formatted for developer action
+- [x] Arguments parsed correctly
+- [x] Delegation to architect agent successful
+- [x] Findings displayed to user
+- [x] Issues created if requested
 
 ---
 
-## Critical Rules
+## Notes
 
-### ❌ NEVER Do These:
-1. Modify code (analysis only)
-2. Orchestrate other commands (let OrchestratorAgent handle that)
-3. Make assumptions (always grep/read actual code)
-4. Provide generic advice (give specific, actionable fixes)
+### Why This is a Thin Wrapper
 
-### ✅ ALWAYS Do These:
-1. Read architectural docs first
-2. Use grep for pattern detection
-3. Provide file paths and line numbers
-4. Suggest concrete fixes
-5. Highlight reference implementations
+In the 2025 agent-first architecture:
 
----
+**Before** (old approach):
+- Commands contained full implementation logic
+- Duplication between commands and agents
+- Hard to maintain consistency
 
-## Integration Points
+**After** (modern approach):
+- **Commands** = User interface (parse args, delegate, display)
+- **Agents** = Workers (do actual analysis)
+- **Benefits**: DRY, single source of truth, easier maintenance
 
-### Called by OrchestratorAgent
-```typescript
-// OrchestratorAgent invokes this for architecture tasks
-await delegate("/architect", { scope: "backend", severity: "critical" });
-```
+### For Developers
 
-### Called by Users
-```bash
-/architect --scope=whole --create-issues=true
-```
+If you need to modify architectural analysis logic:
+- ❌ DON'T modify this command
+- ✅ DO modify `.claude/agents/architect.md`
 
-### Invokes (for issue creation only)
-```bash
-# Only if --create-issues=true and critical findings exist
-/issue-create --title="..." --body="..." --labels="architecture,tech-debt"
-```
+This command is intentionally thin - all intelligence lives in the agent.
 
 ---
 
-## Configuration
-
-Settings in `.claude/config.yml`:
-
-```yaml
-validation:
-  requireArchitectReview: true  # Require review before major changes
-  autoCreateIssues: false        # Default for --create-issues flag
-  severityThreshold: "high"      # Minimum severity to report
-```
-
----
-
-## Examples
-
-### Example 1: Full Review
-```bash
-/architect
-# Output: Comprehensive report covering all scopes
-```
-
-### Example 2: Critical Issues with Auto-Issue Creation
-```bash
-/architect --severity=critical --create-issues=true
-# Output: Report + GitHub issues created for critical findings
-```
-
-### Example 3: Backend-Only
-```bash
-/architect --scope=backend --include-docs=false
-# Output: Backend analysis only, skip documentation cross-check
-```
-
----
-
-## Related Documentation
-
-- **Architectural Principles**: `.claude/context/architectural-principles.json`
-- **Environment Rules**: `.claude/context/environment-rules.md`
-- **Reference Implementation**: `services/api/src/features/profile/`
-- **Agent Architecture**: `docs/agents-architecture.md`
-
----
-
-## Summary
-
-**This is an analysis tool.** It reads code, validates principles, and generates reports.
-
-**It does NOT:** Orchestrate workflows, modify code, or coordinate other commands.
-
-**For orchestration:** Use OrchestratorAgent or invoke this command as part of a workflow.
+**Generated**: 2025-10-23 (Modernized to agent-first architecture)
+**Delegates to**: `.claude/agents/architect.md`
+**Type**: Thin wrapper command

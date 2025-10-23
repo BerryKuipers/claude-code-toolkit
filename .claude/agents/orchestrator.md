@@ -69,6 +69,18 @@ Categorize the task using semantic understanding:
 **Comprehensive Audit**: audit, quality, security, pre-deployment
 → Route to: audit agent
 
+**Code Review/PR Review**: review PR, code review, pull request review, code quality assessment
+→ Route to: code-reviewer agent or /review-pr command
+
+**Dependency Management**: dependencies, npm audit, package updates, outdated packages, vulnerability fixes
+→ Route to: dependency-manager agent or /update-deps, /fix-vulns commands
+
+**Security Scanning**: security scan, vulnerability scan, cross-repo security
+→ Route to: security-pentest agent or scripts/security-scan-all.sh
+
+**Repository Health**: repo health, repository status, health check
+→ Route to: scripts/repo-health-check.sh
+
 ### Step 2: Discover Available Commands
 
 ALWAYS check what tools exist before routing:
