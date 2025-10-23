@@ -57,6 +57,9 @@ Categorize the task using semantic understanding:
 **Testing**: test, validate, verify, check
 → Route to: /test-all, /test-ui, /test-user-flow commands
 
+**Browser/UI Testing**: browser test, UI test, visual validation, regression test, screenshot verification, UI automation
+→ Route to: browser-testing agent or /test-ui command
+
 **Research**: research, investigate, best practices, documentation
 → Route to: researcher agent
 
