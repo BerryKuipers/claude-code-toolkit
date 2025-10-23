@@ -133,6 +133,13 @@ fi
 
 # Create .gitignore for synced files
 echo "  → Updating .gitignore..."
+
+# Remove blanket .claude/ ignore if exists (it blocks exceptions like !.claude/settings.json)
+if grep -q "^\.claude/$" .gitignore 2>/dev/null; then
+  echo "  → Removing blanket .claude/ ignore (incompatible with toolkit)"
+  sed -i '/^\.claude\/$/d' .gitignore
+fi
+
 cat >> .gitignore <<'EOF'
 
 # Claude Code Toolkit - Synced Files (don't commit duplicates)
