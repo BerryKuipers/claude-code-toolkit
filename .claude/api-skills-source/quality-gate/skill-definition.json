@@ -1,0 +1,33 @@
+{
+  "name": "quality-gate",
+  "description": "Comprehensive quality validation for TypeScript/JavaScript projects: runs TypeScript checks, tests, coverage analysis, build validation, and linting. Returns structured results for conductor workflow integration. Works with standard tooling (npm, tsc, Vitest/Jest).",
+  "code_language": "python",
+  "entry_point": "quality_gate",
+  "parameters": {
+    "project_path": {
+      "type": "string",
+      "description": "Path to project directory (TypeScript/JavaScript project with package.json)",
+      "default": "."
+    },
+    "coverage_threshold": {
+      "type": "integer",
+      "description": "Minimum coverage percentage required",
+      "default": 80
+    }
+  },
+  "returns": {
+    "type": "object",
+    "description": "Quality gate results with pass/fail status and detailed check results"
+  },
+  "examples": [
+    {
+      "input": {
+        "project_path": "/path/to/your/project",
+        "coverage_threshold": 80
+      },
+      "description": "Run quality gate on TypeScript/JavaScript project with 80% coverage threshold"
+    }
+  ],
+  "tags": ["quality", "testing", "validation", "conductor", "typescript", "javascript"],
+  "version": "1.0.0"
+}

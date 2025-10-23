@@ -1,0 +1,209 @@
+# TribeVibe Claude Code Configuration
+
+# Delegation Settings
+delegation:
+  # Use SlashCommand tool for command delegation (verified working)
+  useSlashCommandTool: true
+
+  # Enable fallback to prompt-level delegation if SlashCommand fails
+  degradedFallback: true
+
+  # Retry timeout in milliseconds
+  retryMs: 3000
+
+  # Maximum retry attempts before fallback
+  maxRetries: 1
+
+# Agent Settings
+agents:
+  # Enable agent system
+  enabled: true
+
+  # Allow orchestrator to automatically route tasks to appropriate agents
+  autoRouting: true
+
+  # Enable centralized session logging
+  sessionLogging: true
+
+  # Session log retention (hours)
+  sessionRetentionHours: 24
+
+# Command Discovery
+commands:
+  # Automatically discover commands in .claude/commands/
+  autoDiscovery: true
+
+  # Exclude patterns from discovery
+  excludePatterns:
+    - "_*.md"           # Documentation files
+    - "*.backup"        # Backup files
+    - "*.md.new"        # Temporary files
+
+  # Cache command list for performance (seconds)
+  cacheDiscoverySeconds: 300
+
+# Orchestrator Settings
+orchestrator:
+  # Default mode if not specified
+  defaultMode: "full"
+
+  # Create unique session ID for each orchestration
+  createSessionId: true
+
+  # Propagate session ID to delegated commands
+  propagateSession: true
+
+  # Maximum parallel delegations
+  maxParallelDelegations: 5
+
+  # Timeout for delegated commands (milliseconds)
+  delegationTimeoutMs: 300000  # 5 minutes
+
+# Validation Settings
+validation:
+  # Require tests to pass before refactoring
+  requireTestsBeforeRefactor: true
+
+  # Require audit baseline before refactoring
+  requireAuditBaseline: true
+
+  # Require build to pass after changes
+  requireBuildValidation: true
+
+  # Auto-revert on validation failure
+  autoRevertOnFailure: true
+
+# Workflow Settings
+workflows:
+  # UI Testing workflow requirements
+  uiTesting:
+    # Always run data-setup before UI tests
+    requireDataSetup: true
+
+    # Always run app-discovery before UI tests
+    requireAppDiscovery: true
+
+    # Mandatory sequence: data-setup → app-discovery → test-ui
+    enforceSequence: true
+
+  # Issue pickup workflow
+  issuePickup:
+    # Auto-consult orchestrator for complex tasks
+    autoConsultOrchestrator: true
+
+    # Task categories that trigger orchestrator consultation
+    orchestratorCategories:
+      - "feature"
+      - "refactoring"
+      - "database"
+      - "design"
+      - "testing"
+
+    # Skip orchestrator for simple tasks
+    skipOrchestratorFor:
+      - "bugfix"
+      - "documentation"
+
+# Logging Settings
+logging:
+  # Enable structured logging to Seq
+  seqEnabled: true
+
+  # Seq dashboard URL
+  seqUrl: "http://localhost:5341"
+
+  # Log level (debug, info, warn, error)
+  logLevel: "info"
+
+  # Include session ID in all logs
+  includeSessionId: true
+
+  # Include command context in logs
+  includeCommandContext: true
+
+# Performance Settings
+performance:
+  # Enable command performance tracking
+  trackCommandPerformance: true
+
+  # Warn if command exceeds threshold (milliseconds)
+  slowCommandThresholdMs: 60000  # 1 minute
+
+  # Enable caching for expensive operations
+  enableCaching: true
+
+  # Cache TTL (seconds)
+  cacheTtlSeconds: 600  # 10 minutes
+
+# Safety Settings
+safety:
+  # Never restart servers automatically
+  neverRestartServers: true
+
+  # Always confirm destructive operations
+  confirmDestructive: true
+
+  # Dry run by default for high-risk operations
+  dryRunHighRisk: false
+
+  # Maximum file size for refactoring (bytes)
+  maxRefactorFileSizeBytes: 100000  # 100KB
+
+# Integration Settings
+integrations:
+  # GitHub CLI integration
+  github:
+    enabled: true
+    defaultLabels:
+      - "automated"
+
+  # Chrome DevTools MCP
+  chromeDevTools:
+    enabled: true
+    remoteDebuggingPort: 9222
+
+  # Loki MCP
+  loki:
+    enabled: true
+    defaultQuery: "last 30m"
+
+  # Seq MCP
+  seq:
+    enabled: true
+    autoCreateSignals: true
+
+# Notification Settings
+notifications:
+  # Notify on critical findings
+  notifyOnCritical: true
+
+  # Notify on validation failures
+  notifyOnValidationFailure: true
+
+  # Notify on orchestration completion
+  notifyOnOrchestrationComplete: false
+
+# Experimental Features
+experimental:
+  # Enable namespace-aware command routing
+  namespaceRouting: false
+
+  # Enable AI-driven command selection
+  aiCommandSelection: false
+
+  # Enable parallel agent execution
+  parallelAgents: false
+
+# Workspace Settings
+workspace:
+  # Temporary workspace location
+  tempDir: "/tmp/tribevibe-orchestrator"
+
+  # Auto-cleanup workspace after completion
+  autoCleanup: true
+
+  # Workspace retention after completion (minutes)
+  retentionMinutes: 60
+
+  # Share workspace between collaborating commands
+  sharedWorkspace: true

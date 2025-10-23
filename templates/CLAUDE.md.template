@@ -1,0 +1,87 @@
+# {{PROJECT_NAME}} - AI Assistant Rules
+
+**Core development rules and patterns for AI assistants working on {{PROJECT_NAME}}.**
+
+---
+
+## 🎬 Project Overview
+
+**{{PROJECT_DESCRIPTION}}**
+
+**Tech Stack:**
+- **Frontend**: {{FRONTEND_STACK}}
+- **Backend**: {{BACKEND_STACK}}
+- **Database**: {{DATABASE_TYPE}}
+- **Testing**: {{TEST_FRAMEWORK}}
+
+---
+
+## 🏗️ Architectural Rules
+
+### Current Architecture
+
+{{ARCHITECTURE_DESCRIPTION}}
+
+### Best Practices
+
+{{BEST_PRACTICES}}
+
+---
+
+## 📂 Project Structure
+
+```
+{{PROJECT_ROOT}}/
+├── {{SOURCE_DIR}}/        # {{SOURCE_DESCRIPTION}}
+├── {{TEST_DIR}}/          # {{TEST_DESCRIPTION}}
+├── {{DOCS_DIR}}/          # {{DOCS_DESCRIPTION}}
+└── ...
+```
+
+---
+
+## 📋 Common Commands
+
+```bash
+{{DEV_COMMAND}}      # Start development server
+{{BUILD_COMMAND}}    # Build for production
+{{TEST_COMMAND}}     # Run tests
+{{LINT_COMMAND}}     # Lint code
+```
+
+---
+
+## 🚫 FORBIDDEN COMMANDS
+
+### Git Restrictions:
+- ❌ `git commit --no-verify` - Pre-commit hooks MUST run
+- ❌ `git push --force` to main - Destructive
+- ❌ `git commit --amend` on pushed commits - Rewrites history
+
+### Other Restrictions:
+{{PROJECT_SPECIFIC_RESTRICTIONS}}
+
+---
+
+## 🤖 Agent Usage
+
+### When to use specific agents:
+
+- **architect** - Reviewing component structure, dependencies
+- **database** - Schema changes, migrations
+- **design** - UI/UX improvements, accessibility
+- **refactor** - Code cleanup, optimization
+- **conductor** - Complete feature workflows
+
+---
+
+## 💡 Remember
+
+1. **Follow project conventions** - Match existing code style
+2. **Test before committing** - Run {{TEST_COMMAND}}
+3. **Document changes** - Update docs for new features
+4. **Ask when unsure** - Better to clarify than assume
+
+---
+
+**This is {{PROJECT_NAME}} - {{PROJECT_TAGLINE}}**
