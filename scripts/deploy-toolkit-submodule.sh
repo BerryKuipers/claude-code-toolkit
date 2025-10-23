@@ -111,11 +111,15 @@ if [ ! -f ".claude/settings.json" ]; then
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/scripts/sync-claude-toolkit.sh"
+            "command": "git submodule update --init --remote .claude-toolkit"
           },
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/scripts/install-gh-cli.sh"
+            "command": "bash .claude-toolkit/scripts/sync-claude-toolkit.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude-toolkit/scripts/install-gh-cli.sh"
           }
         ]
       }
@@ -174,8 +178,13 @@ Integrated claude-code-toolkit for universal agent/command/skill management.
 Changes:
 ✅ Added .claude-toolkit as git submodule
 ✅ Created sync-claude-toolkit.sh (cross-platform: Windows/Linux/Mac)
-✅ Updated SessionStart hooks to sync toolkit automatically
+✅ Updated SessionStart hooks with submodule init (fixes chicken-and-egg issue)
 ✅ Added .gitignore for synced files
+
+Critical Fix:
+On fresh clone, .claude-toolkit is empty until submodule is initialized.
+SessionStart now runs "git submodule update --init --remote" BEFORE
+executing scripts from .claude-toolkit/, preventing bootstrap errors.
 
 Cross-Platform Features:
 - Works on Windows (Git Bash), Linux, Mac
@@ -189,9 +198,10 @@ Files Synced from Toolkit:
 - .claude/skills/ (14 skills)
 - .claude/api-skills-source/ (API skills)
 
-SessionStart Hook:
-1. Sync toolkit (pull updates, copy files)
-2. Install gh CLI (no root required)
+SessionStart Hook (fixes chicken-and-egg problem):
+1. Initialize submodule (git submodule update --init --remote)
+2. Sync toolkit (pull updates, copy files)
+3. Install gh CLI (no root required)
 
 Benefits:
 ✅ Single source of truth (claude-code-toolkit)
