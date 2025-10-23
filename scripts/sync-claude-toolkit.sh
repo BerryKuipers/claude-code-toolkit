@@ -48,6 +48,10 @@ echo "  → Syncing API skills..."
 rsync -a --delete "$TOOLKIT_DIR/api-skills-source/" "$TARGET_DIR/api-skills-source/" 2>/dev/null || \
   cp -rf "$TOOLKIT_DIR/api-skills-source" "$TARGET_DIR/"
 
+echo "  → Syncing prompts..."
+rsync -a --delete "$TOOLKIT_DIR/prompts/" "$TARGET_DIR/prompts/" 2>/dev/null || \
+  cp -rf "$TOOLKIT_DIR/prompts" "$TARGET_DIR/"
+
 # Don't overwrite project-specific files
 echo "  → Preserving project-specific files (settings.json, config.yml)"
 

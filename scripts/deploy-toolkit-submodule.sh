@@ -148,10 +148,12 @@ cat >> .gitignore <<'EOF'
 .claude/skills/
 .claude/api-skills-source/
 
-# Keep project-specific
+# Claude Code Toolkit - Keep These (project-specific or reference content)
 !.claude/settings.json
 !.claude/config.yml
 !.claude/local/
+!.claude/prompts/
+# Note: prompts/ is synced but NOT ignored - it's reference content that can be customized per project
 EOF
 
 # Run initial sync
