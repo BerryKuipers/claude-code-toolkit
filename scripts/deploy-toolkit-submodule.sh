@@ -1,6 +1,12 @@
 #!/bin/bash
 # Deploy Claude Code Toolkit as Submodule (Cross-Platform)
 # Usage: ./scripts/deploy-toolkit-submodule.sh [repo-name]
+#
+# Features:
+# - Disables commit signing to prevent signing errors
+# - Cross-platform compatible (Windows/Linux/Mac)
+# - Automatic SessionStart hook setup
+# - Idempotent (safe to run multiple times)
 
 set -e
 
@@ -42,6 +48,9 @@ echo "  → Default branch: $DEFAULT_BRANCH"
 git config credential.helper ""
 git config --local credential.helper '!/root/.local/bin/gh auth git-credential'
 
+# Disable commit signing to avoid signing errors
+git config --local commit.gpgsign false
+
 # Checkout default branch
 git checkout "$DEFAULT_BRANCH"
 git pull origin "$DEFAULT_BRANCH"
@@ -58,10 +67,16 @@ echo "📦 Adding toolkit as submodule..."
 if [ -f ".gitmodules" ] && grep -q "claude-code-toolkit" ".gitmodules"; then
   echo "  ⚠️  Toolkit submodule already exists"
 else
-  # Add submodule
+  # Add submodule (disable signing for submodule operations)
   git submodule add "$TOOLKIT_REPO" .claude-toolkit
   git submodule init
   git submodule update
+
+  # Disable signing in submodule too
+  cd .claude-toolkit
+  git config --local commit.gpgsign false
+  cd ..
+
   echo "  ✅ Submodule added"
 fi
 
@@ -194,10 +209,29 @@ EOF
 
 echo ""
 echo "⬆️  Pushing to GitHub..."
-if GITHUB_TOKEN=$GITHUB_TOKEN git push https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_USER}/${REPO_NAME}.git "$BRANCH_NAME:$BRANCH_NAME"; then
-  echo "  ✅ Pushed successfully!"
-else
-  echo "  ❌ Push failed"
+
+# Push with retry logic (up to 4 retries with exponential backoff)
+PUSH_ATTEMPTS=0
+MAX_PUSH_ATTEMPTS=4
+PUSH_SUCCESS=false
+
+while [ $PUSH_ATTEMPTS -lt $MAX_PUSH_ATTEMPTS ]; do
+  if git push -u origin "$BRANCH_NAME"; then
+    PUSH_SUCCESS=true
+    echo "  ✅ Pushed successfully!"
+    break
+  else
+    PUSH_ATTEMPTS=$((PUSH_ATTEMPTS + 1))
+    if [ $PUSH_ATTEMPTS -lt $MAX_PUSH_ATTEMPTS ]; then
+      WAIT_TIME=$((2 ** PUSH_ATTEMPTS))
+      echo "  ⚠️  Push failed, retrying in ${WAIT_TIME}s (attempt $((PUSH_ATTEMPTS + 1))/$MAX_PUSH_ATTEMPTS)..."
+      sleep $WAIT_TIME
+    fi
+  fi
+done
+
+if [ "$PUSH_SUCCESS" = false ]; then
+  echo "  ❌ Push failed after $MAX_PUSH_ATTEMPTS attempts"
   exit 1
 fi
 
