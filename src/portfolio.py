@@ -153,51 +153,117 @@ def fetch_trade_history(client: "Bitvavo", asset: str) -> List[Dict[str, str]]:
 def calculate_pnl(
     trades: List[Dict[str, str]], current_price: Decimal
 ) -> Dict[str, Decimal]:
-    """Process *trades* (chronological list) under FIFO and return P&L metrics."""
-    lots: Deque[PurchaseLot] = deque()
-    realised_eur = Decimal("0")
-    total_buys_eur = Decimal("0")  # denominator for true return %%
-    for trade in trades:
-        amt = _decimal(trade["amount"])
-        price = _decimal(trade["price"])
-        fee = _decimal(trade.get("fee", "0"))
-        side = trade["side"].lower()
-        ts = int(trade.get("timestamp", "0"))
-        if side == "buy":
-            cost = amt * price + fee
-            total_buys_eur += cost
-            lots.append(PurchaseLot(amount=amt, cost_eur=cost, timestamp=ts))
-        elif side == "sell":
-            proceeds = amt * price - fee
-            sold_left = amt
-            cost_basis = Decimal("0")
-            while sold_left > 0 and lots:
-                lot = lots[0]
-                take = min(lot.amount, sold_left)
-                proportional_cost = (lot.cost_eur / lot.amount) * take
-                cost_basis += proportional_cost
-                lot.amount -= take
-                lot.cost_eur -= proportional_cost
-                sold_left -= take
-                if lot.amount == 0:
-                    lots.popleft()
-                else:
-                    lots[0] = lot  # update in place
-            realised_eur += proceeds - cost_basis
-        else:
-            raise ValueError(f"Unknown trade side: {side}")
-    remaining_amt = sum(lot.amount for lot in lots)
-    remaining_cost = sum(lot.cost_eur for lot in lots)
-    value_now = remaining_amt * current_price
-    unrealised_eur = value_now - remaining_cost
-    return {
-        "amount": remaining_amt,
-        "cost_eur": remaining_cost,
-        "value_eur": value_now,
-        "realised_eur": realised_eur,
-        "unrealised_eur": unrealised_eur,
-        "total_buys_eur": total_buys_eur,
-    }
+    """
+    Process *trades* (chronological list) under FIFO and return P&L metrics.
+
+    DEPRECATED: This function now delegates to the Clean Architecture implementation.
+    The single source of truth is portfolio_core.domain.services.FIFOCalculationService.
+    """
+    # Import Clean Architecture components
+    try:
+        import os
+        import sys
+
+        # Add project root to path
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(os.path.dirname(current_dir))
+        if project_root not in sys.path:
+            sys.path.insert(0, project_root)
+
+        from portfolio_core.domain.entities import Trade
+        from portfolio_core.domain.services import FIFOCalculationService
+        from portfolio_core.domain.value_objects import (
+            AssetAmount,
+            AssetSymbol,
+            Money,
+            Timestamp,
+            TradeType,
+        )
+
+        # Convert legacy trade format to Clean Architecture format
+        clean_trades = []
+        for trade in trades:
+            # Validate trade side first (for backward compatibility)
+            side = trade["side"].lower()
+            if side not in ["buy", "sell"]:
+                raise ValueError(f"Unknown trade side: {side}")
+
+            # Extract asset symbol from trade data (assuming BTC for backward compatibility)
+            asset_symbol = AssetSymbol(
+                "BTC"
+            )  # Default, should be passed as parameter in real usage
+
+            trade_type = TradeType.BUY if side == "buy" else TradeType.SELL
+            amount = AssetAmount(_decimal(trade["amount"]), asset_symbol)
+            price = Money(_decimal(trade["price"]), "EUR")
+            fee = Money(_decimal(trade.get("fee", "0")), "EUR")
+            timestamp = Timestamp(int(trade.get("timestamp", "0")))
+
+            clean_trade = Trade(
+                asset=asset_symbol,
+                trade_type=trade_type,
+                amount=amount,
+                price=price,
+                fee=fee,
+                timestamp=timestamp,
+            )
+            clean_trades.append(clean_trade)
+
+        # Use Clean Architecture FIFO service
+        fifo_service = FIFOCalculationService()
+        current_price_money = Money(current_price, "EUR")
+
+        return fifo_service.calculate_asset_pnl(clean_trades, current_price_money)
+
+    except ImportError:
+        # Fallback to original implementation if Clean Architecture not available
+        lots: Deque[PurchaseLot] = deque()
+        realised_eur = Decimal("0")
+        total_buys_eur = Decimal("0")  # denominator for true return %%
+        for trade in trades:
+            amt = _decimal(trade["amount"])
+            price = _decimal(trade["price"])
+            fee = _decimal(trade.get("fee", "0"))
+            side = trade["side"].lower()
+            ts = int(trade.get("timestamp", "0"))
+            if side == "buy":
+                cost = amt * price + fee
+                total_buys_eur += cost
+                lots.append(PurchaseLot(amount=amt, cost_eur=cost, timestamp=ts))
+            elif side == "sell":
+                proceeds = amt * price - fee
+                sold_left = amt
+                cost_basis = Decimal("0")
+                while sold_left > 0 and lots:
+                    lot = lots[0]
+                    take = min(lot.amount, sold_left)
+                    proportional_cost = (lot.cost_eur / lot.amount) * take
+                    cost_basis += proportional_cost
+                    lot.amount -= take
+                    lot.cost_eur -= proportional_cost
+                    sold_left -= take
+                    if lot.amount == 0:
+                        lots.popleft()
+                    else:
+                        lots[0] = lot  # update in place
+                realised_eur += proceeds - cost_basis
+            else:
+                raise ValueError(f"Unknown trade side: {side}")
+
+        # Calculate remaining position
+        remaining_amt = sum(lot.amount for lot in lots)
+        remaining_cost = sum(lot.cost_eur for lot in lots)
+        value_now = remaining_amt * current_price
+        unrealised_eur = value_now - remaining_cost
+
+        return {
+            "amount": remaining_amt,
+            "cost_eur": remaining_cost,
+            "value_eur": value_now,
+            "realised_eur": realised_eur,
+            "unrealised_eur": unrealised_eur,
+            "total_buys_eur": total_buys_eur,
+        }
 
 
 # ---------------------------------------------------------------------------

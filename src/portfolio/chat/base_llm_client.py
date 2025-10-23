@@ -196,23 +196,17 @@ class BaseLLMClient(ABC):
             query_type: Type of query (chat, function_call, etc.)
         """
         try:
-            import streamlit as st
-
-            if "cost_tracker" in st.session_state:
-                cost = self.estimate_cost(prompt_tokens, completion_tokens)
-                st.session_state.cost_tracker.track_usage(
-                    self.provider,
-                    self.model_id,
-                    prompt_tokens,
-                    completion_tokens,
-                    cost,
-                    query_type,
-                )
+            # Note: Cost tracking moved to frontend to avoid Streamlit context issues
+            # The backend should not access Streamlit session state directly
+            pass
         except Exception as e:
-            # Don't fail if cost tracking fails
+            # Don't fail if cost tracking fails - this is expected when running from backend
             import logging
 
-            logging.warning(f"Cost tracking failed: {e}")
+            logger = logging.getLogger(__name__)
+            logger.debug(
+                f"Cost tracking not available (expected in backend context): {e}"
+            )
 
     def get_model_info(self) -> ModelInfo:
         """Get information about the current model."""

@@ -1,0 +1,364 @@
+"""
+Strongly typed API client for the crypto portfolio backend.
+
+This client provides type-safe communication with the FastAPI backend,
+giving the frontend the same C# developer experience with full IntelliSense.
+"""
+
+import logging
+from typing import Dict, List, Optional, Union
+from decimal import Decimal
+import httpx
+import asyncio
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
+
+
+class APIException(Exception):
+    """Base exception for API client errors."""
+    
+    def __init__(self, message: str, status_code: Optional[int] = None, details: Optional[Dict] = None):
+        self.message = message
+        self.status_code = status_code
+        self.details = details or {}
+        super().__init__(self.message)
+
+
+class PortfolioSummary:
+    """Portfolio summary data model (mirrors backend PortfolioSummaryResponse)."""
+    
+    def __init__(self, data: Dict):
+        self.total_value = Decimal(str(data.get("total_value", "0")))
+        self.total_cost = Decimal(str(data.get("total_cost", "0")))
+        self.realized_pnl = Decimal(str(data.get("realized_pnl", "0")))
+        self.unrealized_pnl = Decimal(str(data.get("unrealized_pnl", "0")))
+        self.total_pnl = Decimal(str(data.get("total_pnl", "0")))
+        self.total_return_percentage = Decimal(str(data.get("total_return_percentage", "0")))
+        self.asset_count = data.get("asset_count", 0)
+        self.last_updated = datetime.fromisoformat(data.get("last_updated", datetime.now().isoformat()))
+
+
+class Holding:
+    """Individual asset holding data model (mirrors backend HoldingResponse)."""
+    
+    def __init__(self, data: Dict):
+        self.asset = data.get("asset", "")
+        self.quantity = Decimal(str(data.get("quantity", "0")))
+        self.current_price = Decimal(str(data.get("current_price", "0")))
+        self.value_eur = Decimal(str(data.get("value_eur", "0")))
+        self.cost_basis = Decimal(str(data.get("cost_basis", "0")))
+        self.unrealized_pnl = Decimal(str(data.get("unrealized_pnl", "0")))
+        self.realized_pnl = Decimal(str(data.get("realized_pnl", "0")))
+        self.portfolio_percentage = Decimal(str(data.get("portfolio_percentage", "0")))
+        self.total_return_percentage = Decimal(str(data.get("total_return_percentage", "0")))
+
+
+class Transaction:
+    """Transaction data model (mirrors backend TransactionResponse)."""
+    
+    def __init__(self, data: Dict):
+        self.id = data.get("id", "")
+        self.asset = data.get("asset", "")
+        self.side = data.get("side", "")
+        self.amount = Decimal(str(data.get("amount", "0")))
+        self.price = Decimal(str(data.get("price", "0")))
+        self.fee = Decimal(str(data.get("fee", "0")))
+        self.timestamp = data.get("timestamp", 0)
+
+
+class ChatResponse:
+    """Chat response data model (mirrors backend ChatResponse)."""
+    
+    def __init__(self, data: Dict):
+        self.message = data.get("message", "")
+        self.conversation_id = data.get("conversation_id", "")
+        self.model_used = data.get("model_used", "")
+        self.function_calls = data.get("function_calls", [])
+        self.token_usage = data.get("token_usage", {})
+        self.response_time_ms = data.get("response_time_ms", 0.0)
+        self.cost_estimate = data.get("cost_estimate", 0.0)
+
+
+class CryptoPortfolioAPIClient:
+    """
+    Strongly typed API client for the crypto portfolio backend.
+    
+    This client provides type-safe methods for all backend endpoints
+    with proper error handling and response parsing.
+    """
+    
+    def __init__(self, base_url: str = "http://localhost:8000", timeout: float = 120.0):
+        """
+        Initialize API client.
+        
+        Args:
+            base_url: Backend API base URL
+            timeout: Request timeout in seconds
+        """
+        self.base_url = base_url.rstrip("/")
+        self.timeout = timeout
+        self._client = httpx.AsyncClient(timeout=timeout)
+        
+        logger.info(f"API client initialized for {self.base_url}")
+    
+    async def _request(self, method: str, endpoint: str, **kwargs) -> Dict:
+        """Make HTTP request with error handling."""
+        url = f"{self.base_url}{endpoint}"
+        
+        try:
+            response = await self._client.request(method, url, **kwargs)
+            
+            if response.status_code >= 400:
+                try:
+                    error_data = response.json()
+                    raise APIException(
+                        message=error_data.get("error_message", f"HTTP {response.status_code}"),
+                        status_code=response.status_code,
+                        details=error_data.get("details", {})
+                    )
+                except ValueError:
+                    raise APIException(
+                        message=f"HTTP {response.status_code}: {response.text}",
+                        status_code=response.status_code
+                    )
+            
+            return response.json()
+            
+        except httpx.RequestError as e:
+            raise APIException(f"Request failed: {str(e)}")
+    
+    async def health_check(self) -> Dict:
+        """Check API health status."""
+        return await self._request("GET", "/health")
+    
+    # Portfolio endpoints
+    async def get_portfolio_summary(self) -> PortfolioSummary:
+        """Get comprehensive portfolio summary."""
+        data = await self._request("GET", "/api/v1/portfolio/summary")
+        return PortfolioSummary(data)
+    
+    async def get_current_holdings(self, include_zero_balances: bool = True) -> List[Holding]:
+        """Get list of all current holdings."""
+        params = {"include_zero_balances": include_zero_balances}
+        data = await self._request("GET", "/api/v1/portfolio/holdings", params=params)
+        return [Holding(holding) for holding in data]
+
+    async def get_portfolio_holdings(self) -> "PortfolioHoldingsData":
+        """Get complete portfolio data including holdings and summary with parallel loading."""
+        data = await self._request("GET", "/api/v1/portfolio/data")
+
+        # Create a simple data container for the combined response
+        class PortfolioHoldingsData:
+            def __init__(self, data):
+                self.summary = PortfolioSummary(data["summary"])
+                self.holdings = [Holding(holding) for holding in data["holdings"]]
+                self.last_updated = data.get("last_updated")
+
+        return PortfolioHoldingsData(data)
+    
+    async def get_asset_performance(self, asset: str) -> Holding:
+        """Get performance data for a specific asset."""
+        data = await self._request("GET", f"/api/v1/portfolio/performance/{asset}")
+        return Holding(data)
+    
+    async def get_transaction_history(self, asset: Optional[str] = None) -> List[Transaction]:
+        """Get transaction history."""
+        params = {"asset": asset} if asset else {}
+        data = await self._request("GET", "/api/v1/portfolio/transactions", params=params)
+        return [Transaction(tx) for tx in data]
+    
+    async def refresh_portfolio_data(self) -> bool:
+        """Force refresh of portfolio data."""
+        data = await self._request("POST", "/api/v1/portfolio/refresh")
+        return data.get("success", False)
+
+    async def get_cache_stats(self) -> Dict:
+        """Get cache statistics and health information."""
+        return await self._request("GET", "/api/v1/cache/stats")
+    
+    # Market endpoints
+    async def get_market_data(self) -> Dict:
+        """Get comprehensive market data."""
+        return await self._request("GET", "/api/v1/market/data")
+    
+    async def get_current_prices(self, assets: Optional[List[str]] = None) -> Dict:
+        """Get current market prices."""
+        params = {"assets": assets} if assets else {}
+        return await self._request("GET", "/api/v1/market/prices", params=params)
+    
+    async def get_market_opportunities(self) -> Dict:
+        """Get market investment opportunities."""
+        return await self._request("GET", "/api/v1/market/opportunities")
+    
+    # Chat endpoints
+    async def chat_query(self, message: str, conversation_id: Optional[str] = None,
+                        use_function_calling: bool = True, use_orchestrator: bool = False,
+                        temperature: float = 0.1, model: Optional[str] = None) -> ChatResponse:
+        """Send chat query to AI assistant with optional orchestrator support."""
+        data = {
+            "message": message,
+            "use_function_calling": use_function_calling,
+            "use_orchestrator": use_orchestrator,
+            "temperature": temperature
+        }
+        if conversation_id:
+            data["conversation_id"] = conversation_id
+        if model:
+            data["model_preference"] = model
+
+        response_data = await self._request("POST", "/api/v1/chat/query", json=data)
+        return ChatResponse(response_data)
+    
+    async def get_available_functions(self) -> Dict:
+        """Get list of available AI functions."""
+        return await self._request("GET", "/api/v1/chat/functions")
+    
+    async def create_conversation(self) -> str:
+        """Create new chat conversation."""
+        data = await self._request("POST", "/api/v1/chat/conversations")
+        return data.get("conversation_id", "")
+    
+    # Utility methods
+    async def close(self):
+        """Close the HTTP client."""
+        await self._client.aclose()
+    
+    async def __aenter__(self):
+        """Async context manager entry."""
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit."""
+        await self.close()
+
+
+# Synchronous wrapper for Streamlit compatibility
+class SyncCryptoPortfolioAPIClient:
+    """
+    Synchronous wrapper for the async API client.
+
+    This provides a synchronous interface for use in Streamlit
+    while maintaining the same type safety.
+    """
+
+    def __init__(self, base_url: str = "http://localhost:8000", timeout: float = 120.0):
+        self.base_url = base_url
+        self.timeout = timeout
+        self._loop = None
+        self._async_client = None
+
+    def _get_or_create_client(self):
+        """Get or create async client with proper event loop management."""
+        if self._async_client is None:
+            self._async_client = CryptoPortfolioAPIClient(self.base_url, self.timeout)
+        return self._async_client
+
+    def _run_async(self, coro):
+        """Run async coroutine in sync context with proper event loop management."""
+        try:
+            # Try to get existing event loop
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_closed():
+                    raise RuntimeError("Event loop is closed")
+            except RuntimeError:
+                # No event loop exists or it's closed, create a new one
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                self._loop = loop
+
+            # Ensure we have a client
+            self._get_or_create_client()
+
+            # Run the coroutine
+            return loop.run_until_complete(coro)
+
+        except Exception as e:
+            logger.error(f"Error running async operation: {e}")
+            logger.error(f"Exception type: {type(e)}")
+            logger.error(f"Exception details: {str(e)}")
+
+            # Get more detailed error information
+            if hasattr(e, '__cause__') and e.__cause__:
+                logger.error(f"Root cause: {e.__cause__}")
+            if hasattr(e, 'args') and e.args:
+                logger.error(f"Error args: {e.args}")
+
+            # Check for specific error types
+            error_msg = str(e)
+            if not error_msg or error_msg.strip() == "":
+                error_msg = f"Unknown {type(e).__name__} error occurred"
+
+            raise APIException(f"Request failed: {error_msg}")
+    
+    def health_check(self) -> Dict:
+        """Check API health status."""
+        client = self._get_or_create_client()
+        return self._run_async(client.health_check())
+    
+    def get_portfolio_summary(self) -> PortfolioSummary:
+        """Get comprehensive portfolio summary."""
+        client = self._get_or_create_client()
+        return self._run_async(client.get_portfolio_summary())
+
+    def get_current_holdings(self, include_zero_balances: bool = True) -> List[Holding]:
+        """Get list of all current holdings."""
+        client = self._get_or_create_client()
+        return self._run_async(client.get_current_holdings(include_zero_balances=include_zero_balances))
+
+    def get_portfolio_holdings(self):
+        """Get complete portfolio data including holdings and summary with parallel loading."""
+        client = self._get_or_create_client()
+        return self._run_async(client.get_portfolio_holdings())
+
+    def get_asset_performance(self, asset: str) -> Holding:
+        """Get performance data for a specific asset."""
+        client = self._get_or_create_client()
+        return self._run_async(client.get_asset_performance(asset))
+
+    def get_transaction_history(self, asset: Optional[str] = None) -> List[Transaction]:
+        """Get transaction history."""
+        client = self._get_or_create_client()
+        return self._run_async(client.get_transaction_history(asset))
+
+    def refresh_portfolio_data(self) -> bool:
+        """Force refresh of portfolio data."""
+        client = self._get_or_create_client()
+        return self._run_async(client.refresh_portfolio_data())
+
+    def get_cache_stats(self) -> Dict:
+        """Get cache statistics and health information."""
+        client = self._get_or_create_client()
+        return self._run_async(client.get_cache_stats())
+
+    def get_market_data(self) -> Dict:
+        """Get comprehensive market data."""
+        client = self._get_or_create_client()
+        return self._run_async(client.get_market_data())
+    
+    def chat_query(self, message: str, conversation_id: Optional[str] = None,
+                   use_function_calling: bool = True, use_orchestrator: bool = False,
+                   temperature: float = 0.1, model: Optional[str] = None) -> ChatResponse:
+        """Send chat query to AI assistant with optional orchestrator support."""
+        client = self._get_or_create_client()
+        return self._run_async(client.chat_query(
+            message, conversation_id, use_function_calling, use_orchestrator, temperature, model
+        ))
+
+    def get_available_functions(self) -> Dict:
+        """Get list of available AI functions."""
+        client = self._get_or_create_client()
+        return self._run_async(client.get_available_functions())
+    
+    def close(self):
+        """Close the HTTP client and cleanup resources."""
+        if self._async_client:
+            self._run_async(self._async_client.close())
+            self._async_client = None
+        if self._loop and not self._loop.is_closed():
+            try:
+                self._loop.close()
+            except Exception:
+                pass
+            self._loop = None

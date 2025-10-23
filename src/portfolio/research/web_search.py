@@ -7,6 +7,10 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 import requests
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 

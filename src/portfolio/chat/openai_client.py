@@ -63,35 +63,9 @@ class OpenAIClient(BaseLLMClient):
             ChatCompletion response from OpenAI
         """
         try:
-            # Get custom system prompt if available
-            try:
-                import streamlit as st
-
-                if "prompt_editor" in st.session_state:
-                    custom_system_prompt = (
-                        st.session_state.prompt_editor.get_active_system_prompt()
-                    )
-                    # Replace or update system message if custom prompt exists
-                    # BUT ONLY if it's not empty and doesn't break function calling
-                    if (
-                        custom_system_prompt
-                        and custom_system_prompt.strip()
-                        and messages
-                        and messages[0].get("role") == "system"
-                        and "MUST use function calls"
-                        in custom_system_prompt  # Ensure function calling is preserved
-                    ):
-                        messages[0]["content"] = custom_system_prompt
-                        logger.info(
-                            "Using custom system prompt with function calling preserved"
-                        )
-                    elif custom_system_prompt and custom_system_prompt.strip():
-                        logger.warning(
-                            "Custom system prompt detected but doesn't preserve function calling - using default"
-                        )
-            except Exception as e:
-                logger.warning(f"Failed to load custom system prompt: {e}")
-                pass  # Continue with default prompts if custom prompts fail
+            # Note: Custom system prompt handling moved to frontend to avoid Streamlit context issues
+            # The backend should not access Streamlit session state directly
+            pass
 
             # Prepare the request parameters
             params = {
