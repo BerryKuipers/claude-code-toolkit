@@ -175,6 +175,7 @@ bitvavo_keys.txt
 .claude/skills/
 .claude/api-skills-source/
 .claude/prompts/
+.claude/reviews/
 
 # Keep project-specific
 !.claude/settings.json
