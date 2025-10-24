@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/user/claude-code-toolkit/scripts/install-gh-cli.sh"
+            "command": "$(git rev-parse --show-toplevel)/scripts/install-gh-cli.sh"
           }
         ]
       }
