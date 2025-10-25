@@ -111,15 +111,11 @@ if [ ! -f ".claude/settings.json" ]; then
         "hooks": [
           {
             "type": "command",
-            "command": "git submodule update --init --remote .claude-toolkit"
+            "command": "bash $(git rev-parse --show-toplevel)/.claude-toolkit/scripts/sync-claude-toolkit.sh"
           },
           {
             "type": "command",
-            "command": "bash .claude-toolkit/scripts/sync-claude-toolkit.sh"
-          },
-          {
-            "type": "command",
-            "command": "bash .claude-toolkit/scripts/install-gh-cli.sh"
+            "command": "bash $(git rev-parse --show-toplevel)/.claude-toolkit/scripts/install-gh-cli.sh"
           }
         ]
       }
@@ -207,10 +203,9 @@ Files Synced from Toolkit:
 - .claude/skills/ (14 skills)
 - .claude/api-skills-source/ (API skills)
 
-SessionStart Hook (fixes chicken-and-egg problem):
-1. Initialize submodule (git submodule update --init --remote)
-2. Sync toolkit (pull updates, copy files)
-3. Install gh CLI (no root required)
+SessionStart Hook (proxy-aware, handles network failures):
+1. Sync toolkit (updates submodule if possible, uses existing if blocked)
+2. Install gh CLI (no root required, gracefully handles proxy blocks)
 
 Benefits:
 ✅ Single source of truth (claude-code-toolkit)
