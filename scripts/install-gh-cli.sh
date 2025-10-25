@@ -24,8 +24,9 @@ echo "📦 Installing GitHub CLI from GitHub releases..."
 
 # Verify curl is available (should be in web sessions)
 if ! command -v curl &> /dev/null; then
-  echo "❌ curl not available - cannot download gh CLI"
-  exit 1
+  echo "⚠️  curl not available - cannot download gh CLI"
+  echo "ℹ️  gh CLI will not be available in this session"
+  exit 0
 fi
 
 # Detect architecture
@@ -41,8 +42,9 @@ echo "  → Fetching latest version from api.github.com..."
 GH_VERSION=$(curl -s https://api.github.com/repos/cli/cli/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | sed 's/v//')
 
 if [ -z "$GH_VERSION" ]; then
-  echo "❌ Failed to fetch latest version"
-  exit 1
+  echo "⚠️  Failed to fetch latest version (likely blocked by proxy)"
+  echo "ℹ️  gh CLI will not be available in this session"
+  exit 0
 fi
 
 # Download from github.com (allowed domain)
@@ -52,11 +54,16 @@ GH_TARBALL="/tmp/gh_${GH_VERSION}_linux_${GH_ARCH}.tar.gz"
 echo "  → Downloading gh v${GH_VERSION} for ${GH_ARCH}..."
 echo "  → URL: $GH_URL"
 
-curl -fsSL "$GH_URL" -o "$GH_TARBALL"
+if ! curl -fsSL "$GH_URL" -o "$GH_TARBALL" 2>&1; then
+  echo "⚠️  Download failed (likely blocked by proxy)"
+  echo "ℹ️  gh CLI will not be available in this session"
+  exit 0
+fi
 
 if [ ! -f "$GH_TARBALL" ]; then
-  echo "❌ Download failed"
-  exit 1
+  echo "⚠️  Download failed (likely blocked by proxy)"
+  echo "ℹ️  gh CLI will not be available in this session"
+  exit 0
 fi
 
 echo "  → Extracting..."
@@ -83,9 +90,10 @@ if command -v gh &> /dev/null; then
   rm -f "$GH_TARBALL"
   rm -rf "/tmp/gh_${GH_VERSION}_linux_${GH_ARCH}"
 else
-  echo "❌ GitHub CLI installation failed"
+  echo "⚠️  GitHub CLI installation failed"
   echo "  → Keeping extracted files for troubleshooting: /tmp/gh_${GH_VERSION}_linux_${GH_ARCH}"
-  exit 1
+  echo "ℹ️  gh CLI will not be available in this session"
+  exit 0
 fi
 
 exit 0

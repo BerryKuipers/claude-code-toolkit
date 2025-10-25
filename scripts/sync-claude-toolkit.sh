@@ -25,10 +25,16 @@ if [ ! -d "$TOOLKIT_DIR" ]; then
 fi
 
 # Update submodule (pull latest from toolkit repo)
-cd "$CLAUDE_PROJECT_DIR"
+cd "$PROJECT_DIR"
 if [ -d ".git" ] && [ -f ".gitmodules" ]; then
   echo "  → Updating toolkit submodule..."
-  git submodule update --init --remote .claude-toolkit 2>/dev/null || true
+  if git submodule update --init --remote .claude-toolkit 2>&1 | grep -q -E "403|502|fatal|unable to access"; then
+    echo "  ⚠️  Submodule update blocked by proxy - using existing toolkit version"
+  elif git submodule update --init --remote .claude-toolkit 2>/dev/null; then
+    echo "  ✅ Toolkit submodule updated"
+  else
+    echo "  ⚠️  Submodule update failed - using existing toolkit version"
+  fi
 fi
 
 # Sync universal files from toolkit
