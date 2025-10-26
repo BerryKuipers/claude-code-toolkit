@@ -86,7 +86,12 @@ echo "📝 Creating/updating configuration..."
 # Create scripts directory
 mkdir -p scripts
 
-# Copy sync script from toolkit
+# Copy bootstrap script from toolkit (critical - must exist in parent repo)
+echo "  → Copying bootstrap script..."
+cp .claude-toolkit/scripts/bootstrap-toolkit.sh scripts/
+chmod +x scripts/bootstrap-toolkit.sh
+
+# Copy sync script from toolkit (backup, can also be run directly)
 echo "  → Copying sync script..."
 cp .claude-toolkit/scripts/sync-claude-toolkit.sh scripts/
 chmod +x scripts/sync-claude-toolkit.sh
@@ -111,11 +116,7 @@ if [ ! -f ".claude/settings.json" ]; then
         "hooks": [
           {
             "type": "command",
-            "command": "bash $(git rev-parse --show-toplevel)/.claude-toolkit/scripts/sync-claude-toolkit.sh"
-          },
-          {
-            "type": "command",
-            "command": "bash $(git rev-parse --show-toplevel)/.claude-toolkit/scripts/install-gh-cli.sh"
+            "command": "bash $(git rev-parse --show-toplevel)/scripts/bootstrap-toolkit.sh"
           }
         ]
       }
@@ -152,10 +153,10 @@ cat >> .gitignore <<'EOF'
 # Note: prompts/ is synced but NOT ignored - it's reference content that can be customized per project
 EOF
 
-# Run initial sync
+# Run initial bootstrap (sets up toolkit and syncs)
 echo ""
-echo "🔄 Running initial sync..."
-./scripts/sync-claude-toolkit.sh
+echo "🔄 Running initial bootstrap..."
+./scripts/bootstrap-toolkit.sh
 
 # Verify sync
 AGENT_COUNT=$(ls .claude/agents/ 2>/dev/null | wc -l || echo "0")
@@ -176,26 +177,33 @@ fi
 echo ""
 echo "💾 Committing..."
 git commit -m "$(cat <<'EOF'
-feat: Add Claude Code Toolkit as submodule (cross-platform)
+feat: Add Claude Code Toolkit with bootstrap initialization
 
 Integrated claude-code-toolkit for universal agent/command/skill management.
 
 Changes:
 ✅ Added .claude-toolkit as git submodule
-✅ Created sync-claude-toolkit.sh (cross-platform: Windows/Linux/Mac)
-✅ Updated SessionStart hooks with submodule init (fixes chicken-and-egg issue)
+✅ Deployed bootstrap-toolkit.sh to parent repo (solves chicken-and-egg problem)
+✅ SessionStart hook uses bootstrap script from parent repo
 ✅ Added .gitignore for synced files
 
-Critical Fix:
-On fresh clone, .claude-toolkit is empty until submodule is initialized.
-SessionStart now runs "git submodule update --init --remote" BEFORE
-executing scripts from .claude-toolkit/, preventing bootstrap errors.
+Bootstrap Solution:
+The bootstrap script lives in the PARENT repo (not the submodule), so it can
+run even when .claude-toolkit doesn't exist yet. It:
+1. Detects if toolkit is missing
+2. Attempts to clone using local proxy URL pattern
+3. Falls back gracefully with clear instructions if blocked
+4. Runs sync if successful
 
-Cross-Platform Features:
+This solves the chicken-and-egg problem where SessionStart hooks couldn't
+call scripts from .claude-toolkit/ because the submodule wasn't initialized.
+
+Cross-Platform & Proxy-Aware:
 - Works on Windows (Git Bash), Linux, Mac
 - No symlinks required (file copy approach)
-- Toolkit updates pulled on every session start
-- Project-specific files preserved
+- Auto-detects Claude Code web session proxy
+- Gracefully handles proxy restrictions
+- Clear feedback when blocked vs successful
 
 Files Synced from Toolkit:
 - .claude/agents/ (15 specialized agents)
@@ -203,17 +211,14 @@ Files Synced from Toolkit:
 - .claude/skills/ (14 skills)
 - .claude/api-skills-source/ (API skills)
 
-SessionStart Hook (proxy-aware, handles network failures):
-1. Sync toolkit (updates submodule if possible, uses existing if blocked)
-2. Install gh CLI (no root required, gracefully handles proxy blocks)
+SessionStart Hook (single command):
+bash $(git rev-parse --show-toplevel)/scripts/bootstrap-toolkit.sh
 
 Benefits:
 ✅ Single source of truth (claude-code-toolkit)
+✅ Works in Claude Code web sessions
+✅ Self-healing on session start
 ✅ Easy updates across all projects
-✅ Consistent agent experience
-✅ Windows-compatible
-
-See: docs/CROSS_PLATFORM_SUBMODULE_STRATEGY.md (from toolkit)
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
