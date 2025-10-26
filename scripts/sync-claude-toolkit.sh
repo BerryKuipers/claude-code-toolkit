@@ -9,8 +9,8 @@ set -e
 if [ -n "$CLAUDE_PROJECT_DIR" ]; then
   PROJECT_DIR="$CLAUDE_PROJECT_DIR"
 else
-  # Fallback: script directory parent
-  PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+  # Fallback: script directory parent (script is at .claude-toolkit/scripts/)
+  PROJECT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 fi
 
 TOOLKIT_DIR="$PROJECT_DIR/.claude-toolkit/.claude"
@@ -25,6 +25,7 @@ if [ ! -d "$TOOLKIT_DIR" ]; then
 fi
 
 # Update submodule (pull latest from toolkit repo)
+# Note: SessionStart hook runs this first, but we include fallback for robustness
 cd "$PROJECT_DIR"
 if [ -d ".git" ] && [ -f ".gitmodules" ]; then
   echo "  → Updating toolkit submodule..."
