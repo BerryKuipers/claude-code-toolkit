@@ -7,6 +7,17 @@
 # - Cross-platform compatible (Windows/Linux/Mac)
 # - Automatic SessionStart hook setup
 # - Idempotent (safe to run multiple times)
+#
+# IMPORTANT - Claude Code Sandbox Compatibility:
+# If using Claude Code with sandbox enabled, you MUST allow GitHub domains.
+# Otherwise SessionStart hooks will fail with "403 Forbidden" errors.
+#
+# Quick fix - Add to settings.json:
+#   "sandbox": {
+#     "allowedDomains": ["github.com", "api.github.com", "raw.githubusercontent.com"]
+#   }
+#
+# See: docs/SANDBOX_COMPATIBILITY.md for detailed solutions
 
 set -e
 
