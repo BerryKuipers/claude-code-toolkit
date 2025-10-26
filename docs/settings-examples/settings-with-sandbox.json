@@ -1,0 +1,58 @@
+{
+  "comment": "Example settings.json with sandbox compatibility for Claude Code Toolkit",
+
+  "sandbox": {
+    "enabled": true,
+    "comment-allowedDomains": "GitHub domains required for submodule sync and gh CLI",
+    "allowedDomains": [
+      "github.com",
+      "api.github.com",
+      "raw.githubusercontent.com",
+      "objects.githubusercontent.com",
+      "codeload.github.com"
+    ],
+    "comment-excludedCommands": "Alternative: Exclude git/gh from sandbox instead of allowlist",
+    "excludedCommands": []
+  },
+
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "comment": "Initialize submodule (requires github.com network access)",
+            "command": "git submodule update --init --remote .claude-toolkit"
+          },
+          {
+            "type": "command",
+            "comment": "Sync toolkit files to .claude/",
+            "command": "bash .claude-toolkit/scripts/sync-claude-toolkit.sh"
+          },
+          {
+            "type": "command",
+            "comment": "Install gh CLI (requires github.com network access)",
+            "command": "bash .claude-toolkit/scripts/install-gh-cli.sh"
+          }
+        ]
+      }
+    ]
+  },
+
+  "comment-permissions": "Optional: Configure file/command permissions",
+  "permissions": {
+    "allowedFiles": [
+      "**/*"
+    ],
+    "deniedFiles": [
+      "~/.ssh/**",
+      "~/.aws/**",
+      "**/.env"
+    ],
+    "allowedCommands": [
+      "*"
+    ],
+    "deniedCommands": []
+  }
+}
