@@ -1,121 +1,242 @@
 ---
-description: Auto-triage GitHub issues and select best candidate for Codex implementation
+description: Auto-triage GitHub issues and select best candidate for Codex implementation (project)
 ---
 
 You are a repository triage agent. Analyze open GitHub issues and select the best candidate for Codex autonomous implementation.
 
-## Process
-
 Execute the following steps autonomously:
 
-### 1. Detect Repository
+## Step 1: Detect Repository
 
 ```bash
-# Auto-detect current repo from git remote
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo "")
 if [[ -z "$REPO" ]]; then
-  echo "❌ Not in a GitHub repository or gh CLI not configured"
+  echo "❌ Not in a GitHub repository"
   exit 1
 fi
 echo "Repository: $REPO"
 ```
 
-### 2. Fetch and Score Issues
+## Step 2: Fetch and Score Issues
 
-```bash
-# Fetch all open issues
-gh issue list --repo "$REPO" --state OPEN --limit 200 \
-  --json number,title,labels,assignees,createdAt,updatedAt,body,url > /tmp/issues.json
+Create a self-contained Node.js scoring script:
 
-# Count issues
-ISSUE_COUNT=$(jq 'length' /tmp/issues.json)
-echo "Analyzing $ISSUE_COUNT open issues..."
+```javascript
+// codex-triage-score.cjs
+const fs = require('fs');
+const { execSync } = require('child_process');
+
+// Fetch issues
+const repo = execSync('gh repo view --json nameWithOwner -q .nameWithOwner', { encoding: 'utf8' }).trim();
+console.log(`Repository: ${repo}\n`);
+
+const issuesJson = execSync(
+  `gh issue list --repo ${repo} --state OPEN --limit 200 --json number,title,labels,assignees,createdAt,updatedAt,body,url`,
+  { encoding: 'utf8' }
+);
+const issues = JSON.parse(issuesJson);
+
+console.log(`Analyzing ${issues.length} open issues...\n`);
+
+// Scoring configuration
+const preferredLabels = ['bug', 'p1', 'good-first-issue', 'tech-debt:localized', 'vertical-slice-ready'];
+const avoidedLabels = ['blocked', 'epic', 'needs-design', 'spec-needed', 'migration', 'infra', 'security-review', 'codex:take'];
+
+function scoreIssue(issue) {
+  let score = 0;
+  const reasons = [];
+  const bodyLength = (issue.body || '').length;
+  const title = issue.title.toLowerCase();
+  const body = (issue.body || '').toLowerCase();
+
+  // Scope scoring
+  if (title.includes('typescript') || title.includes('dependency')) {
+    score += 0.4;
+    reasons.push('Very localized (TypeScript/dependency): +0.4');
+  } else if (bodyLength < 1000 && !body.includes('/')) {
+    score += 0.3;
+    reasons.push('Small scope (body <1000 chars, no paths): +0.3');
+  } else if (bodyLength < 2000) {
+    score += 0.25;
+    reasons.push('Few files (body <2000 chars): +0.25');
+  } else if (bodyLength < 4000) {
+    score += 0.1;
+    reasons.push('Moderate scope: +0.1');
+  } else {
+    score -= 0.1;
+    reasons.push('Large scope (body >4000 chars): -0.1');
+  }
+
+  // Label scoring
+  const labels = issue.labels.map(l => l.name.toLowerCase());
+  for (const label of labels) {
+    if (preferredLabels.includes(label)) {
+      score += 0.25;
+      reasons.push(`Preferred label '${label}': +0.25`);
+    }
+    if (avoidedLabels.includes(label)) {
+      score -= 0.4;
+      reasons.push(`Avoided label '${label}': -0.4`);
+    }
+  }
+
+  if (title.includes('epic')) {
+    score -= 0.5;
+    reasons.push('Epic in title: -0.5');
+  }
+
+  // Freshness scoring
+  const ageInDays = (new Date() - new Date(issue.createdAt)) / (1000 * 60 * 60 * 24);
+  const ageDays = Math.round(ageInDays);
+  if (ageInDays >= 7 && ageInDays <= 30) {
+    score += 0.15;
+    reasons.push(`Age ${ageDays} days (7-30 range): +0.15`);
+  } else if (ageInDays < 7) {
+    score += 0.05;
+    reasons.push(`Age ${ageDays} days (fresh): +0.05`);
+  } else if (ageInDays > 60) {
+    score -= 0.1;
+    reasons.push(`Age ${ageDays} days (stale): -0.1`);
+  }
+
+  // Assignment penalty
+  if (issue.assignees.length > 0) {
+    score -= 0.3;
+    reasons.push('Has assignees: -0.3');
+  }
+
+  // Clarity bonus
+  if (bodyLength >= 200 && bodyLength <= 1200) {
+    score += 0.2;
+    reasons.push('Clear description (200-1200 chars): +0.2');
+  }
+
+  // Risk penalties
+  const riskKeywords = ['migration', 'core auth', 'global refactor', 'breaking change'];
+  for (const keyword of riskKeywords) {
+    if (body.includes(keyword)) {
+      score -= 0.25;
+      reasons.push(`Risk keyword '${keyword}': -0.25`);
+      break;
+    }
+  }
+
+  // Test hints bonus
+  const testKeywords = ['test', 'reproduction', 'acceptance criteria', 'steps to reproduce', '- [ ]'];
+  for (const keyword of testKeywords) {
+    if (body.includes(keyword)) {
+      score += 0.1;
+      reasons.push('Has test hints/AC: +0.1');
+      break;
+    }
+  }
+
+  return { score: Math.round(score * 100) / 100, reasons };
+}
+
+// Score all issues
+const scored = issues.map(issue => {
+  const { score, reasons } = scoreIssue(issue);
+  return { issue, score, reasons };
+}).sort((a, b) => b.score - a.score);
+
+// Output results
+console.log('=== CODEX TRIAGE RESULTS ===\n');
+console.log(`Repository: ${repo}`);
+console.log(`Analyzed: ${issues.length} open issues\n`);
+
+console.log('Top 10 Candidates:\n');
+scored.slice(0, 10).forEach((item, idx) => {
+  const selected = idx === 0 && item.score >= 0.60 ? ' ✓ SELECTED' : '';
+  console.log(`${idx + 1}. #${item.issue.number} (${item.score}) - ${item.issue.title}${selected}`);
+  console.log(`   Labels: ${item.issue.labels.map(l => l.name).join(', ') || 'none'}`);
+});
+
+console.log('\n=== SELECTED CANDIDATE ===\n');
+
+// Find best issue without codex:take label
+const winner = scored.find(s => s.score >= 0.60 && !s.issue.labels.some(l => l.name === 'codex:take'));
+
+if (!winner) {
+  console.log('❌ No issue scored >= 0.60 without codex:take label');
+  console.log('\nConsider:');
+  console.log('- Refining issue descriptions');
+  console.log('- Adding clearer acceptance criteria');
+  console.log('- Breaking down large issues into smaller tasks');
+  process.exit(1);
+}
+
+console.log(`Issue #${winner.issue.number}: ${winner.issue.title}`);
+console.log(`Score: ${winner.score}`);
+console.log(`URL: ${winner.issue.url}\n`);
+console.log('Scoring breakdown:');
+winner.reasons.forEach(r => console.log(`  - ${r}`));
+console.log('');
+
+// Export for next steps
+fs.writeFileSync('.codex-triage-result.json', JSON.stringify({
+  repo,
+  number: winner.issue.number,
+  title: winner.issue.title,
+  url: winner.issue.url,
+  score: winner.score,
+  reasons: winner.reasons
+}, null, 2));
+
+console.log('✓ Issue selected and saved to .codex-triage-result.json');
 ```
 
-### 3. Score Each Issue
-
-For each issue, calculate a score based on these criteria:
-
-**Scoring Algorithm:**
-- **Scope** (+0.4 very localized, +0.3 small, +0.25 few files, +0.1 moderate, -0.1 large)
-  - TypeScript/dependency updates: very localized
-  - Body length <1000 chars, no file paths: small
-  - 1-3 distinct file extensions: few files
-  - 4-10 files: moderate
-  - >10 files: large
-
-- **Labels** (+0.25 if preferred, -0.4 if avoided, -0.5 if "epic" in title)
-  - Preferred: bug, p1, good-first-issue, tech-debt:localized, vertical-slice-ready
-  - Avoided: blocked, epic, needs-design, spec-needed, migration, infra, security-review
-
-- **Freshness** (+0.15 for 7-30 days, +0.05 for <7 days, -0.1 for >60 days)
-
-- **Assignment** (-0.3 if has assignees)
-
-- **Clarity** (+0.2 if body 200-1200 chars)
-
-- **Risk** (-0.25 if mentions migration, core auth, global refactor, breaking change)
-
-- **Test Hints** (+0.1 if mentions tests, reproduction steps, AC, checkboxes)
-
-**Threshold:** Issue must score ≥ 0.60 to be selected
-
-### 4. Verify Issue Not Already Implemented
-
-For the top-scoring issue, verify it's not already done:
+Write this script to a temp file and execute it:
 
 ```bash
-# Extract key terms from issue title
-ISSUE_TITLE="[title of top issue]"
-ISSUE_NUMBER="[number]"
+cat > /tmp/codex-triage-score.cjs << 'SCRIPT'
+[paste the JavaScript above]
+SCRIPT
 
-# Search codebase for evidence of implementation
+node /tmp/codex-triage-score.cjs
+```
+
+## Step 3: Verify Not Already Implemented
+
+```bash
+# Load selected issue
+RESULT=$(cat .codex-triage-result.json)
+ISSUE_NUMBER=$(echo "$RESULT" | jq -r '.number')
+ISSUE_TITLE=$(echo "$RESULT" | jq -r '.title')
+
 echo "Verifying issue #$ISSUE_NUMBER is not already implemented..."
 
-# Search for keywords from title in recent commits
-RECENT_REFS=$(git log --all --oneline --grep="$ISSUE_NUMBER\|$(echo $ISSUE_TITLE | cut -d' ' -f1-3)" -n 20 2>/dev/null || echo "")
-
+# Check git history
+RECENT_REFS=$(git log --all --oneline --grep="$ISSUE_NUMBER" -n 10 2>/dev/null || echo "")
 if [[ -n "$RECENT_REFS" ]]; then
   echo "⚠️  Found references in commits:"
   echo "$RECENT_REFS"
-  echo ""
-  echo "Checking if issue should be closed..."
-fi
-
-# Search codebase for key functionality mentioned in issue
-# Extract main keywords from title (remove common words)
-KEYWORDS=$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/\b\(add\|implement\|create\|update\|fix\|feature\|bug\)\b//g' | tr -s ' ')
-
-# Search for these keywords in source files
-FOUND_IN_CODE=$(rg -i "$KEYWORDS" --type-list | head -5 2>/dev/null || echo "")
-
-if [[ -n "$FOUND_IN_CODE" ]]; then
-  echo "⚠️  Found similar functionality already in codebase:"
-  echo "$FOUND_IN_CODE"
-  echo ""
-  echo "Manual review needed - may already be implemented"
 fi
 ```
 
-### 5. Check for Existing PR
+## Step 4: Check for Existing PR
 
 ```bash
-# Check if there's already a PR for this issue
-EXISTING_PR=$(gh pr list --repo "$REPO" --state open --search "in:title #$ISSUE_NUMBER in:body #$ISSUE_NUMBER" --json number,title --jq '.[0].number' 2>/dev/null || echo "")
+EXISTING_PR=$(gh pr list --state open --search "#$ISSUE_NUMBER" --json number --jq '.[0].number' 2>/dev/null || echo "")
 
 if [[ -n "$EXISTING_PR" ]]; then
   echo "❌ Issue #$ISSUE_NUMBER already has open PR #$EXISTING_PR"
-  echo "Skipping to next candidate..."
-  # Move to next highest-scoring issue
+  exit 1
 fi
+
+echo "✓ No existing PR found"
 ```
 
-### 6. Label and Comment
-
-If all checks pass:
+## Step 5: Label and Comment
 
 ```bash
-# Create label if doesn't exist
+# Load results
+REPO=$(cat .codex-triage-result.json | jq -r '.repo')
+ISSUE_NUMBER=$(cat .codex-triage-result.json | jq -r '.number')
+ISSUE_TITLE=$(cat .codex-triage-result.json | jq -r '.title')
+SCORE=$(cat .codex-triage-result.json | jq -r '.score')
+
+# Create label if needed
 gh label create 'codex:take' --repo "$REPO" \
   --description 'Selected for Codex autonomous implementation' \
   --color '0E8A16' 2>/dev/null || true
@@ -123,7 +244,9 @@ gh label create 'codex:take' --repo "$REPO" \
 # Apply label
 gh issue edit $ISSUE_NUMBER --repo "$REPO" --add-label 'codex:take'
 
-# Add rationale comment
+# Add comment with rationale
+REASONS=$(cat .codex-triage-result.json | jq -r '.reasons | map("- " + .) | join("\n")')
+
 gh issue comment $ISSUE_NUMBER --repo "$REPO" -b "🤖 **Auto-triage: Selected for Codex**
 
 **Score:** $SCORE (threshold: 0.60)
@@ -133,71 +256,30 @@ gh issue comment $ISSUE_NUMBER --repo "$REPO" -b "🤖 **Auto-triage: Selected f
 - Limited blast radius
 - No existing PR or assignee
 - Verified not already implemented in codebase
-- Low risk, high value for incremental improvement
+
+**Scoring breakdown:**
+$REASONS
 
 **Next Steps:**
 Codex will create branch \`codex/issue-$ISSUE_NUMBER\` and submit PR with \`closes #$ISSUE_NUMBER\`.
 
 ---
 *Automated triage by Claude Code /codex-triage command*"
+
+# Cleanup
+rm -f .codex-triage-result.json /tmp/codex-triage-score.cjs
+
+echo ""
+echo "✓ Issue #$ISSUE_NUMBER labeled and ready for Codex"
+echo "✓ GitHub Actions workflow will trigger automatically"
 ```
-
-## Output Format
-
-Present results to user:
-
-```
-=== CODEX TRIAGE RESULTS ===
-
-Repository: [owner/repo]
-Analyzed: [N] open issues
-Selected: Issue #XX (score: 0.XX)
-
-Title: [issue title]
-URL: https://github.com/[owner]/[repo]/issues/XX
-
-✓ No existing PR found
-✓ Verified not already implemented
-✓ Clear acceptance criteria
-✓ Localized scope
-
-Top 5 Candidates:
-1. #XX (0.XX) - [title] [✓ selected]
-2. #XX (0.XX) - [title]
-3. #XX (0.XX) - [title]
-4. #XX (0.XX) - [title]
-5. #XX (0.XX) - [title]
-
-Status: ✓ Issue labeled and ready for Codex
-```
-
-## Special Cases
-
-**No suitable candidate:**
-```
-No issue scored ≥ 0.60
-Consider:
-- Refining issue descriptions
-- Adding clearer acceptance criteria
-- Breaking down large issues into smaller tasks
-```
-
-**Issue already implemented:**
-```
-Top candidate #XX appears already implemented
-Evidence: [commit refs or code matches]
-Recommend: Close issue or verify implementation
-Moving to next candidate...
-```
-
-## Configuration
-
-You can customize scoring by checking for project-specific labels in the repository. Adjust weights based on the project's workflow.
 
 ## Notes
 
-- Only ONE issue labeled per run
-- Fully autonomous - no user input needed
+- Self-contained: All logic embedded in this command
+- Uses Node.js for complex scoring (available in most environments)
+- Creates temporary files that are cleaned up after use
 - Safe for CI/CD integration
+- Only labels ONE issue per run
 - Respects blocked/wip labels
-- Prioritizes clear, testable issues
+- Threshold: Issues must score >= 0.60
