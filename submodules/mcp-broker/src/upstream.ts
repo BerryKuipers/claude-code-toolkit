@@ -4,6 +4,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import type { ServerConfig } from './config.js';
 
 const upstreamClients = new Map<string, Client>();
+const toolsCache = new Map<string, any[]>();
 
 async function createStdioClient(config: ServerConfig): Promise<Client> {
   if (!config.command) {
@@ -88,9 +89,24 @@ export async function callUpstreamTool(
 }
 
 export async function listUpstreamTools(config: ServerConfig): Promise<any[]> {
+  if (toolsCache.has(config.id)) {
+    return toolsCache.get(config.id)!;
+  }
+
   const client = await getOrCreateClient(config);
   const result = await client.listTools();
-  return result.tools || [];
+  const tools = result.tools || [];
+
+  toolsCache.set(config.id, tools);
+  return tools;
+}
+
+export function getCachedTools(serverId: string): any[] | undefined {
+  return toolsCache.get(serverId);
+}
+
+export function isServerConnected(serverId: string): boolean {
+  return upstreamClients.has(serverId);
 }
 
 export function disconnectAll(): void {
@@ -102,4 +118,5 @@ export function disconnectAll(): void {
     }
   }
   upstreamClients.clear();
+  toolsCache.clear();
 }

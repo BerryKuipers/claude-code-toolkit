@@ -31,17 +31,20 @@ Tasks:
      }
    }
 
-3. If I have existing MCP servers in cloud/claude.mcp.json:
-   - Backup the existing configuration
-   - Migrate each server to the broker's servers.config.json
-   - For each server, create an entry with:
+3. Configure servers in submodules/claude-code-toolkit/submodules/mcp-broker/servers.config.json:
+   - Add each MCP server with:
      * id: unique identifier
      * transport: 'stdio' or 'http'
      * command/args (for stdio) OR url (for http)
      * env: environment variables with ${env:KEY} or ${vault:PATH} syntax
-   - Register tools in tools.registry.json
 
-4. Configure secrets:
+4. (v2.0+) Use reflective mode - NO manual tool registration needed:
+   - broker.search - Discover tools dynamically
+   - broker.invoke - Call any tool by server+name
+   - tools.overrides.json - Optional favorites (empty by default)
+   - See REFLECTIVE-MODE.md for details
+
+5. Configure secrets (optional):
    - Create .env in broker directory if needed
    - Set up Vault if desired (see VAULT-SETUP.md)
    - Update env references in servers.config.json
@@ -98,7 +101,25 @@ NEW (submodules/claude-code-toolkit/submodules/mcp-broker/servers.config.json):
   ]
 }
 
-NEW (submodules/claude-code-toolkit/submodules/mcp-broker/tools.registry.json):
+v2.0+ Reflective Mode (Recommended):
+- Leave tools.registry.json and tools.overrides.json empty
+- Use broker.search to discover tools
+- Use broker.invoke to call tools
+- Optionally add favorites to tools.overrides.json
+
+Example usage after setup:
+  // Discover tools
+  broker.search({})
+
+  // Call a tool
+  broker.invoke({
+    server: "github",
+    tool: "create_or_update_file",
+    args: {...}
+  })
+
+Legacy (v1.x compatibility):
+If you prefer static registration, add tools to tools.registry.json:
 {
   "tools": [
     {
@@ -106,26 +127,15 @@ NEW (submodules/claude-code-toolkit/submodules/mcp-broker/tools.registry.json):
       "server": "filesystem",
       "title": "Read File",
       "description": "Read a file from the filesystem"
-    },
-    {
-      "name": "write_file",
-      "server": "filesystem",
-      "title": "Write File",
-      "description": "Write content to a file"
-    },
-    {
-      "name": "create_or_update_file",
-      "server": "github",
-      "title": "Create or Update File",
-      "description": "Create or update a file in a GitHub repository"
     }
   ]
 }
 
-5. Test the setup:
+6. Test the setup:
    - Restart Claude Code
-   - Verify tools are available via tools.search
-   - Test a tool call to ensure lazy initialization works
+   - Try broker.search with no args
+   - Try broker.invoke with a known server/tool
+   - Check lazy initialization works
 
 Do not modify the toolkit itself, only configure it for this project.
 ```

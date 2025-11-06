@@ -4,9 +4,16 @@ A lightweight Model Context Protocol (MCP) broker with lazy initialization for u
 
 ## Features
 
-- **Lazy Initialization**: Upstream servers are only started when their tools are first called
+### v2.0+ Reflective Mode
+- **Dynamic Discovery**: No manual tool registration needed
+- **Meta-Tools**: `broker.search` and `broker.invoke` for on-demand access
+- **Optional Favorites**: Register frequently-used tools via `tools.overrides.json`
+- **Tool Caching**: Upstream tool lists cached per session
+- **Backwards Compatible**: `tools.registry.json` still supported
+
+### Core Features
+- **Lazy Initialization**: Upstream servers spawn/connect only when first called
 - **Multiple Transport Support**: Supports both STDIO and HTTP upstream servers
-- **Tool Discovery**: Built-in `tools.search` for exploring available tools
 - **Multi-Layer Secret Resolution**:
   - .env file (local overrides)
   - Process environment
@@ -30,11 +37,12 @@ submodules/mcp-broker/
 │   └── http-broker.ts    # HTTP broker server
 ├── dist/                 # Compiled JavaScript (generated)
 ├── servers.config.json   # Live server definitions (empty by default)
-├── tools.registry.json   # Live tool registry (empty by default)
-├── servers.config.sample.json   # Example server configurations
-├── tools.registry.sample.json   # Example tool registry
+├── tools.registry.json   # Live tool registry (optional, for compatibility)
+├── tools.overrides.json  # Favorite tools (empty by default)
+├── *.sample.json         # Example configurations
 ├── .env.example          # Sample environment variables
 ├── README.md             # This file
+├── REFLECTIVE-MODE.md    # Dynamic discovery documentation
 ├── INTEGRATION.md        # Integration guide
 ├── VAULT-SETUP.md        # Vault configuration guide
 ├── package.json

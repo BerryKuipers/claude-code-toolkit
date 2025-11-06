@@ -1,0 +1,16 @@
+{
+  "overrides": [
+    {
+      "name": "qdrant.search",
+      "server": "qdrant",
+      "title": "Qdrant Vector Search",
+      "description": "Search the Qdrant vector database"
+    },
+    {
+      "name": "github.create_issue",
+      "server": "github",
+      "title": "Create GitHub Issue",
+      "description": "Create a new issue in a GitHub repository"
+    }
+  ]
+}

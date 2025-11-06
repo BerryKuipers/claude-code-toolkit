@@ -35,10 +35,23 @@ const ToolsRegistrySchema = z.object({
   tools: z.array(ToolRegistryEntrySchema),
 });
 
+const ToolOverrideSchema = z.object({
+  name: z.string(),
+  server: z.string(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+});
+
+const ToolOverridesSchema = z.object({
+  overrides: z.array(ToolOverrideSchema),
+});
+
 export type ServerConfig = z.infer<typeof ServerConfigSchema>;
 export type ServersConfig = z.infer<typeof ServersConfigSchema>;
 export type ToolRegistryEntry = z.infer<typeof ToolRegistryEntrySchema>;
 export type ToolsRegistry = z.infer<typeof ToolsRegistrySchema>;
+export type ToolOverride = z.infer<typeof ToolOverrideSchema>;
+export type ToolOverrides = z.infer<typeof ToolOverridesSchema>;
 
 export async function loadServersConfig(): Promise<ServersConfig> {
   const configPath = join(__dirname, '..', 'servers.config.json');
@@ -64,6 +77,20 @@ export function loadToolsRegistry(): ToolsRegistry {
   } catch (error) {
     if ((error as any).code === 'ENOENT') {
       return { tools: [] };
+    }
+    throw error;
+  }
+}
+
+export function loadToolOverrides(): ToolOverrides {
+  const overridesPath = join(__dirname, '..', 'tools.overrides.json');
+  try {
+    const raw = readFileSync(overridesPath, 'utf-8');
+    const parsed = JSON.parse(raw);
+    return ToolOverridesSchema.parse(parsed);
+  } catch (error) {
+    if ((error as any).code === 'ENOENT') {
+      return { overrides: [] };
     }
     throw error;
   }
