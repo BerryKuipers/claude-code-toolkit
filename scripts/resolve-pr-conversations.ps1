@@ -13,7 +13,7 @@
     Repository owner (username or organization). Defaults to "BerryKuipers"
 
 .PARAMETER Repo
-    Repository name. Defaults to "WescoBar-Universe-Storyteller"
+    Repository name. Defaults to "SynchronicityEngine"
 
 .PARAMETER PrNumber
     Pull Request number
@@ -22,27 +22,40 @@
     If specified, only shows what would be resolved without actually resolving
 
 .EXAMPLE
-    .\scripts\resolve-pr-conversations.ps1 -PrNumber 16
+    .\resolve-pr-conversations.ps1 -PrNumber 32
 
 .EXAMPLE
-    .\scripts\resolve-pr-conversations.ps1 -PrNumber 16 -DryRun
+    .\resolve-pr-conversations.ps1 -PrNumber 32 -DryRun
 
 .EXAMPLE
-    .\scripts\resolve-pr-conversations.ps1 -Owner "BerryKuipers" -Repo "WescoBar-Universe-Storyteller" -PrNumber 16
+    .\resolve-pr-conversations.ps1 -Owner "BerryKuipers" -Repo "SynchronicityEngine" -PrNumber 32
 #>
 
 param(
     [Parameter(Mandatory = $false)]
-    [string]$Owner = "BerryKuipers",
+    [string]$Owner,
 
     [Parameter(Mandatory = $false)]
-    [string]$Repo = "WescoBar-Universe-Storyteller",
+    [string]$Repo,
 
     [Parameter(Mandatory = $true)]
     [int]$PrNumber,
 
     [switch]$DryRun
 )
+
+# Auto-detect repo from gh CLI if not provided
+if (-not $Owner -or -not $Repo) {
+    try {
+        $repoInfo = gh repo view --json owner,name | ConvertFrom-Json
+        if (-not $Owner) { $Owner = $repoInfo.owner.login }
+        if (-not $Repo) { $Repo = $repoInfo.name }
+        Write-Host "${Blue}Auto-detected repo: $Owner/$Repo${Reset}"
+    } catch {
+        Write-Host "${Red}Error: Could not auto-detect repository. Please specify -Owner and -Repo${Reset}"
+        exit 1
+    }
+}
 
 # Colors for output
 $Green = "`e[32m"
@@ -53,14 +66,18 @@ $Reset = "`e[0m"
 
 Write-Host "${Blue}Fetching review threads for PR #$PrNumber in $Owner/$Repo${Reset}"
 
-# GraphQL query to get all review threads for the PR
+# GraphQL query to get all review threads for the PR (with pagination support)
 $query = @"
-query(`$owner: String!, `$repo: String!, `$prNumber: Int!) {
+query(`$owner: String!, `$repo: String!, `$prNumber: Int!, `$after: String) {
   repository(owner: `$owner, name: `$repo) {
     pullRequest(number: `$prNumber) {
       id
       title
-      reviewThreads(first: 100) {
+      reviewThreads(first: 100, after: `$after) {
+        pageInfo {
+          endCursor
+          hasNextPage
+        }
         nodes {
           id
           isResolved
@@ -82,17 +99,32 @@ query(`$owner: String!, `$repo: String!, `$prNumber: Int!) {
 "@
 
 try {
-    # Execute the query
-    $result = gh api graphql -H "X-Github-Next-Global-ID:1" -f query=$query -F owner=$Owner -F repo=$Repo -F prNumber=$PrNumber | ConvertFrom-Json
+    # Fetch all review threads with pagination
+    $allThreads = @()
+    $after = $null
+    $hasNextPage = $true
 
-    if (-not $result.data.repository.pullRequest) {
-        Write-Host "${Red}❌ Pull Request #$PrNumber not found in $Owner/$Repo${Reset}"
-        exit 1
+    while ($hasNextPage) {
+        # Execute the query with pagination cursor
+        if ($after) {
+            $result = gh api graphql -H "X-Github-Next-Global-ID:1" -f query=$query -F owner=$Owner -F repo=$Repo -F prNumber=$PrNumber -F after=$after | ConvertFrom-Json
+        } else {
+            $result = gh api graphql -H "X-Github-Next-Global-ID:1" -f query=$query -F owner=$Owner -F repo=$Repo -F prNumber=$PrNumber | ConvertFrom-Json
+        }
+
+        if (-not $result.data.repository.pullRequest) {
+            Write-Host "${Red}❌ Pull Request #$PrNumber not found in $Owner/$Repo${Reset}"
+            exit 1
+        }
+
+        $pr = $result.data.repository.pullRequest
+        $allThreads += $pr.reviewThreads.nodes
+
+        $hasNextPage = $pr.reviewThreads.pageInfo.hasNextPage
+        $after = $pr.reviewThreads.pageInfo.endCursor
     }
 
-    $pr = $result.data.repository.pullRequest
-    $threads = $pr.reviewThreads.nodes
-
+    $threads = $allThreads
     Write-Host "${Blue}Found $($threads.Count) total review threads${Reset}"
 
     # Filter for unresolved threads
@@ -106,14 +138,19 @@ try {
     Write-Host "${Yellow}Found $($unresolvedThreads.Count) unresolved conversations${Reset}"
 
     if ($DryRun) {
-        Write-Host "${Yellow}DRY RUN - Would resolve the following conversations:${Reset}"
+        Write-Host "${Yellow}🔍 DRY RUN - Would resolve the following conversations:${Reset}"
         foreach ($thread in $unresolvedThreads) {
+            if ($thread.comments.nodes.Count -eq 0) {
+                Write-Host "${Yellow}  Skipping thread $($thread.id) - no comments${Reset}"
+                continue
+            }
             $comment = $thread.comments.nodes[0]
             if ($comment) {
                 Write-Host "  Thread ID: $($thread.id)"
                 Write-Host "    File: $($comment.path) (line $($comment.line))"
                 Write-Host "    Author: $($comment.author.login)"
-                Write-Host "    Preview: $($comment.body.Substring(0, [Math]::Min(100, $comment.body.Length)))..."
+                $preview = if ($comment.body) { $comment.body.Substring(0, [Math]::Min(100, $comment.body.Length)) } else { "(empty)" }
+                Write-Host "    Preview: $preview..."
                 Write-Host ""
             }
         }
@@ -126,6 +163,11 @@ try {
     $failedCount = 0
 
     foreach ($thread in $unresolvedThreads) {
+        if ($thread.comments.nodes.Count -eq 0) {
+            Write-Host "${Yellow}Skipping thread $($thread.id) - no comments${Reset}"
+            continue
+        }
+
         $comment = $thread.comments.nodes[0]
         $threadId = $thread.id
 
@@ -147,15 +189,15 @@ mutation(`$threadId: ID!) {
             $resolveResult = gh api graphql -H "X-Github-Next-Global-ID:1" -f query=$resolveMutation -F threadId=$threadId | ConvertFrom-Json
 
             if ($resolveResult.data.resolveReviewThread.thread.isResolved) {
-                Write-Host "${Green}  ✅ Successfully resolved${Reset}"
+                Write-Host "${Green}  ✓ Successfully resolved${Reset}"
                 $resolvedCount++
             } else {
-                Write-Host "${Red}  ❌ Failed to resolve (unknown reason)${Reset}"
+                Write-Host "${Red}  ✗ Failed to resolve (unknown reason)${Reset}"
                 $failedCount++
             }
         }
         catch {
-            Write-Host "${Red}  ❌ Failed to resolve: $($_.Exception.Message)${Reset}"
+            Write-Host "${Red}  ✗ Failed to resolve: $($_.Exception.Message)${Reset}"
             $failedCount++
         }
 
@@ -165,12 +207,14 @@ mutation(`$threadId: ID!) {
 
     # Summary
     Write-Host ""
-    Write-Host "${Blue}📊 Summary:${Reset}"
-    Write-Host "${Green}  ✅ Resolved: $resolvedCount${Reset}"
+    Write-Host "${Blue}═══════════════════════════════════════${Reset}"
+    Write-Host "${Blue}Summary:${Reset}"
+    Write-Host "${Green}  ✓ Resolved: $resolvedCount${Reset}"
     if ($failedCount -gt 0) {
-        Write-Host "${Red}  ❌ Failed: $failedCount${Reset}"
+        Write-Host "${Red}  ✗ Failed: $failedCount${Reset}"
     }
     Write-Host "${Blue}  🔗 PR: https://github.com/$Owner/$Repo/pull/$PrNumber${Reset}"
+    Write-Host "${Blue}═══════════════════════════════════════${Reset}"
 
     if ($resolvedCount -gt 0) {
         Write-Host ""

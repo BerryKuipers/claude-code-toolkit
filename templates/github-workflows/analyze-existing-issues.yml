@@ -1,0 +1,212 @@
+name: Analyze Existing Issues
+on:
+  workflow_dispatch:
+    inputs:
+      max_issues:
+        description: 'Maximum number of issues to analyze'
+        required: false
+        default: '10'
+        type: string
+      skip_analyzed:
+        description: 'Skip issues already analyzed (with ai-analyzed label)'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  analyze-existing-issues:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install @google/generative-ai
+
+      - name: Analyze Existing Open Issues
+        uses: actions/github-script@v7
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        with:
+          script: |
+            const { GoogleGenerativeAI } = await import('@google/generative-ai');
+
+            // Initialize Gemini
+            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+            const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+
+            const maxIssues = parseInt('${{ github.event.inputs.max_issues }}') || 10;
+            const skipAnalyzed = '${{ github.event.inputs.skip_analyzed }}' === 'true';
+
+            console.log(`🔍 Fetching open issues (max: ${maxIssues}, skip analyzed: ${skipAnalyzed})`);
+
+            // Get open issues
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+              sort: 'created',
+              direction: 'desc'
+            });
+
+            console.log(`📋 Found ${issues.length} open issues`);
+
+            // Filter issues if needed
+            let issuesToAnalyze = issues;
+
+            if (skipAnalyzed) {
+              issuesToAnalyze = issues.filter(issue =>
+                !issue.labels.some(label => label.name === 'ai-analyzed')
+              );
+              console.log(`📋 After filtering analyzed issues: ${issuesToAnalyze.length} remaining`);
+            }
+
+            // Limit to max issues
+            issuesToAnalyze = issuesToAnalyze.slice(0, maxIssues);
+            console.log(`📋 Will analyze ${issuesToAnalyze.length} issues`);
+
+            // Analyze each issue
+            for (const [index, issue] of issuesToAnalyze.entries()) {
+              console.log(`🤖 Analyzing issue ${index + 1}/${issuesToAnalyze.length}: #${issue.number} - ${issue.title}`);
+
+              const prompt = `# AI Issue Analysis Request
+
+              **CONTEXT**: You are an expert software architect and product manager reviewing a GitHub issue for the ${context.repo.repo} project.
+
+              **YOUR ROLE**: Provide constructive feedback, architectural insights, and implementation guidance for this issue.
+
+              ## Issue Details
+              **Title**: ${issue.title}
+              **Author**: ${issue.user.login}
+              **Labels**: ${issue.labels.map(l => l.name).join(', ') || 'None'}
+              **Created**: ${issue.created_at}
+              **State**: ${issue.state}
+
+              **Description**:
+              \`\`\`
+              ${issue.body || 'No description provided'}
+              \`\`\`
+
+              ## Analysis Framework
+
+              Please analyze this issue across these dimensions:
+
+              ### 1. 🎯 **Clarity & Completeness**
+              - Is the problem clearly defined?
+              - Are acceptance criteria specific enough?
+              - Are there missing technical details?
+              - Suggest improvements to issue description
+
+              ### 2. 🏗️ **Architectural Alignment**
+              - Does this fit with the project's architecture?
+              - Are there potential impacts on existing systems?
+              - Any concerns about module boundaries or data flow?
+
+              ### 3. 🔧 **Technical Feasibility**
+              - Is the proposed solution technically sound?
+              - Are there alternative approaches to consider?
+              - What are potential implementation challenges?
+              - Dependencies or prerequisites needed?
+              - Performance or scalability considerations?
+
+              ### 4. 📊 **Scope & Priority Assessment**
+              - Is the scope appropriate for the described effort?
+              - Should this be broken into smaller issues?
+              - Priority level recommendation (P0: Critical, P1: High, P2: Medium, P3: Low)
+              - Estimated complexity (S: 1-3h, M: 0.5-1d, L: 1-2d)
+
+              ### 5. 🚀 **Implementation Suggestions**
+              - Specific technical recommendations
+              - Files/components that will need changes
+              - Testing strategy suggestions
+              - Potential edge cases to consider
+              - Integration points with other systems
+
+              ### 6. 🔍 **Questions & Clarifications**
+              - What additional information is needed?
+              - Specific questions for the issue author
+              - Areas that need more detail
+
+              ## Output Format
+
+              Provide your analysis in a structured format that can be posted as a GitHub comment. Use markdown formatting with clear sections and actionable recommendations.
+
+              **Be constructive, specific, and helpful. Focus on improving the issue quality and implementation success.**`;
+
+              try {
+                const result = await model.generateContent(prompt);
+                const analysis = result.response.text();
+
+                if (analysis && analysis.trim()) {
+                  const comment = `## 🤖 AI Issue Analysis (Batch Review)
+
+                  *Automated analysis by Gemini 2.0 Flash - Review and validate recommendations*
+
+                  ${analysis}
+
+                  ---
+
+                  💡 **Note**: This is an AI-generated analysis from a batch review of existing issues. Please review suggestions carefully and validate against project requirements.`;
+
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issue.number,
+                    body: comment
+                  });
+
+                  // Add ai-analyzed label
+                  try {
+                    await github.rest.issues.addLabels({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: issue.number,
+                      labels: ['ai-analyzed']
+                    });
+                  } catch (labelError) {
+                    console.log(`Note: Could not add ai-analyzed label to #${issue.number}`);
+                  }
+
+                  console.log(`✅ Issue #${issue.number} analyzed successfully`);
+
+                  // Rate limiting - wait between requests
+                  if (index < issuesToAnalyze.length - 1) {
+                    console.log('⏳ Waiting 2 seconds before next analysis...');
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                  }
+
+                } else {
+                  console.log(`⚠️ No analysis content generated for issue #${issue.number}`);
+                }
+
+              } catch (error) {
+                console.error(`❌ Analysis failed for issue #${issue.number}:`, error);
+
+                // Post error comment
+                const errorComment = `## 🤖 AI Issue Analysis - Error
+
+                The automated AI analysis encountered an error: ${error.message}
+
+                This issue will be retried in the next batch analysis run.`;
+
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: errorComment
+                });
+              }
+            }
+
+            console.log(`🎉 Batch analysis completed! Analyzed ${issuesToAnalyze.length} issues.`);
