@@ -1,0 +1,43 @@
+{
+  "servers": [
+    {
+      "id": "example-stdio",
+      "transport": "stdio",
+      "command": "node",
+      "args": ["./dist/example-server.js"],
+      "env": {
+        "EXAMPLE_TOKEN": "${env:EXAMPLE_TOKEN}"
+      },
+      "startMode": "lazy"
+    },
+    {
+      "id": "example-http",
+      "transport": "http",
+      "url": "http://localhost:8080/mcp",
+      "env": {},
+      "startMode": "lazy"
+    },
+    {
+      "id": "example-with-vault",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${vault:mcp/github/token}"
+      },
+      "startMode": "lazy"
+    },
+    {
+      "id": "example-mixed-secrets",
+      "transport": "stdio",
+      "command": "node",
+      "args": ["./dist/mixed-server.js"],
+      "env": {
+        "API_KEY": "${vault:mcp/api/key}",
+        "DEBUG": "${env:DEBUG}",
+        "BASE_URL": "${env:BASE_URL}"
+      },
+      "startMode": "lazy"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "name": "mcp-broker",
+  "version": "1.0.0",
+  "description": "MCP broker with lazy initialization for upstream servers",
+  "type": "module",
+  "main": "dist/broker.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start:stdio": "node dist/broker.js",
+    "start:http": "node dist/http-broker.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.21.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "node-vault": "^0.10.2",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.3"
+  }
+}

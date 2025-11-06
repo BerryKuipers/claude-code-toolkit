@@ -1,0 +1,18 @@
+{
+  "tools": [
+    {
+      "name": "example.getThing",
+      "server": "example-stdio",
+      "title": "Get Thing",
+      "description": "Returns a demo payload",
+      "requireSchema": false
+    },
+    {
+      "name": "example.updateItem",
+      "server": "example-http",
+      "title": "Update Item",
+      "description": "Updates an item via HTTP MCP server",
+      "requireSchema": false
+    }
+  ]
+}
