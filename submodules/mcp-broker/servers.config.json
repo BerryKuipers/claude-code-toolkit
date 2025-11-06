@@ -1,3 +1,87 @@
 {
-  "servers": []
+  "servers": [
+    {
+      "id": "qdrant",
+      "transport": "stdio",
+      "command": "uvx",
+      "args": ["--with", "mcp-server-qdrant", "mcp-server-qdrant"],
+      "env": {
+        "QDRANT_URL": "http://10.0.0.23:6333"
+      },
+      "startMode": "lazy"
+    },
+    {
+      "id": "homey",
+      "transport": "stdio",
+      "command": "python",
+      "args": ["-m", "homey_mcp"],
+      "env": {
+        "HOMEY_URL": "http://10.0.0.11",
+        "HOMEY_API_KEY": "${vault:secret/mcp_servers/homey#homey_local_token}"
+      },
+      "startMode": "lazy"
+    },
+    {
+      "id": "home-nas",
+      "transport": "stdio",
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "ssh-mcp",
+        "--host=10.0.0.23",
+        "--port=22",
+        "--user=berry",
+        "--key=C:/Users/BerryLocal/.ssh/home_nas",
+        "--timeout=30000",
+        "--maxChars=none"
+      ],
+      "env": {},
+      "startMode": "lazy"
+    },
+    {
+      "id": "radarr-sonarr-global",
+      "transport": "stdio",
+      "command": "python",
+      "args": ["-m", "radarr_sonarr_mcp.server"],
+      "env": {
+        "RADARR_API_KEY": "${vault:secret/mcp_servers/radarr_sonarr#radarr_api_key}",
+        "SONARR_API_KEY": "${vault:secret/mcp_servers/radarr_sonarr#sonarr_api_key}",
+        "JELLYFIN_API_KEY": "${vault:secret/mcp_servers/radarr_sonarr#jellyfin_api_key}",
+        "JELLYFIN_USER_ID": "${vault:secret/mcp_servers/radarr_sonarr#jellyfin_user_id}",
+        "NAS_IP": "10.0.0.23",
+        "RADARR_PORT": "7878",
+        "SONARR_PORT": "8989",
+        "JELLYFIN_BASE_URL": "http://10.0.0.23:8096"
+      },
+      "startMode": "lazy"
+    },
+    {
+      "id": "sequential-thinking",
+      "transport": "stdio",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-sequential-thinking@latest"],
+      "env": {},
+      "startMode": "lazy"
+    },
+    {
+      "id": "context7",
+      "transport": "stdio",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@upstash/context7-mcp@latest"],
+      "env": {},
+      "startMode": "lazy"
+    },
+    {
+      "id": "jam",
+      "transport": "http",
+      "url": "https://mcp.jam.dev/mcp",
+      "env": {},
+      "startMode": "lazy",
+      "oauth": {
+        "scopes": ["read:jams"],
+        "redirectUri": "http://localhost:45454/oauth/callback"
+      }
+    }
+  ]
 }

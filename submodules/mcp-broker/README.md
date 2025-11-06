@@ -2,6 +2,13 @@
 
 A lightweight Model Context Protocol (MCP) broker with lazy initialization for upstream MCP servers. This broker allows you to consolidate multiple MCP servers behind a single entry point, with on-demand spawning of upstream servers.
 
+## 📚 Documentation
+
+- **[SETUP.md](./SETUP.md)** - Complete setup guide for global and per-project configurations
+- **[REFLECTIVE-MODE.md](./REFLECTIVE-MODE.md)** - Dynamic tool discovery with `broker.search` and `broker.invoke`
+- **[INTEGRATION.md](./INTEGRATION.md)** - Integration examples for projects
+- **[VAULT-SETUP.md](./VAULT-SETUP.md)** - Secure secret management with Vault
+
 ## Features
 
 ### v2.0+ Reflective Mode

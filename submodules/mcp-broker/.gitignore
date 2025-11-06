@@ -3,3 +3,10 @@ dist/
 .env
 *.log
 .DS_Store
+
+# User-specific MCP server configurations (keep your personal configs here)
+servers.config.json
+tools.overrides.json
+
+# OAuth tokens (generated dynamically, never commit)
+.oauth-tokens/

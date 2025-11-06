@@ -2,6 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { ServerConfig } from './config.js';
+import { getOAuthToken } from './oauth.js';
 
 const upstreamClients = new Map<string, Client>();
 const toolsCache = new Map<string, any[]>();
@@ -46,7 +47,28 @@ async function createHttpClient(config: ServerConfig): Promise<Client> {
     throw new Error(`Server ${config.id} has http transport but no url specified`);
   }
 
-  const transport = new StreamableHTTPClientTransport(new URL(config.url));
+  // Build transport options
+  const transportOptions: any = {};
+
+  // Get OAuth token if configured
+  if (config.oauth) {
+    try {
+      const token = await getOAuthToken(config.id, config.url, config.oauth);
+      transportOptions.requestInit = {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      };
+    } catch (error) {
+      console.error(`OAuth failed for ${config.id}: ${error}`);
+      throw error;
+    }
+  }
+
+  const transport = new StreamableHTTPClientTransport(
+    new URL(config.url),
+    transportOptions
+  );
 
   const client = new Client(
     {

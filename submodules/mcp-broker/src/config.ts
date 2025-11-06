@@ -9,6 +9,15 @@ const __dirname = dirname(__filename);
 
 const secretResolver = createSecretResolver();
 
+const OAuthConfigSchema = z.object({
+  authorizationUrl: z.string().optional(),
+  tokenUrl: z.string().optional(),
+  clientId: z.string().optional(),
+  clientSecret: z.string().optional(),
+  scopes: z.array(z.string()).optional().default([]),
+  redirectUri: z.string().optional().default('http://localhost:45454/oauth/callback'),
+});
+
 const ServerConfigSchema = z.object({
   id: z.string(),
   transport: z.enum(['stdio', 'http']),
@@ -17,6 +26,7 @@ const ServerConfigSchema = z.object({
   url: z.string().optional(),
   env: z.record(z.string()).default({}),
   startMode: z.enum(['eager', 'lazy']).default('lazy'),
+  oauth: OAuthConfigSchema.optional(),
 });
 
 const ServersConfigSchema = z.object({
@@ -46,6 +56,7 @@ const ToolOverridesSchema = z.object({
   overrides: z.array(ToolOverrideSchema),
 });
 
+export type OAuthConfig = z.infer<typeof OAuthConfigSchema>;
 export type ServerConfig = z.infer<typeof ServerConfigSchema>;
 export type ServersConfig = z.infer<typeof ServersConfigSchema>;
 export type ToolRegistryEntry = z.infer<typeof ToolRegistryEntrySchema>;
