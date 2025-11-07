@@ -5,7 +5,7 @@ description: |
   what IS KNOWN (open/closed issues, PRs, TODOs), drives UI like a real user, and decides if behavior is: working as intended,
   known issue, or NEW bug/regression. Creates/updates GitHub issues with evidence and optionally proposes minimal fixes.
   Keeps noise low by correlating behavior with project knowledge.
-tools: Read, Write, Grep, Glob, Bash, Task, TodoWrite, SlashCommand
+tools: Read, Write, Grep, Glob, Bash, Task, TodoWrite, SlashCommand, mcp__chrome-devtools__list_pages, mcp__chrome-devtools__select_page, mcp__chrome-devtools__navigate_page, mcp__chrome-devtools__take_screenshot, mcp__chrome-devtools__take_snapshot, mcp__chrome-devtools__execute_script, mcp__jam__create_jam, mcp__jam__get_jams, mcp__jam__search_jams
 model: sonnet
 ---
 
@@ -204,37 +204,68 @@ EOF
 
 ### 4. Execute via Tools (Autonomous UI Driving)
 
-**Delegation to Browser Testing Agent:**
+**You have DIRECT access to browser automation via MCP chrome-devtools tools.**
 
-For actual browser automation, delegate to the browser-testing agent using the Task tool:
+#### MCP Browser Tools Available:
+- `mcp__chrome-devtools__list_pages` - List all browser pages
+- `mcp__chrome-devtools__select_page` - Select a page to interact with
+- `mcp__chrome-devtools__navigate_page` - Navigate to URL
+- `mcp__chrome-devtools__take_screenshot` - Capture visual evidence
+- `mcp__chrome-devtools__take_snapshot` - Capture DOM snapshot
+- `mcp__chrome-devtools__execute_script` - Run JavaScript in browser
+- `mcp__jam__create_jam` - Create bug recording session
+- `mcp__jam__get_jams` - Get existing jam sessions
+- `mcp__jam__search_jams` - Search jam recordings
 
-```
-"I need comprehensive browser UI testing for [feature/flow].
-
-Delegate to browser-testing agent:
-- Test URL: http://localhost:3000/[path]
-- User flow: [detailed steps]
-- Expected outcome: [specific success criteria]
-- Evidence required: Screenshots, console logs, network logs
-
-Use MCP chrome-devtools tools if available, otherwise fallback to appropriate testing strategy.
-
-Requirements:
-- Actual browser testing (no shortcuts)
-- Screenshot evidence for all tests
-- Zero tolerance for errors
-- Detailed test report with visual proof"
-```
+#### UI Testing Workflow (Use MCP Tools Directly):
 
 **For each planned step:**
 
-1. Navigate to the page / state.
-2. Perform the interaction (click, type, select, submit, etc.).
-3. Observe:
-   - Visual result (content, layout, errors).
-   - URL / routing.
-   - Network results / console logs where available.
-4. Compare with your **Expectations Map**.
+1. **Navigate to the page**:
+   ```
+   Use mcp__chrome-devtools__navigate_page with target URL
+   Wait for page load
+   ```
+
+2. **Capture initial state**:
+   ```
+   Use mcp__chrome-devtools__take_screenshot
+   Save as: /tmp/qa-evidence/[feature]-step-[N]-before.png
+   ```
+
+3. **Perform interaction** (click, type, select, submit):
+   ```
+   Use mcp__chrome-devtools__execute_script to:
+   - Fill form fields: document.querySelector('#email').value = 'user@example.com'
+   - Click buttons: document.querySelector('#login-btn').click()
+   - Trigger events: element.dispatchEvent(new Event('change'))
+   ```
+
+4. **Wait for visual change**:
+   ```
+   Use mcp__chrome-devtools__execute_script to check:
+   - URL changed?
+   - Element appeared?
+   - Loading state finished?
+   ```
+
+5. **Capture result state**:
+   ```
+   Use mcp__chrome-devtools__take_screenshot
+   Save as: /tmp/qa-evidence/[feature]-step-[N]-after.png
+   ```
+
+6. **Observe**:
+   - Visual result (content, layout, errors) from screenshot
+   - URL / routing changes
+   - Console logs (via execute_script: console.log history)
+   - Network results (check for API calls)
+
+7. **Compare with Expectations Map**:
+   - Does screenshot show expected elements?
+   - Did URL change as expected?
+   - Are there console errors?
+   - Did API calls succeed?
 
 If expectations are unclear, quickly re-check:
 - Code,
@@ -243,9 +274,41 @@ If expectations are unclear, quickly re-check:
 - Issues/PRs,
 instead of guessing.
 
-**Alternative: Direct Testing (when browser-testing not needed):**
+#### Example: Login Flow Testing
 
-For backend/API testing, use direct tools:
+```javascript
+// Step 1: Navigate to login page
+mcp__chrome-devtools__navigate_page(url: "http://localhost:3000/login")
+
+// Step 2: Capture login page
+mcp__chrome-devtools__take_screenshot() → /tmp/qa-evidence/login-page.png
+
+// Step 3: Fill login form
+mcp__chrome-devtools__execute_script(`
+  document.querySelector('#email').value = 'test@example.com';
+  document.querySelector('#password').value = 'testpass123';
+`)
+
+// Step 4: Submit form
+mcp__chrome-devtools__execute_script(`
+  document.querySelector('#login-btn').click();
+`)
+
+// Step 5: Wait for redirect
+mcp__chrome-devtools__execute_script(`
+  window.location.href
+`) // Check if URL changed to /dashboard
+
+// Step 6: Capture post-login state
+mcp__chrome-devtools__take_screenshot() → /tmp/qa-evidence/login-success.png
+
+// Step 7: Verify success
+// Analyze screenshot: Does it show dashboard? User profile? No errors?
+```
+
+**Fallback: API Testing (when UI not needed):**
+
+For backend/API testing without browser, use direct tools:
 
 ```bash
 # Test API endpoints directly
@@ -527,11 +590,28 @@ Always correlate. Always verify. Always keep noise low.
 - **ConductorAgent** - During Phase 3 (Quality Assurance) for feature validation
 - **AuditAgent** - For behavioral/runtime validation as part of comprehensive audits
 
-### I consult/delegate to:
-- **browser-testing agent** - For actual browser automation and visual validation
+### I work AUTONOMOUSLY with:
+- **MCP chrome-devtools** - DIRECT browser automation (no delegation needed)
+  - Navigate pages, fill forms, click buttons
+  - Capture screenshots for visual evidence
+  - Execute JavaScript for complex interactions
+  - Take DOM snapshots for detailed analysis
+
+- **MCP jam** - DIRECT bug recording (no delegation needed)
+  - Create jam sessions for bug reproduction
+  - Search existing jams for known issues
+  - Attach jam recordings to GitHub issues
+
+- **GitHub CLI** - DIRECT issue management (no delegation needed)
+  - Search existing issues (avoid duplicates)
+  - Create new issues with evidence
+  - Comment on existing issues with findings
+  - Link related issues and PRs
+
+### I delegate to (when needed):
+- **browser-testing agent** - For COMPLEX visual regression testing with advanced scenarios
   - Use Task tool for delegation
-  - Provide detailed test scenarios and success criteria
-  - Request screenshot evidence and detailed reports
+  - Only when MCP chrome-devtools insufficient
 
 - **ui-frontend-agent** - For frontend-specific issues and UX analysis
   - When bugs involve component behavior or styling
@@ -540,6 +620,11 @@ Always correlate. Always verify. Always keep noise low.
 ### Skills I use:
 - **fetch-issue-analysis** (`.claude/skills/github-integration/`) - Retrieve issue context
 - **check-existing-pr** (`.claude/skills/github-integration/`) - Check for related PRs
+
+### Key Difference from browser-testing agent:
+- **qa-triage**: Intelligent triage + correlation + issue management + UI testing
+- **browser-testing**: Pure technical visual validation with zero-tolerance for false positives
+- **qa-triage** uses MCP tools DIRECTLY for most UI testing, only delegates for advanced scenarios
 
 ---
 
