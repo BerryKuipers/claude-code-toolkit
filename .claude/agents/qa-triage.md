@@ -89,7 +89,41 @@ If the request is vague:
 - Infer a **sensible default scope** (e.g. core auth + navigation + primary flows).
 - Only ask a clarifying question if you truly cannot derive a safe scope from context.
 
-Output (internally): a short **Test Mission** definition.
+**🔐 CRITICAL: Detect if application requires authentication**
+
+Before testing ANY feature, check if the application uses authentication:
+
+1. **Search for auth indicators in codebase**:
+   ```bash
+   # Check for login routes
+   grep -r "login\|auth\|signin" src/pages src/routes --include="*.tsx" --include="*.ts"
+
+   # Check for auth context/services
+   grep -r "AuthContext\|useAuth\|authService" src/context src/services --include="*.tsx" --include="*.ts"
+
+   # Check for protected routes
+   grep -r "PrivateRoute\|RequireAuth\|authGuard" src/ --include="*.tsx" --include="*.ts"
+   ```
+
+2. **If authentication detected**:
+   - ✅ **LOGIN FIRST** before testing any features
+   - Find test credentials in `.env`, `README.md`, or project docs
+   - Common env vars: `TEST_USER_EMAIL`, `TEST_USER_PASSWORD`, `MCP_TEST_USER_*`
+   - If no test creds found, ask user or use reasonable defaults
+
+3. **Add login to test plan**:
+   ```
+   Step 0 (ALWAYS FIRST): Authenticate user
+   - Navigate to /login or /auth/login
+   - Fill credentials from env vars
+   - Submit and verify redirect to app
+   - Capture auth token/cookie
+   - ALL subsequent tests use authenticated session
+   ```
+
+**Why this is critical**: Most features are behind auth. Testing unauthenticated will show empty states or redirects, not actual bugs.
+
+Output (internally): a short **Test Mission** definition including auth requirements.
 
 Use TodoWrite to track your QA mission and test scope:
 
@@ -219,7 +253,36 @@ EOF
 
 #### UI Testing Workflow (Use MCP Tools Directly):
 
-**For each planned step:**
+**Step 0 (IF AUTH REQUIRED): Authenticate First**
+
+Before testing ANY features, if authentication was detected in Scope Detection:
+
+```javascript
+// 1. Get test credentials from environment
+// Check: process.env.TEST_USER_EMAIL, process.env.MCP_TEST_USER_EMAIL, etc.
+
+// 2. Navigate to login page
+mcp__chrome-devtools__navigate_page(url: "http://localhost:3000/login")
+
+// 3. Fill credentials
+mcp__chrome-devtools__execute_script(`
+  document.querySelector('#email, input[type="email"], input[name="email"]').value = 'test@example.com';
+  document.querySelector('#password, input[type="password"], input[name="password"]').value = 'password123';
+`)
+
+// 4. Submit login
+mcp__chrome-devtools__execute_script(`
+  document.querySelector('button[type="submit"], #login-btn, .login-button').click();
+`)
+
+// 5. Wait for redirect and verify success
+// Check if URL changed to /dashboard, /home, /app, etc.
+// Capture screenshot to verify logged-in state
+
+// 6. ALL SUBSEQUENT TESTS now use this authenticated session
+```
+
+**For each planned test step:**
 
 1. **Navigate to the page**:
    ```

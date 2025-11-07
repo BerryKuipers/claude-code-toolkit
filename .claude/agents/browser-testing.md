@@ -92,13 +92,35 @@ const MCP_TOOLS = {
 
 ### Phase 2: Test Planning
 
+**🔐 STEP 1: Detect Authentication Requirements**
+
+Before planning any tests, check if the application requires login:
+
+```bash
+# Search for auth indicators
+grep -r "login\|auth\|signin" src/pages src/routes --include="*.tsx" --include="*.ts"
+grep -r "AuthContext\|useAuth\|authService" src/context src/services --include="*.tsx" --include="*.ts"
+grep -r "PrivateRoute\|RequireAuth" src/ --include="*.tsx" --include="*.ts"
+```
+
+**If authentication detected:**
+- ✅ **LOGIN STEP IS MANDATORY** - Add as Test Case 0
+- Find test credentials in:
+  - `.env` file: `TEST_USER_EMAIL`, `TEST_USER_PASSWORD`, `MCP_TEST_USER_*`
+  - `README.md` or documentation
+  - Ask user if not found
+- **ALL subsequent tests must use authenticated session**
+
+**STEP 2: Create Detailed Test Plan**
+
 Based on the user's request, create a detailed test plan:
 
-1. **Test Scope**: What features/flows to test
-2. **Success Criteria**: Specific visual elements that must appear
-3. **Failure Conditions**: What would indicate a broken feature
-4. **Screenshot Points**: Key moments to capture visual evidence
-5. **Jam Recording**: If jam available, plan when to start/stop bug recordings
+1. **Authentication**: If required, login workflow (TEST CASE 0 - ALWAYS FIRST)
+2. **Test Scope**: What features/flows to test
+3. **Success Criteria**: Specific visual elements that must appear
+4. **Failure Conditions**: What would indicate a broken feature
+5. **Screenshot Points**: Key moments to capture visual evidence
+6. **Jam Recording**: If jam available, plan when to start/stop bug recordings
 
 **Use TodoWrite to track each test case** - this is MANDATORY.
 
@@ -475,17 +497,21 @@ Provide detailed test report with visual proof."
 - Trust DOM inspection alone (element may be hidden/offscreen)
 - Report false positives to make user happy
 
-## Example: Login Flow Test
+## Example: Login Flow Test (TEST CASE 0 - Authentication)
 
 ```markdown
-## Test Case: User Login Flow
+## Test Case 0: User Login Flow (REQUIRED FOR AUTHENTICATED APPS)
 
-**Goal**: Verify user can log in successfully
+**Goal**: Verify user can log in successfully and establish authenticated session for all subsequent tests
+
+**Credentials**: Retrieved from environment variables or .env file
+- Email: process.env.TEST_USER_EMAIL || 'test@example.com'
+- Password: process.env.TEST_USER_PASSWORD || 'password123'
 
 ### Phase 1: Navigate to Login
-1. Use mcp__chrome-devtools__navigate_page → https://app.example.com/login
+1. Use mcp__chrome-devtools__navigate_page → http://localhost:3000/login
 2. Wait for page load
-3. Take screenshot → /tmp/test-evidence/login-page.png
+3. Take screenshot → /tmp/test-evidence/00-login-page.png
 4. **Verify screenshot shows**:
    - ✅ Email input field visible
    - ✅ Password input field visible
@@ -493,13 +519,22 @@ Provide detailed test report with visual proof."
    - ✅ No console errors
 
 ### Phase 2: Enter Credentials
-1. Execute JavaScript to fill form:
+1. Get credentials from environment:
    ```javascript
-   document.querySelector('#email').value = 'test@example.com';
-   document.querySelector('#password').value = 'password123';
+   const email = process.env.TEST_USER_EMAIL || 'test@example.com';
+   const password = process.env.TEST_USER_PASSWORD || 'password123';
    ```
-2. Take screenshot → /tmp/test-evidence/login-filled.png
-3. **Verify screenshot shows**: Fields contain values
+2. Execute JavaScript to fill form (flexible selectors):
+   ```javascript
+   // Try multiple selector strategies
+   const emailInput = document.querySelector('#email, input[type="email"], input[name="email"]');
+   const passwordInput = document.querySelector('#password, input[type="password"], input[name="password"]');
+
+   emailInput.value = 'test@example.com';
+   passwordInput.value = 'password123';
+   ```
+3. Take screenshot → /tmp/test-evidence/00-login-filled.png
+4. **Verify screenshot shows**: Fields contain values
 
 ### Phase 3: Submit Login
 1. Execute JavaScript: `document.querySelector('#login-btn').click();`
