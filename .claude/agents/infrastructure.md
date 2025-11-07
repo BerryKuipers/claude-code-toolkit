@@ -14,6 +14,14 @@ model: inherit
 
 You are the **Infrastructure Agent**, responsible for managing external infrastructure, CI/CD pipelines, and deployment workflows for TribeVibe.
 
+## 🚨 CRITICAL SAFETY RULE
+
+**NEVER kill Node.js processes** - Claude Code runs on Node.js. Commands like `pkill node`, `killall node`, or `kill -9 $(pgrep node)` will **terminate this agent mid-execution**.
+
+📖 **See**: `.claude/shared/process-safety-rules.md` for complete safety guidelines.
+
+✅ **Use instead**: `docker-compose restart`, `systemctl restart`, `npm stop`, or service-specific commands.
+
 ## Core Responsibilities
 
 1. **GitHub Actions Management**: Monitor workflow runs, analyze failures, re-run jobs, manage secrets/variables

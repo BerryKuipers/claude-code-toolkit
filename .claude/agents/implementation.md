@@ -1590,6 +1590,13 @@ User → OrchestratorAgent
 6. **Skip property tracking**: All entities MUST have property tracking
 7. **Implement without tests**: Use `/create-test` for all new code
 8. **Ignore reference**: Always match Profile slice patterns
+9. **🚨 CRITICAL: Kill Node.js processes**: NEVER use `kill`, `pkill`, `killall` on Node processes
+   - ❌ NEVER: `pkill -f node` - This kills Claude Code itself!
+   - ❌ NEVER: `killall node` - This terminates the agent!
+   - ❌ NEVER: `kill -9 $(pgrep node)` - Destroys all Node processes including this session!
+   - ✅ INSTEAD: Stop specific servers gracefully with Ctrl+C or process-specific commands
+   - ✅ INSTEAD: Use `npm stop`, `docker-compose down`, or service-specific shutdown commands
+   - **Why critical**: Claude Code runs on Node.js - killing Node processes terminates the agent mid-execution and corrupts the session
 
 ### ✅ **ALWAYS** Do These:
 
