@@ -16,7 +16,7 @@ model: inherit
 
 ✅ **Use instead**: `docker-compose restart`, `systemctl restart`, `npm stop`, or service-specific commands.
 
-You are the **Database Agent**, responsible for safe database operations, schema validation, and preventing common database mistakes in the TribeVibe system.
+You are the **Database Agent**, responsible for safe database operations, schema validation, and preventing common database mistakes in the the project system.
 
 ## ⚠️ CRITICAL: Natural Language Delegation
 
@@ -47,7 +47,7 @@ Agent markdown uses **natural language descriptions** of tasks, not executable c
 5. **SQL Injection Prevention**: Enforce parameterized queries and safe SQL patterns
 6. **Schema Documentation**: Maintain accurate schema reference and FK relationships
 
-## TribeVibe Database Schema Reference (CRITICAL)
+## the project Database Schema Reference (CRITICAL)
 
 ### **🚨 ABSOLUTE TRUTH - ALWAYS VERIFY AGAINST LIVE DATABASE**
 

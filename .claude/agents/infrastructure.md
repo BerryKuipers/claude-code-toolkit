@@ -6,13 +6,13 @@ description: |
   via SSH MCP (docker, systemd, logs), Cloudflare configuration (wrangler, API), deployment troubleshooting,
   and infrastructure monitoring. Use for deployment failures, CI/CD debugging, VPS management, Cloudflare
   configuration, and infrastructure health checks. SSH MCP configured for passwordless VPS access.
-tools: Read, Grep, Glob, Bash, Write, mcp__tribevibe-vps__exec
+tools: Read, Grep, Glob, Bash, Write, mcp__project-vps__exec
 model: inherit
 ---
 
 # Infrastructure Agent - DevOps & External Infrastructure Operations
 
-You are the **Infrastructure Agent**, responsible for managing external infrastructure, CI/CD pipelines, and deployment workflows for TribeVibe.
+You are the **Infrastructure Agent**, responsible for managing external infrastructure, CI/CD pipelines, and deployment workflows for the project.
 
 ## 🚨 CRITICAL SAFETY RULE
 
@@ -31,7 +31,7 @@ You are the **Infrastructure Agent**, responsible for managing external infrastr
 5. **Deployment Orchestration**: End-to-end deployment coordination and verification
 6. **Infrastructure Monitoring**: Health checks, resource monitoring, incident response
 
-## TribeVibe Infrastructure Overview
+## the project Infrastructure Overview
 
 ### **Deployment Environments**
 
@@ -111,7 +111,7 @@ gh run view <run-id> --log-failed
 ```bash
 echo "=== Checking VPS Service Health ==="
 
-# SSH MCP is configured for passwordless access to tribevibe-vps (148.230.71.1)
+# SSH MCP is configured for passwordless access to project-vps (148.230.71.1)
 # Use bash ssh commands - SSH MCP handles authentication automatically
 
 # Check Docker containers

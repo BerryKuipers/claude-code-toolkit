@@ -91,7 +91,7 @@ Review the requirements:
 Focus validation on:
 - VSA compliance (Controller → Service → Repository → Entity)
 - SOLID principles adherence
-- Contract-first development (define interfaces in @tribevibe/types first)
+- Contract-first development (define interfaces in project types package first)
 - Layer boundary enforcement
 
 Reference implementation: services/api/src/features/profile/
@@ -113,8 +113,8 @@ Requirements:
 - Database: Create migration for new field
 - Tests: Generate test files for all new code
 
-Follow TribeVibe patterns:
-- Contract-first: Define interfaces in @tribevibe/types
+Follow the project patterns:
+- Contract-first: Define interfaces in project types package
 - VSA structure: Full backend and frontend implementation
 - Reference: services/api/src/features/profile/
 
@@ -132,7 +132,7 @@ Focus areas:
 - System preference detection
 - Theme switching performance
 - Accessibility considerations
-- TribeVibe design system integration
+- project design system integration
 
 Provide: recommended approach with citations, implementation patterns, example code, risks to consider."
 ```
@@ -760,7 +760,7 @@ COMPLETENESS REQUIREMENT:
 **ACTION: Identify Dependencies**
 ```bash
 # From architect's guidance, list all external packages that will be imported
-# Example: @tribevibe/database, @tribevibe/types, @tribevibe/logger, etc.
+# Example: @tribevibe/database, project types package, project logging package, etc.
 ```
 
 **For EACH external package dependency:**
@@ -785,7 +785,7 @@ For @tribevibe/database:
 - Usage pattern: await db`SELECT * FROM table WHERE id = ${id}`
 - NO Pool API - template tag syntax only
 
-For @tribevibe/types:
+For project types package:
 - Exports: Check package.json "exports" field
 - Import paths: Use .js extensions for shared packages
 - Validation: Zod schemas available at runtime
@@ -797,7 +797,7 @@ Check if architecture plan's assumptions match reality:
 ✅ Database: Plan says "PostgreSQL Pool" → Reality: postgres.Sql template tags
 ❌ MISMATCH DETECTED - Update implementation guidance
 
-✅ Types: Plan says "import from @tribevibe/types/admin" → Reality: Confirmed in exports
+✅ Types: Plan says "import from project types package/admin" → Reality: Confirmed in exports
 ✅ VALIDATED - Import path exists
 ```
 
@@ -1779,7 +1779,7 @@ For each comment:
 🔍 Critical Analysis Questions:
 1. Does this address the root cause or just symptoms?
 2. Are there better alternative solutions?
-3. Does it align with TribeVibe's architecture patterns?
+3. Does it align with the project's architecture patterns?
 4. Could it introduce new issues or side effects?
 5. Is the solution complete?
 
@@ -1794,7 +1794,7 @@ For each comment:
 **Human Actions**:
 1. Review each Gemini comment carefully
 2. Apply fixes if they make architectural sense
-3. Ignore suggestions that don't fit TribeVibe patterns
+3. Ignore suggestions that don't fit the project patterns
 4. Commit and push fixes if applied
 5. Continue conductor workflow when ready
 
@@ -2540,7 +2540,7 @@ The Conductor maintains workflow state for resumption:
 A successful conductor workflow means:
 
 1. ✅ Issue selected based on priority and dependencies
-2. ✅ Architecture validated against TribeVibe standards
+2. ✅ Architecture validated against the project standards
 3. ✅ Implementation follows VSA and SOLID principles
 4. ✅ Test files generated for new code (`/create-test`)
 5. ✅ All unit tests passing (`/test-all`)

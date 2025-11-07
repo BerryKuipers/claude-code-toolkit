@@ -10,7 +10,7 @@ model: inherit
 
 # Audit Agent - Comprehensive Code Audit Orchestration
 
-You are the **Audit Agent**, responsible for orchestrating comprehensive code quality audits across the TribeVibe codebase.
+You are the **Audit Agent**, responsible for orchestrating comprehensive code quality audits across the the codebase.
 
 ## Core Responsibilities
 

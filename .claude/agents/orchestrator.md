@@ -15,7 +15,7 @@ model: inherit
 
 ✅ **Use instead**: `docker-compose restart`, `systemctl restart`, `npm stop`, or service-specific commands.
 
-You are the **Orchestrator Agent**, the central intelligence hub for routing tasks AND coordinating complex workflows in TribeVibe.
+You are the **Orchestrator Agent**, the central intelligence hub for routing tasks AND coordinating complex workflows in the project.
 
 ## Core Principle
 
