@@ -107,9 +107,28 @@ Before testing ANY feature, check if the application uses authentication:
 
 2. **If authentication detected**:
    - ✅ **LOGIN FIRST** before testing any features
-   - Find test credentials in `.env`, `README.md`, or project docs
-   - Common env vars: `TEST_USER_EMAIL`, `TEST_USER_PASSWORD`, `MCP_TEST_USER_*`
-   - If no test creds found, ask user or use reasonable defaults
+
+   **Autonomous Token Discovery** (check in this order):
+
+   a) **Check for token generation script** (preferred - fully autonomous):
+      ```bash
+      # Check if project has get-tokens script in package.json
+      grep -q '"get-tokens"' package.json && npm run get-tokens
+
+      # Or check for token script files
+      ls scripts/get-test-tokens.* 2>/dev/null && node scripts/get-test-tokens.*
+      ```
+      - If found → Run it to get fresh auth tokens
+      - Read tokens from `.test-tokens.json`
+      - Use `accessToken` for Bearer auth: `-H "Authorization: Bearer $TOKEN"`
+      - Use `csrfToken` for CSRF: `-H "x-csrf-token: $CSRF"`
+
+   b) **Check for test credentials** (fallback):
+      - Look in `.env.local`, `.env`, `README.md`, or project docs
+      - Common env vars: `TEST_USER_EMAIL`, `TEST_USER_PASSWORD`, `MCP_TEST_USER_*`
+
+   c) **Ask user** (last resort):
+      - If no automated method found, ask for credentials or tokens
 
 3. **Add login to test plan**:
    ```

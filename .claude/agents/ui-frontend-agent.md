@@ -76,6 +76,41 @@ These credentials are used for:
 
 **Security Note:** Credentials stored in `.env` (gitignored) - never hardcode in agent prompts.
 
+### Autonomous Token Discovery
+
+Before testing authenticated features, check for automated token generation (repo-agnostic):
+
+**Priority Order**:
+
+1. **Check for token generation script** (preferred - fully autonomous):
+   ```bash
+   # Check package.json for get-tokens script
+   grep -q '"get-tokens"' package.json && npm run get-tokens
+
+   # Or look for token script files
+   ls scripts/get-test-tokens.* 2>/dev/null && node scripts/get-test-tokens.*
+   ```
+   - If found → Run it to get fresh auth tokens automatically
+   - Read tokens from `.test-tokens.json`:
+     ```javascript
+     const tokens = JSON.parse(fs.readFileSync('.test-tokens.json', 'utf8'));
+     const accessToken = tokens.accessToken;
+     const csrfToken = tokens.csrfToken;
+     ```
+   - Set auth in browser:
+     - localStorage: `localStorage.setItem('accessToken', tokens.accessToken)`
+     - Cookies: Add `auth` and `csrf` cookies via browser API
+     - HTTP headers: `Authorization: Bearer ${accessToken}`, `x-csrf-token: ${csrfToken}`
+
+2. **Check for test credentials** (fallback):
+   - Look in `.env.local`, `.env`, `README.md`, or `AGENT_TESTING_GUIDE.md`
+   - Common env vars: `TEST_USER_EMAIL`, `TEST_USER_PASSWORD`
+
+3. **Ask user** (last resort):
+   - If no automated method found, request credentials
+
+**Why this matters**: Projects with token scripts enable fully autonomous testing - no manual token management needed!
+
 ### Technical Skills
 - **Browser Automation**: Navigate pages, fill forms, click elements via orchestrator delegation
 - **Evidence Collection**: Screenshots, console logs, network monitoring through commands
