@@ -246,9 +246,9 @@ echo "Current branch: $CURRENT_BRANCH"
 # Define base branches that we should NOT stay on
 BASE_BRANCHES="main|master|development|develop"
 
-# Check if we're already on a deps/ branch (for parallel agents)
-if echo "$CURRENT_BRANCH" | grep -qE "^deps/"; then
-  echo "✅ Already on a dependency update branch: $CURRENT_BRANCH"
+# Check if we're already on a deps/ or other feature branch (for parallel agents)
+if echo "$CURRENT_BRANCH" | grep -qE "^(deps/|feature/|fix/|chore/|claude/)"; then
+  echo "✅ Already on a feature/dependency branch: $CURRENT_BRANCH"
   echo "   Using existing branch to avoid conflicts with parallel agents"
   BRANCH_NAME="$CURRENT_BRANCH"
 elif echo "$CURRENT_BRANCH" | grep -qE "^($BASE_BRANCHES)$"; then

@@ -25,7 +25,7 @@ CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 BASE_BRANCHES="main|master|development|develop"
 
 # 1. Already on a feature branch? → Stay on it
-if echo "$CURRENT_BRANCH" | grep -qE "^(feature/|fix/|deps/|chore/)"; then
+if echo "$CURRENT_BRANCH" | grep -qE "^(feature/|fix/|deps/|chore/|claude/)"; then
   echo "✅ Already on feature branch: $CURRENT_BRANCH"
   BRANCH_NAME="$CURRENT_BRANCH"
 
@@ -62,7 +62,7 @@ CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 BASE_BRANCHES="main|master|development|develop"
 
 # Already on feature branch? Use it
-if echo "$CURRENT_BRANCH" | grep -qE "^(feature/|fix/|deps/|chore/)"; then
+if echo "$CURRENT_BRANCH" | grep -qE "^(feature/|fix/|deps/|chore/|claude/)"; then
   echo "✅ Already on a feature branch: $CURRENT_BRANCH"
   echo "   Using existing branch to avoid conflicts with parallel agents"
   BRANCH_NAME="$CURRENT_BRANCH"
@@ -212,6 +212,7 @@ The pattern recognizes these prefixes as feature branches:
 - `fix/` - Bug fixes
 - `deps/` - Dependency updates
 - `chore/` - Maintenance tasks
+- `claude/` - Claude Code web session branches
 
 **Base branches** (should NOT stay on these):
 - `main`
@@ -224,11 +225,11 @@ The pattern recognizes these prefixes as feature branches:
 To support additional branch prefixes, update the grep pattern:
 
 ```bash
-# Before
-if echo "$CURRENT_BRANCH" | grep -qE "^(feature/|fix/|deps/|chore/)"; then
+# Current pattern (includes claude/ for web sessions)
+if echo "$CURRENT_BRANCH" | grep -qE "^(feature/|fix/|deps/|chore/|claude/)"; then
 
-# After (added refactor/ and docs/)
-if echo "$CURRENT_BRANCH" | grep -qE "^(feature/|fix/|deps/|chore/|refactor/|docs/)"; then
+# To add more prefixes (example: refactor/ and docs/)
+if echo "$CURRENT_BRANCH" | grep -qE "^(feature/|fix/|deps/|chore/|claude/|refactor/|docs/)"; then
 ```
 
 ---

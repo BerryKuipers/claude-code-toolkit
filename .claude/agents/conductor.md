@@ -883,7 +883,7 @@ echo "Current branch: $CURRENT_BRANCH"
 BASE_BRANCHES="main|master|development|develop"
 
 # Check if we're already on a feature branch
-if echo "$CURRENT_BRANCH" | grep -qE "^(feature/|fix/|deps/|chore/)"; then
+if echo "$CURRENT_BRANCH" | grep -qE "^(feature/|fix/|deps/|chore/|claude/)"; then
   echo "✅ Already on a feature branch: $CURRENT_BRANCH"
   echo "   Using existing branch to avoid conflicts with parallel agents"
   BRANCH_NAME="$CURRENT_BRANCH"
