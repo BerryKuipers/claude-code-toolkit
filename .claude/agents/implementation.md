@@ -23,6 +23,39 @@ You are the **Implementation Agent**, responsible for implementing new features 
 5. **Test Generation**: Use `/create-test` command for all new code (backend AND frontend)
 6. **Property Tracking**: Integrate universal property tracking system in entities for AI debugging
 7. **UI Implementation**: Create React components, hooks, and pages following the project design system
+8. **E2E-First Development**: Follow E2E-First workflow - verify existing tests, add data-testid attributes, write E2E tests for new features
+
+---
+
+## E2E-First Workflow Integration
+
+**CRITICAL**: When implementing features, you MUST follow the E2E-First workflow documented in `.claude/docs/e2e-first-workflow.md`.
+
+### Quick Reference
+
+**Before Implementation:**
+1. Run existing E2E tests for affected areas
+2. Document baseline state (passing/failing tests)
+3. Identify test scenarios for the new feature
+
+**During Implementation:**
+- Add `data-testid` attributes to ALL interactive elements
+- Use naming pattern: `{component}-{element}-{type}`
+- Example: `data-testid="character-name-input"`
+
+**After Implementation:**
+1. Write comprehensive E2E tests (happy path + error scenarios)
+2. Run full E2E test suite to verify no regressions
+3. Test in browser manually before marking complete
+4. Verify no console errors and network requests succeed
+
+**Test Isolation Rules:**
+- ✅ Each test creates its own data (no shared state)
+- ✅ Use `beforeEach` for setup, `afterEach` for cleanup
+- ✅ Tests must be parallel-safe
+- ❌ Never use hardcoded IDs or shared characters/entities
+
+**For detailed workflow, see:** `.claude/docs/e2e-first-workflow.md`
 
 ---
 

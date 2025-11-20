@@ -73,6 +73,89 @@ you should use it deliberately as part of your workflow.
 
 ---
 
+## E2E Testing & Debugging Guidance
+
+**IMPORTANT**: This project follows an E2E-First development workflow. When investigating bugs or test failures, refer to `.claude/docs/e2e-first-workflow.md` for comprehensive guidance.
+
+### E2E Test Failure Investigation
+
+When E2E tests fail, follow this systematic approach:
+
+1. **Identify Failure Type:**
+   - Missing `data-testid` attribute → Add to component
+   - Timing issue (element not ready) → Use proper `await expect().toBeVisible()`
+   - API not responding → Check backend is running in E2E mode (`npm run dev:e2e`)
+   - Test isolation issue → Verify no shared state between tests
+
+2. **Check Test Isolation:**
+   ```bash
+   # Run test alone to verify it works in isolation
+   npx playwright test path/to/test.spec.ts:line-number --workers=1
+
+   # Check for test interference patterns
+   cat e2e/failed-tests.json
+   ```
+
+3. **Common E2E Test Fixes:**
+   ```typescript
+   // ✅ CORRECT: Use data-testid selectors
+   await page.getByTestId('save-button').click();
+
+   // ❌ WRONG: Brittle CSS/text selectors
+   await page.locator('.btn').first().click();
+
+   // ✅ CORRECT: Wait for state changes
+   await expect(page.getByTestId('success-message')).toBeVisible();
+
+   // ❌ WRONG: Hardcoded waits
+   await page.waitForTimeout(1000); // Flaky!
+   ```
+
+4. **Debugging Tools:**
+   ```bash
+   # Run with UI mode (interactive debugging)
+   npx playwright test --ui
+
+   # Run with trace (step-by-step recording)
+   npx playwright test --trace on
+   npx playwright show-trace trace.zip
+
+   # View test report
+   npx playwright show-report
+   ```
+
+### data-testid Requirements
+
+When investigating UI bugs, verify ALL interactive elements have `data-testid` attributes:
+
+**Naming Convention:** `{component}-{element}-{type}`
+
+Examples:
+- `data-testid="character-traits"` (container)
+- `data-testid="add-trait-button"` (action button)
+- `data-testid="trait-name-input"` (form input)
+- `data-testid="trait-123"` (dynamic item with ID)
+- `data-testid="trait-error"` (error message)
+
+**Why data-testid?**
+- ✅ Stable across styling changes
+- ✅ Explicit testing contract
+- ✅ Easy to locate in E2E tests
+- ❌ CSS selectors break when styles change
+- ❌ Text selectors break with i18n
+
+### Test Interference Patterns
+
+| Pattern | Cause | Fix |
+|---------|-------|-----|
+| Test passes alone, fails in suite | Shared state between tests | Add proper cleanup in `afterEach` |
+| Test fails 50% of the time | Race condition | Add proper waits with `expect().toBeVisible()` |
+| Test fails in parallel, passes with `--workers=1` | Shared database state | Use unique IDs for test data |
+
+**For complete E2E workflow, see:** `.claude/docs/e2e-first-workflow.md`
+
+---
+
 ## High-Level Behavior Model
 
 When invoked, follow this deterministic loop:
