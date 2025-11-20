@@ -73,6 +73,14 @@
       "startMode": "lazy"
     },
     {
+      "id": "playwright",
+      "transport": "stdio",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-playwright@latest"],
+      "env": {},
+      "startMode": "lazy"
+    },
+    {
       "id": "jam",
       "transport": "http",
       "url": "https://mcp.jam.dev/mcp",
