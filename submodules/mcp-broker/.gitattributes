@@ -1,0 +1,32 @@
+# Git attributes for mcp-broker
+# Prevents file mode and line ending issues on Windows
+
+# JSON files: text mode, LF line endings, no executable bit
+*.json text eol=lf -x
+
+# JavaScript/TypeScript: text mode, LF line endings
+*.js text eol=lf
+*.ts text eol=lf
+*.mjs text eol=lf
+
+# Config files: text mode, LF line endings
+*.config.json text eol=lf -x
+*.config.js text eol=lf
+
+# Markdown: text mode, LF line endings
+*.md text eol=lf
+
+# Shell scripts: text mode, LF line endings (need execute bit)
+*.sh text eol=lf
+
+# Batch files: text mode, CRLF line endings
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Prevent binary files from being modified
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
