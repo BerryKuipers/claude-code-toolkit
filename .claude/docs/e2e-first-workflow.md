@@ -67,7 +67,9 @@ flowchart TD
 
 **Goal:** Establish a known-good baseline before making changes.
 
-### Step 1.1: Identify Relevant E2E Tests
+### Step 1.1: Identify Relevant E2E Tests and Helpers
+
+**CRITICAL: Always search for existing test patterns and helpers first!**
 
 ```bash
 # Search for tests related to feature area
@@ -75,12 +77,30 @@ npx playwright test --list | grep -i "feature-name"
 
 # Example: For character management feature
 npx playwright test --list | grep -i "character"
+
+# Find existing test helpers and utilities
+find e2e -name "*helper*" -o -name "*util*" -o -name "*fixture*"
+
+# Search for common patterns (login, setup, cleanup)
+grep -r "loginToApp\|createTest\|cleanup" e2e/
 ```
+
+**Discover Existing Patterns:**
+1. **Test Helpers** - Check `e2e/helpers/`, `e2e/utils/`, or `e2e/fixtures/`
+2. **Common Functions** - Look for reusable functions like:
+   - `loginToApp()` or `login()` - User authentication
+   - `createTestUser()` - Test data creation
+   - `createTestCharacter()` - Entity creation
+   - `cleanupTestData()` - Test cleanup
+   - `setupTestEnvironment()` - Environment setup
+3. **Existing Test Suites** - Don't create `pr-something.spec.ts` when you should add to existing suites
+4. **Naming Conventions** - Follow existing patterns for consistency
 
 **Relevant Test Files:**
 - Check `e2e/` directory structure
 - Look for tests covering related pages/components
 - Check `e2e/failed-tests.json` for known issues
+- **Identify which existing test suite to extend** (don't create duplicates!)
 
 ### Step 1.2: Run Baseline Tests
 
@@ -436,6 +456,78 @@ export const characterService = {
 ## Phase 4: E2E Test Addition/Update
 
 **Goal:** Add comprehensive E2E tests for the new feature.
+
+### CRITICAL: Reuse Existing Patterns
+
+**Before writing ANY new test code:**
+
+1. **Search for Existing Helpers:**
+   ```bash
+   # Find helper files
+   ls e2e/helpers/ e2e/utils/ e2e/fixtures/
+
+   # Search for specific patterns
+   grep -r "export.*function.*login" e2e/
+   grep -r "export.*function.*create" e2e/
+   grep -r "export.*function.*cleanup" e2e/
+   ```
+
+2. **Identify Existing Test Suite:**
+   ```bash
+   # DON'T create pr-character-traits.spec.ts
+   # IF e2e/character-management.spec.ts already exists!
+
+   # List existing test suites
+   ls e2e/*.spec.ts
+
+   # Check if related suite exists
+   ls e2e/*character*.spec.ts
+   ls e2e/*trait*.spec.ts
+   ```
+
+3. **Decision: New Suite vs Extend Existing?**
+
+   **✅ CREATE NEW SUITE when:**
+   - Testing a completely new feature area (e.g., first inventory tests)
+   - No related test suite exists
+   - Feature is independent from existing suites
+
+   **❌ DON'T CREATE NEW SUITE when:**
+   - Related tests already exist (e.g., character-management.spec.ts)
+   - Adding tests to existing workflow (add to that suite!)
+   - Creating `pr-something.spec.ts` for a PR (add to existing suite instead!)
+
+   **Example:**
+   ```typescript
+   // ❌ WRONG: Creating duplicate suite
+   // e2e/pr-1234-character-traits.spec.ts
+
+   // ✅ CORRECT: Adding to existing suite
+   // e2e/character-management.spec.ts
+   test.describe('Character Traits', () => {
+     // New tests here
+   });
+   ```
+
+4. **Reuse Existing Helpers:**
+   ```typescript
+   // ❌ WRONG: Reimplementing login
+   async function myLogin(page) {
+     await page.goto('/login');
+     await page.fill('#email', 'test@example.com');
+     // ...
+   }
+
+   // ✅ CORRECT: Using existing helper
+   import { loginToApp } from './helpers';
+   await loginToApp(page, { email: 'test@example.com' });
+   ```
+
+5. **Follow Existing Patterns:**
+   - Use same data creation patterns
+   - Use same cleanup patterns
+   - Use same assertion patterns
+   - Match existing code style
 
 ### Step 4.1: Write New E2E Tests
 
@@ -893,6 +985,88 @@ npx playwright test
 7. ✅ Mark complete
 ```
 
+### Pitfall 7: Not Reusing Existing Helpers and Creating Duplicate Test Suites
+
+**❌ WRONG:**
+```typescript
+// Creating duplicate suite for PR
+// e2e/pr-1234-add-character-traits.spec.ts
+
+import { test, expect } from '@playwright/test';
+
+// Reimplementing login helper
+async function login(page) {
+  await page.goto('/login');
+  await page.fill('#email', 'test@example.com');
+  await page.fill('#password', 'password');
+  await page.click('button[type="submit"]');
+  await page.waitForURL('/dashboard');
+}
+
+test('should add trait', async ({ page }) => {
+  await login(page); // Using duplicate helper
+  // ... rest of test
+});
+```
+
+**Why it fails:**
+- Creates test duplication and maintenance burden
+- Breaks existing test organization
+- Misses bug fixes/improvements in existing helpers
+- Makes test suite harder to navigate
+- Violates DRY principle
+
+**✅ CORRECT:**
+```typescript
+// Adding to existing suite
+// e2e/character-management.spec.ts
+
+import { test, expect } from '@playwright/test';
+import { loginToApp, createTestCharacter, cleanupTestData } from './helpers'; // Reuse!
+
+// Add new test.describe to existing suite
+test.describe('Character Traits', () => {
+  let characterId: string;
+
+  test.beforeEach(async ({ page }) => {
+    await loginToApp(page); // Using existing helper
+    characterId = await createTestCharacter(page, { name: 'Test Character' });
+    await page.goto(`/characters/${characterId}`);
+  });
+
+  test.afterEach(async () => {
+    await cleanupTestData({ characterId }); // Using existing helper
+  });
+
+  test('should add trait', async ({ page }) => {
+    await page.getByTestId('add-trait-button').click();
+    // ... rest of test
+  });
+});
+```
+
+**Best Practices:**
+1. **Always search for existing helpers first:**
+   ```bash
+   grep -r "export.*function.*login" e2e/
+   grep -r "export.*function.*create" e2e/
+   ```
+
+2. **Check for related test suites:**
+   ```bash
+   ls e2e/*character*.spec.ts
+   # If character-management.spec.ts exists, add to it!
+   ```
+
+3. **Only create new suite when:**
+   - Testing completely new feature area
+   - No related suite exists
+   - Feature is independent
+
+4. **Never create `pr-*.spec.ts` files** - add to existing suites instead
+
+5. **Follow DRY principle** - one helper implementation, many uses
+
 ---
 
 ## Agent/Command Integration
@@ -969,6 +1143,8 @@ Run E2E tests with proper backend setup:
 - Always run E2E tests before and after
 - Test error scenarios, not just happy paths
 - Use browser testing before marking complete
+- Reuse existing helpers and patterns (DRY principle)
+- Extend existing test suites, don't create duplicates
 
 **Benefits:**
 - Catch regressions early
