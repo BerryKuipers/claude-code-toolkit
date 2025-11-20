@@ -1,0 +1,13 @@
+# Agent Session Working Files
+
+This directory contains temporary working files created by agents during their sessions.
+Files in this directory are excluded from git (see .gitignore).
+
+## Purpose
+- Agent state files
+- Session logs and notes
+- Temporary analysis files
+- Working drafts and scratchpads
+
+## Cleanup
+These files are session-specific and can be safely deleted after the session ends.

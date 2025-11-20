@@ -1,0 +1,39 @@
+# Agent Session Working Files
+# Temporary files created by agents during sessions
+.claude/agent-sessions/*
+!.claude/agent-sessions/.gitkeep
+
+# Agent working files that may be created at root level (not in subdirectories)
+/*-agent-notes.md
+/*-session-*.md
+/*-working-*.md
+/*-scratch-*.md
+
+# Node modules
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build outputs
+dist/
+build/
+*.log
+
+# Temporary files
+*.tmp
+.temp/
+.cache/
