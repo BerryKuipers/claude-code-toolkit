@@ -239,12 +239,30 @@ echo ""
 echo "Phase 4: Automated Safe Updates"
 echo "================================"
 
-# Create feature branch for updates
-TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-BRANCH_NAME="deps/automated-updates-${TIMESTAMP}"
+# First, check what branch we're currently on
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+echo "Current branch: $CURRENT_BRANCH"
 
-git checkout -b "$BRANCH_NAME"
-echo "Created branch: $BRANCH_NAME"
+# Define base branches that we should NOT stay on
+BASE_BRANCHES="main|master|development|develop"
+
+# Check if we're already on a deps/ branch (for parallel agents)
+if echo "$CURRENT_BRANCH" | grep -qE "^deps/"; then
+  echo "✅ Already on a dependency update branch: $CURRENT_BRANCH"
+  echo "   Using existing branch to avoid conflicts with parallel agents"
+  BRANCH_NAME="$CURRENT_BRANCH"
+elif echo "$CURRENT_BRANCH" | grep -qE "^($BASE_BRANCHES)$"; then
+  # We're on a base branch, create new deps branch
+  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+  BRANCH_NAME="deps/automated-updates-${TIMESTAMP}"
+  git checkout -b "$BRANCH_NAME"
+  echo "✅ Created branch: $BRANCH_NAME"
+else
+  # We're on some other feature branch, stay on it
+  echo "⚠️  On non-base branch: $CURRENT_BRANCH"
+  echo "   Staying on current branch for dependency updates"
+  BRANCH_NAME="$CURRENT_BRANCH"
+fi
 ```
 
 **Step 4.2: Apply Safe Updates**

@@ -873,32 +873,42 @@ Read: services/api/src/repositories/ProfileBrowsingRepository.ts
 
 **RESUMPTION CHECK**: If feature branch already exists, SKIP this step and use existing branch.
 
-**ACTION: Check if branch exists first:**
+**ACTION: Check current branch and decide whether to create new one:**
 ```bash
-BRANCH_NAME="feature/issue-$ISSUE_NUMBER-[short-description]"
-if git rev-parse --verify "$BRANCH_NAME" 2>/dev/null; then
-  echo "✅ Branch already exists: $BRANCH_NAME"
-  git checkout "$BRANCH_NAME"
+# First, check what branch we're currently on
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+echo "Current branch: $CURRENT_BRANCH"
+
+# Define base branches that we should NOT stay on
+BASE_BRANCHES="main|master|development|develop"
+
+# Check if we're already on a feature branch
+if echo "$CURRENT_BRANCH" | grep -qE "^(feature/|fix/|deps/|chore/)"; then
+  echo "✅ Already on a feature branch: $CURRENT_BRANCH"
+  echo "   Using existing branch to avoid conflicts with parallel agents"
+  BRANCH_NAME="$CURRENT_BRANCH"
   # SKIP to Step 2
+elif echo "$CURRENT_BRANCH" | grep -qE "^($BASE_BRANCHES)$"; then
+  # We're on a base branch, check if target branch exists
+  BRANCH_NAME="feature/issue-$ISSUE_NUMBER-[short-description]"
+  if git rev-parse --verify "$BRANCH_NAME" 2>/dev/null; then
+    echo "✅ Target branch already exists: $BRANCH_NAME"
+    git checkout "$BRANCH_NAME"
+  else
+    # Create new branch
+    echo "Creating new feature branch: $BRANCH_NAME"
+    git checkout development 2>/dev/null || git checkout main
+    git pull origin $(git rev-parse --abbrev-ref HEAD)
+    git checkout -b "$BRANCH_NAME"
+    git push -u origin "$BRANCH_NAME"
+    echo "✅ Created feature branch: $BRANCH_NAME"
+  fi
 else
-  # Create new branch via orchestrator
+  # We're on some other branch (not base, not feature)
+  echo "⚠️  On unexpected branch: $CURRENT_BRANCH"
+  echo "   Staying on current branch to avoid disruption"
+  BRANCH_NAME="$CURRENT_BRANCH"
 fi
-```
-
-If branch does NOT exist, create feature branch directly:
-```bash
-# Checkout development and pull latest
-git checkout development
-git pull origin development
-
-# Create feature branch with proper naming
-BRANCH_NAME="feature/issue-[ISSUE_NUMBER]-[short-description]"
-git checkout -b "$BRANCH_NAME"
-
-# Push to remote with tracking
-git push -u origin "$BRANCH_NAME"
-
-echo "✅ Created feature branch: $BRANCH_NAME"
 ```
 
 **Expected Output**:
