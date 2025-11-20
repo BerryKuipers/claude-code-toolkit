@@ -12,6 +12,34 @@ The E2E-First Feature Development Workflow ensures quality and prevents regressi
 
 **Core Principle:** "Test First, Implement Second, Verify Always"
 
+### ⚠️ When to Use This Workflow
+
+**This workflow is OPTIONAL and CONDITIONAL on the repository having E2E tests.**
+
+**✅ USE this workflow when:**
+- Repository has `e2e/` directory with existing test suites
+- Repository has Playwright/Cypress/other E2E framework configured
+- User explicitly requests E2E test coverage
+- Repository's `package.json` has E2E test scripts
+
+**❌ SKIP this workflow when:**
+- Repository has no `e2e/` directory or E2E tests
+- No E2E testing framework is configured
+- User has not requested E2E tests
+- Repository only uses unit/integration tests
+
+**Quick Detection:**
+```bash
+# Check if repo uses E2E tests
+if [ -d "e2e" ] || [ -d "tests/e2e" ] || grep -q "playwright\|cypress\|@playwright/test" package.json; then
+  echo "✅ Repository has E2E tests - follow E2E workflow"
+else
+  echo "⏭️  Repository has no E2E tests - skip E2E workflow"
+fi
+```
+
+**If skipping E2E workflow:** Follow standard development workflow without E2E phases. Focus on unit tests and manual testing instead.
+
 ---
 
 ## Workflow Decision Tree

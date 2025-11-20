@@ -23,15 +23,32 @@ You are the **Implementation Agent**, responsible for implementing new features 
 5. **Test Generation**: Use `/create-test` command for all new code (backend AND frontend)
 6. **Property Tracking**: Integrate universal property tracking system in entities for AI debugging
 7. **UI Implementation**: Create React components, hooks, and pages following the project design system
-8. **E2E-First Development**: Follow E2E-First workflow - verify existing tests, add data-testid attributes, write E2E tests for new features
+8. **E2E-First Development** (if repo has E2E tests): Follow E2E-First workflow - verify existing tests, add data-testid attributes, write E2E tests for new features
 
 ---
 
-## E2E-First Workflow Integration
+## E2E-First Workflow Integration (CONDITIONAL)
 
-**CRITICAL**: When implementing features, you MUST follow the E2E-First workflow documented in `.claude/docs/e2e-first-workflow.md`.
+**⚠️ IMPORTANT**: E2E workflow is OPTIONAL - only apply if repository has E2E tests.
 
-### Quick Reference
+### Step 1: Detect E2E Testing Setup
+
+**Before following E2E workflow, check if repository uses E2E tests:**
+
+```bash
+# Check for E2E test infrastructure
+if [ -d "e2e" ] || [ -d "tests/e2e" ] || grep -q "playwright\|cypress\|@playwright/test" package.json; then
+  echo "✅ Repository has E2E tests - follow E2E workflow"
+  HAS_E2E_TESTS=true
+else
+  echo "⏭️  Repository has no E2E tests - skip E2E workflow"
+  HAS_E2E_TESTS=false
+fi
+```
+
+### Step 2: Apply E2E Workflow (If Applicable)
+
+**IF repository has E2E tests (`HAS_E2E_TESTS=true`):**
 
 **Before Implementation:**
 1. Run existing E2E tests for affected areas
@@ -55,7 +72,13 @@ You are the **Implementation Agent**, responsible for implementing new features 
 - ✅ Tests must be parallel-safe
 - ❌ Never use hardcoded IDs or shared characters/entities
 
-**For detailed workflow, see:** `.claude/docs/e2e-first-workflow.md`
+**IF repository has NO E2E tests (`HAS_E2E_TESTS=false`):**
+- Skip all E2E-specific steps (don't create E2E tests unless explicitly requested)
+- Still add `data-testid` attributes for future testability (good practice)
+- Focus on unit tests and manual browser testing
+- Test in browser manually before marking complete
+
+**For detailed E2E workflow, see:** `.claude/docs/e2e-first-workflow.md`
 
 ---
 

@@ -73,9 +73,22 @@ you should use it deliberately as part of your workflow.
 
 ---
 
-## E2E Testing & Debugging Guidance
+## E2E Testing & Debugging Guidance (CONDITIONAL)
 
-**IMPORTANT**: This project follows an E2E-First development workflow. When investigating bugs or test failures, refer to `.claude/docs/e2e-first-workflow.md` for comprehensive guidance.
+**⚠️ NOTE**: E2E testing guidance is CONDITIONAL - only applies if repository has E2E tests.
+
+**Check if repo uses E2E tests:**
+```bash
+[ -d "e2e" ] || [ -d "tests/e2e" ] || grep -q "playwright\|cypress" package.json
+```
+
+**If repository has E2E tests**, refer to `.claude/docs/e2e-first-workflow.md` for comprehensive guidance.
+
+**If repository has NO E2E tests**, skip E2E-specific debugging and focus on:
+- Unit test failures
+- Integration test failures
+- Manual browser testing
+- Console errors and network issues
 
 ### E2E Test Failure Investigation
 
