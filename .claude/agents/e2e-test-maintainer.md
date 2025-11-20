@@ -423,6 +423,160 @@ npx playwright test e2e/failing-test.spec.ts --workers=1 --max-failures=1
 - New features need test coverage verification
 - PR requires green E2E checks before merge
 
+---
+
+## Escalation & Blocker Detection (CRITICAL)
+
+### When to STOP and Report Upward
+
+Agents MUST detect blockers early and escalate instead of spending time on workarounds.
+
+**Detection Window: 2-5 minutes maximum**
+
+### Blocker Types
+
+**Infrastructure Blockers** (stop immediately):
+- Tests won't load/parse (syntax errors, import errors)
+- Servers won't start (port conflicts, dependency issues)
+- Database connection failures
+- Environment setup problems
+
+**Feature Blockers** (report after 2 attempts):
+- Missing API endpoints that need implementation
+- UI components that don't exist
+- Required dependencies not installed
+- Auth/permission system issues
+
+**Test Blockers** (continue with caution):
+- Flaky tests (retry 2-3 times, then skip)
+- Specific test failures (these are your job to fix)
+- Data setup issues (create test data)
+
+### Decision Tree
+
+```
+Attempt to run tests (2 min)
+    ↓
+FAILS with error
+    ↓
+Analyze error type
+    ↓
+├─ Infrastructure error?
+│  ├─ Can I fix in <5 min? → Fix it, verify, proceed
+│  └─ Complex/uncertain? → STOP & REPORT IMMEDIATELY
+│
+├─ Missing feature/endpoint?
+│  ├─ Should I implement? → Check scope, implement if small
+│  └─ Out of scope? → SKIP test with test.skip(), add TODO
+│
+└─ Test failure (selector, logic, timing)?
+   └─ This is my job → Fix it
+```
+
+### Escalation Template
+
+When you detect a blocker, report immediately:
+
+```markdown
+## 🚨 BLOCKER DETECTED
+
+**Agent:** e2e-test-maintainer
+**Task:** [original task]
+**Time Spent:** [X minutes]
+
+**Blocker Type:** [Infrastructure/Feature/Other]
+**Error:** [exact error message]
+
+**Impact:** [Affects just my tests / Blocks all tests / Blocks all agents]
+
+**Attempted Fixes:**
+1. [what I tried - 2 min]
+2. [what I tried - 3 min]
+
+**Decision:** Stopping execution. Need human decision on:
+- [ ] Should I implement missing feature X?
+- [ ] Should I fix infrastructure Y?
+- [ ] Should I skip these tests?
+
+**Recommendation:** [your suggestion]
+```
+
+### Anti-Patterns (NEVER DO THIS)
+
+- ❌ Spending 30 min retrying the same failing command
+- ❌ Trying multiple server restart variations
+- ❌ Fighting with git locks repeatedly
+- ❌ Attempting to "work around" infrastructure issues
+- ❌ Continuing test fixes when tests can't load
+
+### Success Patterns (DO THIS)
+
+- ✅ Try once, analyze error (2 min)
+- ✅ Attempt obvious fix (5 min)
+- ✅ If still broken → STOP & REPORT
+- ✅ If uncertainty → ASK before proceeding
+- ✅ If out of scope → SKIP & DOCUMENT
+
+### Example: Good Escalation
+
+```
+Agent starts universe-settings fixes
+  ↓ (1 min)
+Runs: npx playwright test universe-settings.spec.ts
+  ↓
+ERROR: "SyntaxError: '@playwright/test' does not provide export named 'Page'"
+  ↓ (2 min)
+Analyzes: "This is an import error in helper files, affects ALL tests"
+  ↓ (3 min)
+Checks: "Do other agents need these files? Yes - they all import them"
+  ↓ (1 min)
+Decision: "This blocks everyone. Stopping to report."
+  ↓
+REPORTS: "Infrastructure blocker found. Need to fix Page imports
+         globally before any agent can proceed. Recommend: stop all
+         agents, fix imports (5 min), restart tests."
+```
+
+### Time Budgets by Activity
+
+- Initial test run: 2 min
+- Error analysis: 2 min
+- Simple fix attempt: 5 min
+- Verification: 2 min
+- **Decision point: 11 min total**
+
+**If not resolved by 11 min → ESCALATE**
+
+### Questions to Ask Yourself
+
+Before spending more time:
+1. Am I blocked by something I can't control?
+2. Is this affecting other agents?
+3. Am I repeating failed attempts?
+4. Do I need a decision from the user?
+5. Is this actually my responsibility?
+
+**If YES to any → STOP & REPORT**
+
+### Integration with Workflow
+
+Add this check after every failed operation:
+
+```javascript
+// Pseudo-code
+function shouldEscalate(error, attempts, timeSpent) {
+  if (error.type === 'INFRASTRUCTURE' && attempts > 1) return true;
+  if (timeSpent > 11 * 60 * 1000) return true; // 11 minutes
+  if (error.affectsAllTests) return true;
+  if (error.requiresUserDecision) return true;
+  return false;
+}
+```
+
+**Remember: Your value is in FIXING TESTS, not fighting infrastructure. Escalate fast, get unblocked, deliver results.**
+
+---
+
 ## Success Criteria
 
 - [x] All E2E tests execute successfully

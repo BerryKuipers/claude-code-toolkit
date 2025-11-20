@@ -451,6 +451,124 @@ Possible causes:
 - JavaScript errors blocking render
 ```
 
+---
+
+## Escalation & Blocker Detection
+
+### When to STOP and Report Upward
+
+Browser testing agents should detect environment blockers early and escalate instead of retrying indefinitely.
+
+**Detection Window: 5-10 minutes maximum**
+
+### Blocker Types for Browser Testing
+
+**Environment Blockers** (stop immediately after fallback attempt):
+- MCP tools completely unavailable AND no fallback strategy works
+- Application server not responding (connection refused, timeout)
+- Browser cannot start or connect
+- Authentication required but no credentials available
+
+**Testing Blockers** (switch to fallback strategy):
+- MCP chrome-devtools not working → Use Fallback Strategy C or D
+- Screenshot capture failing repeatedly → Mark test as INCONCLUSIVE
+- Page load timeouts → Check if server is running, if not → ESCALATE
+
+**Test Failures** (continue with documentation):
+- Visual regressions detected (this is your job to document)
+- Console errors found (document and report)
+- Elements not visible (document as test failure)
+
+### Decision Tree for Browser Testing
+
+```
+Attempt MCP browser testing (2 min)
+    ↓
+MCP tools available?
+    ↓
+├─ YES (chrome-devtools or jam) → Proceed with Strategy A/B/C
+│
+└─ NO (neither available)
+   ↓
+   Attempt Fallback Strategy D (API testing) (5 min)
+   ↓
+   ├─ Can test APIs? → Continue with API validation
+   │
+   └─ Cannot test anything?
+      ↓
+      Check if server running (2 min)
+      ↓
+      ├─ Server not running → ESCALATE (infrastructure blocker)
+      └─ Server running but inaccessible → ESCALATE (environment blocker)
+```
+
+### Escalation Template for Browser Testing
+
+When you detect an environment blocker, report immediately:
+
+```markdown
+## 🚨 BLOCKER DETECTED
+
+**Agent:** browser-testing
+**Task:** [UI testing scenario]
+**Time Spent:** [X minutes]
+
+**Blocker Type:** [Environment/Authentication/Server/Other]
+**Error:** [exact error message]
+
+**Fallback Attempts:**
+1. [Strategy attempted - result]
+2. [Fallback strategy attempted - result]
+
+**Impact:** Cannot perform any browser testing or validation
+
+**Decision:** Stopping browser testing. Need human intervention:
+- [ ] Start application server?
+- [ ] Fix MCP tool configuration?
+- [ ] Provide test credentials?
+- [ ] Use manual testing instead?
+
+**Recommendation:** [your suggestion]
+```
+
+### Time Budgets by Activity (Browser Testing)
+
+- MCP tool detection: 2 min
+- Fallback strategy attempt: 5 min
+- Server connectivity check: 2 min
+- Authentication setup: 3 min
+- **Decision point: 12 min total**
+
+**If no testing possible by 12 min → ESCALATE**
+
+### Questions to Ask Yourself (Browser Testing)
+
+Before spending more time:
+1. Have I tried all available fallback strategies?
+2. Is the server actually running and accessible?
+3. Am I blocked by missing credentials/authentication?
+4. Am I retrying the same failed operation repeatedly?
+5. Can I provide any value with API testing instead?
+
+**If NO to question 5 → ESCALATE**
+
+### Integration with Browser Testing Workflow
+
+```javascript
+// Pseudo-code for browser testing
+function shouldEscalate(blocker, strategiesAttempted, timeSpent) {
+  if (blocker.type === 'SERVER_DOWN') return true;
+  if (strategiesAttempted.includes('ALL_FALLBACKS') && allFailed) return true;
+  if (timeSpent > 12 * 60 * 1000 && !canTestAnything) return true;
+  if (blocker.type === 'AUTH' && !hasCredentials()) return 'ASK_USER';
+  return false;
+}
+```
+
+**Remember: Browser testing is valuable for VISUAL VALIDATION, not fighting infrastructure. Use fallback strategies efficiently, escalate when blocked, deliver evidence-based results.**
+
+---
+
 ## Integration with Commands
 
 This agent should be invoked by `/test-ui` command:

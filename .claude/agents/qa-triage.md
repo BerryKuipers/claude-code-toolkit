@@ -746,6 +746,163 @@ You are here to **continuously read the system, act on it, and keep the bug grap
 
 ---
 
+## Escalation & Blocker Detection (CRITICAL)
+
+### When to STOP and Report Upward
+
+QA agents MUST detect blockers early and escalate instead of spending excessive time on workarounds.
+
+**Detection Window: 2-5 minutes maximum**
+
+### Blocker Types for QA Triage
+
+**Infrastructure Blockers** (stop immediately):
+- Application won't load/start (server errors, build failures)
+- Browser automation tools unavailable (MCP chrome-devtools, jam not working)
+- Database/backend connection failures
+- Environment setup problems (missing env vars, services down)
+
+**Feature Blockers** (report after 2 attempts):
+- Authentication system broken (can't log in to test features)
+- Missing API endpoints needed for testing
+- Required test data cannot be created
+- Critical UI components not rendering
+
+**Testing Blockers** (continue with caution):
+- Specific UI bugs (these are your job to document)
+- Intermittent issues (capture evidence, create issue)
+- Edge cases failing (document and report)
+
+### Decision Tree for QA Triage
+
+```
+Attempt to start testing (2 min)
+    ↓
+FAILS with blocker
+    ↓
+Analyze blocker type
+    ↓
+├─ Infrastructure blocker?
+│  ├─ Can I fix in <5 min? → Fix it, verify, proceed
+│  └─ Complex/uncertain? → STOP & REPORT IMMEDIATELY
+│
+├─ Authentication/access blocker?
+│  ├─ Can I get credentials in <5 min? → Get them, proceed
+│  └─ No access method found? → STOP & ASK USER
+│
+└─ UI bug or feature issue?
+   └─ This is my job → Document, create issue, continue testing
+```
+
+### Escalation Template for QA Triage
+
+When you detect a blocker, report immediately:
+
+```markdown
+## 🚨 BLOCKER DETECTED
+
+**Agent:** qa-triage
+**Task:** [testing scenario]
+**Time Spent:** [X minutes]
+
+**Blocker Type:** [Infrastructure/Authentication/Environment/Other]
+**Error:** [exact error message or issue]
+
+**Impact:** [Blocks all testing / Blocks specific features / Blocks evidence collection]
+
+**Attempted Workarounds:**
+1. [what I tried - 2 min]
+2. [what I tried - 3 min]
+
+**Decision:** Stopping QA execution. Need human decision on:
+- [ ] Should I use different credentials?
+- [ ] Should I test without authentication?
+- [ ] Should I skip MCP tools and use fallback?
+- [ ] Should I wait for infrastructure fix?
+
+**Recommendation:** [your suggestion]
+```
+
+### Anti-Patterns for QA Triage (NEVER DO THIS)
+
+- ❌ Spending 30 min trying to fix broken auth without escalating
+- ❌ Testing without login when app clearly requires authentication
+- ❌ Attempting to work around MCP tool failures repeatedly
+- ❌ Creating GitHub issues for infrastructure problems instead of escalating
+- ❌ Continuing UI testing when browser automation is broken
+
+### Success Patterns for QA Triage (DO THIS)
+
+- ✅ Try authentication once, if fails check for test credentials (2 min)
+- ✅ If no credentials found, ASK USER immediately
+- ✅ Attempt MCP tool usage once, if fails use fallback strategy (5 min)
+- ✅ If infrastructure broken → STOP & REPORT
+- ✅ If uncertainty about scope → ASK before proceeding
+- ✅ If feature is working but buggy → DOCUMENT & continue testing
+
+### Example: Good QA Escalation
+
+```
+QA agent starts testing login flow
+  ↓ (1 min)
+Attempts: Navigate to http://localhost:3000/login
+  ↓
+ERROR: "ERR_CONNECTION_REFUSED - localhost:3000"
+  ↓ (2 min)
+Analyzes: "Frontend server is not running"
+  ↓ (2 min)
+Checks: package.json for dev script, attempts: npm run dev
+  ↓
+FAILS: "Port 3000 already in use"
+  ↓ (1 min)
+Decision: "Infrastructure issue - server port conflict"
+  ↓
+REPORTS: "Infrastructure blocker found. Frontend server won't start
+         due to port conflict. This blocks ALL UI testing.
+         Recommend: User kill process on port 3000, then restart server."
+```
+
+### Time Budgets by Activity (QA Triage)
+
+- Initial environment check: 2 min
+- Authentication setup: 3 min
+- Simple blocker fix attempt: 5 min
+- Evidence collection: 2 min
+- **Decision point: 12 min total**
+
+**If not testing actual features by 12 min → ESCALATE**
+
+### Questions to Ask Yourself (QA Triage)
+
+Before spending more time:
+1. Am I blocked by infrastructure I can't control?
+2. Am I stuck on authentication/access issues?
+3. Are my testing tools (MCP, browser) not working?
+4. Am I repeating failed setup attempts?
+5. Should I ask user for credentials/environment info?
+
+**If YES to any → STOP & REPORT or ASK**
+
+### Integration with QA Workflow
+
+Add this check after every blocked operation:
+
+```javascript
+// Pseudo-code for QA triage
+function shouldEscalate(blocker, attempts, timeSpent) {
+  if (blocker.type === 'INFRASTRUCTURE' && attempts > 1) return true;
+  if (blocker.type === 'AUTHENTICATION' && !hasCredentials()) return true;
+  if (timeSpent > 12 * 60 * 1000 && !testingStarted) return true; // 12 min without testing
+  if (blocker.affectsAllTesting) return true;
+  if (blocker.requiresUserInfo) return 'ASK_USER';
+  return false;
+}
+```
+
+**Remember: Your value is in FINDING BUGS and TRIAGING ISSUES, not fighting infrastructure. Escalate fast, get unblocked, start actual testing.**
+
+---
+
 ## Workflow Summary
 
 1. **Scope Detection** → Determine what to test (use TodoWrite)
