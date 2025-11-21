@@ -20,23 +20,25 @@ This workflow integrates:
 
 ## ⚠️ CRITICAL: JSON Reporter Requirement
 
-**ALL Playwright test commands MUST include JSON reporter with a UNIQUE output folder per suite:**
+**ALL Playwright test commands MUST output JSON to unique files. Use the `PLAYWRIGHT_JSON_OUTPUT_NAME` env var:**
+
 ```bash
-# Use suite name to avoid conflicts when running parallel agents
-npx playwright test e2e/api-smoke-test.spec.ts --reporter=json --output-folder=test-results/api-smoke-test
-npx playwright test e2e/universe-settings.spec.ts --reporter=json --output-folder=test-results/universe-settings
+# CORRECT - Use env var for JSON output file:
+PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/api-smoke-test.json npx playwright test e2e/api-smoke-test.spec.ts --reporter=json
+PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/universe-settings.json npx playwright test e2e/universe-settings.spec.ts --reporter=json
+
+# WRONG - This flag does NOT exist:
+# npx playwright test --output-folder=...  ❌ INVALID
 ```
 
-This generates separate `test-results/{suite-name}/results.json` files. After agents complete, merge all results:
+**Rule:** `e2e/{name}.spec.ts` → `test-results/{name}.json`
 
+After agents complete, merge all results:
 ```bash
-# Sync ALL JSON results from all agent folders
 node scripts/sync-failed-tests-from-report.mjs --all
-# OR sync specific folder
-node scripts/sync-failed-tests-from-report.mjs --folder test-results/api-smoke-test
 ```
 
-**Without unique folders, parallel agents will overwrite each other's results!**
+**Without unique files, parallel agents will overwrite each other's results!**
 
 ---
 
@@ -155,14 +157,20 @@ Proceed with parallel agent launch?
 > **Test Suite:** `e2e/api-smoke-test.spec.ts`
 > **Failing Tests:** 15
 >
-> **⚠️ CRITICAL: JSON Reporter Requirement**
-> ALL test runs MUST use: `--reporter=json --output-folder=test-results/{suite-name}`
-> Derive folder from spec: `e2e/api-smoke-test.spec.ts` → `test-results/api-smoke-test`
+> **⚠️ CRITICAL: JSON Reporter - USE ENV VAR**
+> ```bash
+> # CORRECT syntax (env var sets output file):
+> PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/api-smoke-test.json npx playwright test e2e/api-smoke-test.spec.ts --reporter=json
+>
+> # WRONG - --output-folder does NOT exist:
+> # npx playwright test --output-folder=... ❌
+> ```
+> **Rule:** `e2e/{name}.spec.ts` → `test-results/{name}.json`
 >
 > **Workflow:**
 > 1. Run tests with JSON reporter:
 >    ```bash
->    npx playwright test e2e/api-smoke-test.spec.ts --reporter=json --output-folder=test-results/api-smoke-test
+>    PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/api-smoke-test.json npx playwright test e2e/api-smoke-test.spec.ts --reporter=json
 >    ```
 > 2. For each failing test:
 >    - Analyze error output
@@ -283,7 +291,7 @@ await expect(page.getByTestId('result')).toBeVisible();
 ```bash
 # Run just this test (use JSON reporter with UNIQUE folder per suite)
 # Replace {suite-name} with your suite, e.g., api-smoke-test, universe-settings
-npx playwright test e2e/{suite-name}.spec.ts -g "test title" --project=chromium --reporter=json --output-folder=test-results/{suite-name}
+PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/{suite-name}.json npx playwright test e2e/{suite-name}.spec.ts -g "test title" --project=chromium --reporter=json
 ```
 
 **If passing:**
@@ -317,7 +325,7 @@ Test: e2e/{suite}.spec.ts -g \"{test-title}\"
 ```bash
 # Verify entire suite is green (ALWAYS use JSON reporter with UNIQUE folder)
 # Example for api-smoke-test suite:
-npx playwright test e2e/api-smoke-test.spec.ts --project=chromium --reporter=json --output-folder=test-results/api-smoke-test
+PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/api-smoke-test.json npx playwright test e2e/api-smoke-test.spec.ts --project=chromium --reporter=json
 
 # If all pass:
 ✅ Suite complete
@@ -376,13 +384,13 @@ PW_PROJECT=chromium PW_MAX_ATTEMPTS=5 node scripts/run-iterative.mjs
 **After all parallel agents complete, sync their results:**
 
 ```bash
-# Sync ALL JSON reports from all agent folders
+# Sync ALL JSON reports from test-results/
 node scripts/sync-failed-tests-from-report.mjs --all
 
 # This will find and merge:
-#   test-results/api-smoke-test/results.json
-#   test-results/universe-settings/results.json
-#   test-results/account-management/results.json
+#   test-results/api-smoke-test.json
+#   test-results/universe-settings.json
+#   test-results/characters.json
 #   etc.
 ```
 

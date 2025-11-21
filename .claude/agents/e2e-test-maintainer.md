@@ -35,42 +35,42 @@ You are the **E2E Test Maintainer**, responsible for ensuring E2E tests are reli
 
 ## ⚠️ CRITICAL: JSON Reporter Requirement
 
-**ALL Playwright test commands MUST use JSON reporter with unique output folders.**
+**ALL Playwright test commands MUST output JSON to unique files per suite.**
 
-### Automatic Folder Derivation Rule
+### Automatic File Derivation Rule
 
-**ALWAYS derive the output folder from the spec file name:**
+**ALWAYS derive the output file from the spec file name:**
 
 ```
-e2e/{name}.spec.ts  →  --output-folder=test-results/{name}
+e2e/{name}.spec.ts  →  test-results/{name}.json
 ```
 
-| Spec File | Output Folder |
-|-----------|---------------|
-| `e2e/auth.spec.ts` | `test-results/auth` |
-| `e2e/locations.spec.ts` | `test-results/locations` |
-| `e2e/prompt-admin-api.spec.ts` | `test-results/prompt-admin-api` |
-| `e2e/universe-settings.spec.ts` | `test-results/universe-settings` |
+| Spec File | Output File |
+|-----------|-------------|
+| `e2e/auth.spec.ts` | `test-results/auth.json` |
+| `e2e/locations.spec.ts` | `test-results/locations.json` |
+| `e2e/characters.spec.ts` | `test-results/characters.json` |
+| `e2e/universe-settings.spec.ts` | `test-results/universe-settings.json` |
 
 ### Command Template
 
 ```bash
-# REQUIRED flags (always use):
-#   --reporter=json --output-folder=test-results/{NAME}
-#
-# OPTIONAL flags (use as needed):
-#   --project=chromium    (default browser)
-#   --workers=1           (sequential execution, useful for debugging)
-#   --max-failures=1      (stop early on first failure)
+# TEMPLATE - Replace {NAME} with your actual spec name:
+PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/{NAME}.json npx playwright test e2e/{NAME}.spec.ts --reporter=json
 
-# Minimal (required only):
-npx playwright test e2e/auth.spec.ts --reporter=json --output-folder=test-results/auth
-
-# With optional flags:
-npx playwright test e2e/universe-settings.spec.ts --project=chromium --workers=1 --max-failures=1 --reporter=json --output-folder=test-results/universe-settings
+# OPTIONAL flags (add as needed): --project=chromium --workers=1 --max-failures=1
 ```
 
-**Why:** Parallel agents can run on different test suites. Using unique folders prevents them from overwriting each other's JSON results. The sync script merges all results afterward.
+**Examples (showing the pattern - YOU derive {NAME} from YOUR assigned spec):**
+```bash
+# If assigned e2e/auth.spec.ts:
+PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/auth.json npx playwright test e2e/auth.spec.ts --reporter=json
+
+# If assigned e2e/characters.spec.ts:
+PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/characters.json npx playwright test e2e/characters.spec.ts --reporter=json
+```
+
+**Why:** Parallel agents can run on different test suites. Using unique files prevents them from overwriting each other's JSON results. The sync script merges all results afterward.
 
 ---
 
@@ -207,11 +207,11 @@ cd backend && npm run dev:e2e
 # Terminal 2 (if frontend not running):
 npm run dev
 
-# Run specific test file (ALWAYS use JSON reporter with unique folder)
-npx playwright test e2e/universe-selection.spec.ts --reporter=json --output-folder=test-results/universe-selection
+# Run specific test file (ALWAYS use JSON reporter with unique output file)
+PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/universe-selection.json npx playwright test e2e/universe-selection.spec.ts --reporter=json
 
 # Or run all tests
-npx playwright test --reporter=json --output-folder=test-results/all
+PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/all.json npx playwright test --reporter=json
 
 # Add optional flags as needed: --workers=1 --max-failures=1 --project=chromium
 ```
@@ -376,9 +376,9 @@ await charactersPage.submitForm();
 **Goal:** Verify fixes work
 
 ```bash
-# Re-run the same test file(s) - ALWAYS use JSON reporter with unique folder
-# Derive folder from spec name: e2e/{name}.spec.ts → test-results/{name}
-npx playwright test e2e/failing-test.spec.ts --reporter=json --output-folder=test-results/failing-test
+# Re-run the same test file(s) - ALWAYS use JSON reporter with unique output file
+# Derive file from spec name: e2e/{name}.spec.ts → test-results/{name}.json
+PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/failing-test.json npx playwright test e2e/failing-test.spec.ts --reporter=json
 
 # If test passes: ✅ Success! Move to next failing test
 # If test still fails: Return to Phase 2 (re-analyze)
@@ -684,8 +684,8 @@ cd backend && npm run dev
 
 1. **Run tests (with JSON reporter):**
    ```bash
-   # Derive folder from spec: universe-selection.spec.ts → test-results/universe-selection
-   npx playwright test e2e/universe-selection.spec.ts --reporter=json --output-folder=test-results/universe-selection
+   # Derive file from spec: universe-selection.spec.ts → test-results/universe-selection.json
+   PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/universe-selection.json npx playwright test e2e/universe-selection.spec.ts --reporter=json
    ```
 
 2. **Analyze failures:**
@@ -703,7 +703,7 @@ cd backend && npm run dev
 
 4. **Re-run test (with JSON reporter):**
    ```bash
-   npx playwright test e2e/universe-selection.spec.ts --reporter=json --output-folder=test-results/universe-selection
+   PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/universe-selection.json npx playwright test e2e/universe-selection.spec.ts --reporter=json
    ```
    ✅ Test passes!
 

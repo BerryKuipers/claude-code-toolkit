@@ -2,13 +2,12 @@
 /**
  * Sync failed tests from Playwright JSON reporter output.
  *
- * Reads test-results/{folder}/results.json files and updates e2e/failed-tests.json
- * to reflect current test status. Supports merging multiple folders from parallel agents.
+ * Reads test-results/*.json files and updates e2e/failed-tests.json
+ * to reflect current test status. Supports merging multiple files from parallel agents.
  *
  * Usage:
  *   node scripts/sync-failed-tests-from-report.mjs --all
- *   node scripts/sync-failed-tests-from-report.mjs --folder test-results/api-smoke-test
- *   node scripts/sync-failed-tests-from-report.mjs test-results/results.json
+ *   node scripts/sync-failed-tests-from-report.mjs test-results/characters.json
  */
 
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
@@ -18,14 +17,11 @@ const FAILED_FILE = resolve('e2e/failed-tests.json');
 const TEST_RESULTS_DIR = resolve('test-results');
 
 function parseArgs(argv) {
-  const args = { all: false, folder: null, file: null };
+  const args = { all: false, file: null };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--all') {
       args.all = true;
-    } else if (a === '--folder') {
-      args.folder = argv[i + 1];
-      i++;
     } else if (a.endsWith('.json')) {
       args.file = a;
     }
@@ -40,19 +36,12 @@ function findJsonReports() {
     return reports;
   }
 
-  // Check for results.json directly in test-results
-  const directReport = join(TEST_RESULTS_DIR, 'results.json');
-  if (existsSync(directReport)) {
-    reports.push(directReport);
-  }
-
-  // Check subdirectories for results.json
+  // Find all .json files in test-results/
   const entries = readdirSync(TEST_RESULTS_DIR);
   for (const entry of entries) {
-    const entryPath = join(TEST_RESULTS_DIR, entry);
-    if (statSync(entryPath).isDirectory()) {
-      const reportPath = join(entryPath, 'results.json');
-      if (existsSync(reportPath)) {
+    if (entry.endsWith('.json')) {
+      const reportPath = join(TEST_RESULTS_DIR, entry);
+      if (statSync(reportPath).isFile()) {
         reports.push(reportPath);
       }
     }
@@ -152,20 +141,13 @@ function main() {
     reportPaths = findJsonReports();
     if (reportPaths.length === 0) {
       console.log('No JSON reports found in test-results/');
-      console.log('Run tests with: --reporter=json --output-folder=test-results/{suite-name}');
+      console.log('Run tests with: PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/{name}.json npx playwright test --reporter=json');
       process.exit(1);
     }
     console.log(`Found ${reportPaths.length} JSON report(s):`);
     for (const p of reportPaths) {
       console.log(`  - ${p}`);
     }
-  } else if (args.folder) {
-    const reportPath = join(resolve(args.folder), 'results.json');
-    if (!existsSync(reportPath)) {
-      console.error(`No results.json found in ${args.folder}`);
-      process.exit(1);
-    }
-    reportPaths = [reportPath];
   } else if (args.file) {
     if (!existsSync(args.file)) {
       console.error(`File not found: ${args.file}`);
@@ -178,8 +160,7 @@ function main() {
     if (reportPaths.length === 0) {
       console.log('Usage:');
       console.log('  node scripts/sync-failed-tests-from-report.mjs --all');
-      console.log('  node scripts/sync-failed-tests-from-report.mjs --folder test-results/suite-name');
-      console.log('  node scripts/sync-failed-tests-from-report.mjs path/to/results.json');
+      console.log('  node scripts/sync-failed-tests-from-report.mjs test-results/characters.json');
       process.exit(1);
     }
   }
