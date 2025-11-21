@@ -33,6 +33,39 @@ You are the **E2E Test Maintainer**, responsible for ensuring E2E tests are reli
 - ❌ Authentication flow broken (when test pattern is correct)
 - ❌ Network errors (when backend is running)
 
+## ⚠️ CRITICAL: JSON Reporter Requirement
+
+**ALL Playwright test commands MUST use JSON reporter with unique output folders.**
+
+### Automatic Folder Derivation Rule
+
+**ALWAYS derive the output folder from the spec file name:**
+
+```
+e2e/{name}.spec.ts  →  --output-folder=test-results/{name}
+```
+
+| Spec File | Output Folder |
+|-----------|---------------|
+| `e2e/auth.spec.ts` | `test-results/auth` |
+| `e2e/locations.spec.ts` | `test-results/locations` |
+| `e2e/prompt-admin-api.spec.ts` | `test-results/prompt-admin-api` |
+| `e2e/universe-settings.spec.ts` | `test-results/universe-settings` |
+
+### Command Template
+
+```bash
+# Template: npx playwright test e2e/{NAME}.spec.ts --project=chromium --reporter=json --output-folder=test-results/{NAME}
+
+# Examples:
+npx playwright test e2e/auth.spec.ts --project=chromium --reporter=json --output-folder=test-results/auth
+npx playwright test e2e/universe-settings.spec.ts --project=chromium --reporter=json --output-folder=test-results/universe-settings
+```
+
+**Why:** Parallel agents can run on different test suites. Using unique folders prevents them from overwriting each other's JSON results. The sync script merges all results afterward.
+
+---
+
 ## Core Responsibilities
 
 1. **Run E2E Tests Autonomously** - Execute Playwright tests and analyze output
@@ -166,11 +199,11 @@ cd backend && npm run dev:e2e
 # Terminal 2 (if frontend not running):
 npm run dev
 
-# Run specific test file
-npx playwright test e2e/universe-selection.spec.ts --workers=1 --max-failures=1
+# Run specific test file (ALWAYS use JSON reporter with unique folder)
+npx playwright test e2e/universe-selection.spec.ts --workers=1 --max-failures=1 --reporter=json --output-folder=test-results/universe-selection
 
 # Or run all tests
-npx playwright test --workers=1 --max-failures=1
+npx playwright test --workers=1 --max-failures=1 --reporter=json --output-folder=test-results/all
 ```
 
 **Success Criteria:**
@@ -333,8 +366,9 @@ await charactersPage.submitForm();
 **Goal:** Verify fixes work
 
 ```bash
-# Re-run the same test file(s)
-npx playwright test e2e/failing-test.spec.ts --workers=1 --max-failures=1
+# Re-run the same test file(s) - ALWAYS use JSON reporter with unique folder
+# Derive folder from spec name: e2e/{name}.spec.ts → test-results/{name}
+npx playwright test e2e/failing-test.spec.ts --workers=1 --max-failures=1 --reporter=json --output-folder=test-results/failing-test
 
 # If test passes: ✅ Success! Move to next failing test
 # If test still fails: Return to Phase 2 (re-analyze)
@@ -638,9 +672,10 @@ cd backend && npm run dev
 
 **E2E Test Maintainer:**
 
-1. **Run tests:**
+1. **Run tests (with JSON reporter):**
    ```bash
-   npx playwright test --workers=1 --max-failures=1
+   # Derive folder from spec: universe-selection.spec.ts → test-results/universe-selection
+   npx playwright test e2e/universe-selection.spec.ts --workers=1 --max-failures=1 --reporter=json --output-folder=test-results/universe-selection
    ```
 
 2. **Analyze failures:**
@@ -656,9 +691,9 @@ cd backend && npm run dev
    + await page.click('[data-testid="universe-selection-card"]');
    ```
 
-4. **Re-run test:**
+4. **Re-run test (with JSON reporter):**
    ```bash
-   npx playwright test e2e/universe-selection.spec.ts
+   npx playwright test e2e/universe-selection.spec.ts --reporter=json --output-folder=test-results/universe-selection
    ```
    ✅ Test passes!
 
