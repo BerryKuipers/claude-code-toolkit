@@ -4,6 +4,8 @@
 # Installs to ~/.local/bin (no root required)
 # Uses github.com (allowed) instead of cli.github.com (blocked by proxy)
 
+# Error handler - show what failed
+trap 'echo "❌ install-gh-cli.sh failed at line $LINENO: $BASH_COMMAND"' ERR
 set -e  # Exit on error
 
 echo "🔍 Checking GitHub CLI availability..."

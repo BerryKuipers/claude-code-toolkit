@@ -3,6 +3,8 @@
 # Cross-platform: works on Linux, Mac, and Windows (via Git Bash)
 # Runs on SessionStart to keep toolkit in sync
 
+# Error handler - show what failed
+trap 'echo "❌ Sync failed at line $LINENO: $BASH_COMMAND"' ERR
 set -e
 
 # Detect project directory (works in SessionStart and manual runs)
@@ -17,6 +19,8 @@ TOOLKIT_DIR="$PROJECT_DIR/.claude-toolkit/.claude"
 TARGET_DIR="$PROJECT_DIR/.claude"
 
 echo "🔄 Syncing Claude Code Toolkit..."
+echo "  → Project: $PROJECT_DIR"
+echo "  → Toolkit: $TOOLKIT_DIR"
 
 # Check if toolkit exists
 if [ ! -d "$TOOLKIT_DIR" ]; then
