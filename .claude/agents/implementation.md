@@ -1647,6 +1647,11 @@ User → OrchestratorAgent
 7. **Implement without tests**: Use `/create-test` for all new code
 8. **Ignore reference**: Always match Profile slice patterns
 9. **🚨 CRITICAL: Kill Node.js processes**: NEVER use `kill`, `pkill`, `killall` on Node processes
+10. **🚨 Work around type errors instead of fixing root cause**:
+    - ❌ WRONG: Change `'warning'` to `'info'` because TypeScript says `'warning'` is not in `ToastType`
+    - ✅ CORRECT: Add `'warning'` to the `ToastType` union type definition
+    - **Rule**: If code logic is correct but types don't match, FIX THE TYPES, don't change the logic
+    - Always look at WHY the type error exists, not just how to make it disappear
    - ❌ NEVER: `pkill -f node` - This kills Claude Code itself!
    - ❌ NEVER: `killall node` - This terminates the agent!
    - ❌ NEVER: `kill -9 $(pgrep node)` - Destroys all Node processes including this session!
