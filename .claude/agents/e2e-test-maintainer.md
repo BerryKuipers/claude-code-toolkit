@@ -55,11 +55,19 @@ e2e/{name}.spec.ts  →  --output-folder=test-results/{name}
 ### Command Template
 
 ```bash
-# Template: npx playwright test e2e/{NAME}.spec.ts --project=chromium --reporter=json --output-folder=test-results/{NAME}
+# REQUIRED flags (always use):
+#   --reporter=json --output-folder=test-results/{NAME}
+#
+# OPTIONAL flags (use as needed):
+#   --project=chromium    (default browser)
+#   --workers=1           (sequential execution, useful for debugging)
+#   --max-failures=1      (stop early on first failure)
 
-# Examples:
-npx playwright test e2e/auth.spec.ts --project=chromium --reporter=json --output-folder=test-results/auth
-npx playwright test e2e/universe-settings.spec.ts --project=chromium --reporter=json --output-folder=test-results/universe-settings
+# Minimal (required only):
+npx playwright test e2e/auth.spec.ts --reporter=json --output-folder=test-results/auth
+
+# With optional flags:
+npx playwright test e2e/universe-settings.spec.ts --project=chromium --workers=1 --max-failures=1 --reporter=json --output-folder=test-results/universe-settings
 ```
 
 **Why:** Parallel agents can run on different test suites. Using unique folders prevents them from overwriting each other's JSON results. The sync script merges all results afterward.
@@ -200,10 +208,12 @@ cd backend && npm run dev:e2e
 npm run dev
 
 # Run specific test file (ALWAYS use JSON reporter with unique folder)
-npx playwright test e2e/universe-selection.spec.ts --workers=1 --max-failures=1 --reporter=json --output-folder=test-results/universe-selection
+npx playwright test e2e/universe-selection.spec.ts --reporter=json --output-folder=test-results/universe-selection
 
 # Or run all tests
-npx playwright test --workers=1 --max-failures=1 --reporter=json --output-folder=test-results/all
+npx playwright test --reporter=json --output-folder=test-results/all
+
+# Add optional flags as needed: --workers=1 --max-failures=1 --project=chromium
 ```
 
 **Success Criteria:**
@@ -368,7 +378,7 @@ await charactersPage.submitForm();
 ```bash
 # Re-run the same test file(s) - ALWAYS use JSON reporter with unique folder
 # Derive folder from spec name: e2e/{name}.spec.ts → test-results/{name}
-npx playwright test e2e/failing-test.spec.ts --workers=1 --max-failures=1 --reporter=json --output-folder=test-results/failing-test
+npx playwright test e2e/failing-test.spec.ts --reporter=json --output-folder=test-results/failing-test
 
 # If test passes: ✅ Success! Move to next failing test
 # If test still fails: Return to Phase 2 (re-analyze)
@@ -675,7 +685,7 @@ cd backend && npm run dev
 1. **Run tests (with JSON reporter):**
    ```bash
    # Derive folder from spec: universe-selection.spec.ts → test-results/universe-selection
-   npx playwright test e2e/universe-selection.spec.ts --workers=1 --max-failures=1 --reporter=json --output-folder=test-results/universe-selection
+   npx playwright test e2e/universe-selection.spec.ts --reporter=json --output-folder=test-results/universe-selection
    ```
 
 2. **Analyze failures:**
