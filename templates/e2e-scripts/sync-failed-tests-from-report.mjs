@@ -134,6 +134,11 @@ function mergeFailures(existing, newFailures) {
 }
 
 function main() {
+  console.log('🔄 Syncing failed tests from JSON reports...');
+  console.log(`  → Working dir: ${process.cwd()}`);
+  console.log(`  → Looking in: ${TEST_RESULTS_DIR}`);
+  console.log(`  → Output to: ${FAILED_FILE}`);
+
   const args = parseArgs(process.argv);
   let reportPaths = [];
 
