@@ -150,23 +150,25 @@ Proceed with parallel agent launch?
 
 **For each high-priority suite, launch agent:**
 
-> I need an agent to fix ALL failing tests in `e2e/api-smoke-test.spec.ts` using the run-failed-tests.mjs script.
+> I need an agent to fix ALL failing tests in `e2e/api-smoke-test.spec.ts`.
 >
 > **Test Suite:** `e2e/api-smoke-test.spec.ts`
 > **Failing Tests:** 15
 >
+> **⚠️ CRITICAL: JSON Reporter Requirement**
+> ALL test runs MUST use: `--reporter=json --output-folder=test-results/{suite-name}`
+> Derive folder from spec: `e2e/api-smoke-test.spec.ts` → `test-results/api-smoke-test`
+>
 > **Workflow:**
-> 1. Run tests from failed-tests.json for this file using:
+> 1. Run tests with JSON reporter:
 >    ```bash
->    node scripts/run-failed-tests.mjs
+>    npx playwright test e2e/api-smoke-test.spec.ts --reporter=json --output-folder=test-results/api-smoke-test
 >    ```
 > 2. For each failing test:
 >    - Analyze error output
->    - Use Playwright MCP to debug if needed:
->      - `playwright_screenshot` for visual inspection
->      - `playwright_evaluate` for state checking
+>    - Use Playwright MCP to debug if needed
 >    - Fix the issue (test OR backend)
->    - Run test again to verify
+>    - Run test again to verify (with JSON reporter)
 >    - Commit the fix
 > 3. Use TodoWrite to track each test fix
 > 4. Report back when suite is green
