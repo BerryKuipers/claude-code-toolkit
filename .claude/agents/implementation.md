@@ -1647,7 +1647,7 @@ User → OrchestratorAgent
 7. **Implement without tests**: Use `/create-test` for all new code
 8. **Ignore reference**: Always match Profile slice patterns
 9. **🚨 CRITICAL: Kill Node.js processes**: NEVER use `kill`, `pkill`, `killall` on Node processes
-10. **🚨 Work around errors instead of fixing root cause**:
+10. **🚨 Don't work around errors - fix the root cause**:
     - **THINK FIRST**: Before fixing any error, ask "What should this code DO?" not "How do I make the error go away?"
     - **Example**: Code shows `'warning'` toast but TypeScript says `ToastType` doesn't include `'warning'`
       - ❌ WRONG: Change to `'info'` to fix the error (changes intended behavior)
