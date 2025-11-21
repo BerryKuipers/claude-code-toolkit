@@ -40,7 +40,11 @@ cat > "$SETTINGS_FILE" << 'EOF'
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude-toolkit/scripts/sync-claude-toolkit.sh"
+            "command": "git submodule update --init --recursive || echo '⚠️  Submodule init failed, continuing anyway'"
+          },
+          {
+            "type": "command",
+            "command": "test -f .claude-toolkit/scripts/sync-claude-toolkit.sh && bash .claude-toolkit/scripts/sync-claude-toolkit.sh || echo '⚠️  Toolkit sync skipped (submodule not ready)'"
           },
           {
             "type": "command",
