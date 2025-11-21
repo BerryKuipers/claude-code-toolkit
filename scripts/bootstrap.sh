@@ -40,11 +40,11 @@ cat > "$SETTINGS_FILE" << 'EOF'
         "hooks": [
           {
             "type": "command",
-            "command": "$(git rev-parse --show-toplevel)/.claude-toolkit/scripts/sync-claude-toolkit.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude-toolkit/scripts/sync-claude-toolkit.sh"
           },
           {
             "type": "command",
-            "command": "$(git rev-parse --show-toplevel)/scripts/install-gh-cli.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/scripts/install-gh-cli.sh"
           }
         ]
       }
