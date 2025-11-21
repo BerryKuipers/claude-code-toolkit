@@ -29,6 +29,18 @@ PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/{NAME}.json npx playwright test e2e/{NA
 
 **The `--output-folder` flag DOES NOT EXIST. NEVER use it.**
 
+### Skip DB Sync on Follow-up Runs
+
+After the **first test run** in a session, add `E2E_SKIP_DB_SYNC=1` to skip database sync:
+
+```bash
+# First run (db syncs):
+PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/foo.json npx playwright test e2e/foo.spec.ts --reporter=json
+
+# Follow-up runs (skip db sync for speed):
+E2E_SKIP_DB_SYNC=1 PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/foo.json npx playwright test e2e/foo.spec.ts --reporter=json
+```
+
 ---
 
 ## ⚠️ CRITICAL: Test vs Code Distinction
