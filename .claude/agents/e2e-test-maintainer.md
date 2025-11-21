@@ -230,14 +230,23 @@ await page.fill('[data-testid="faction-input"]', 'WescoBar Cartel');
 
 **Goal:** Execute tests and capture failures
 
+### 🚫 DO NOT START DEV SERVERS
+
+**Dev servers are ALREADY RUNNING** - managed by the e2e setup or user.
+
+**NEVER run:**
+- ❌ `npm run dev`
+- ❌ `npm run dev:e2e`
+- ❌ `cd backend && npm run dev`
+
+Starting servers will **kill other running tests** and cause conflicts.
+
+**If tests fail with connection errors:**
+1. CHECK if servers are running: `curl http://localhost:3000/health && curl http://localhost:5173`
+2. If not running, **REPORT the issue** - don't start them yourself
+3. User/orchestrator manages server lifecycle
+
 ```bash
-# IMPORTANT: Use dev:e2e for backend to avoid rate limiting
-# Terminal 1 (if backend not running):
-cd backend && npm run dev:e2e
-
-# Terminal 2 (if frontend not running):
-npm run dev
-
 # Run specific test file (ALWAYS use JSON reporter with unique output file)
 PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/universe-selection.json npx playwright test e2e/universe-selection.spec.ts --reporter=json
 
