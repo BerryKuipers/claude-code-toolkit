@@ -166,7 +166,9 @@ Proceed with parallel agent launch?
 >    ```
 > 2. For each failing test:
 >    - Analyze error output
->    - Use Playwright MCP to debug if needed
+>    - Use Playwright MCP to debug if needed:
+>      - `playwright_screenshot` for visual inspection
+>      - `playwright_evaluate` for state checking
 >    - Fix the issue (test OR backend)
 >    - Run test again to verify (with JSON reporter)
 >    - Commit the fix
