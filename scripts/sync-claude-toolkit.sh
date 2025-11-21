@@ -79,6 +79,21 @@ echo "  → Syncing prompts..."
 rsync -a --delete "$TOOLKIT_DIR/prompts/" "$TARGET_DIR/prompts/" 2>/dev/null || \
   cp -rf "$TOOLKIT_DIR/prompts" "$TARGET_DIR/"
 
+# Sync E2E scripts to project scripts directory
+E2E_SCRIPTS_SRC="$PROJECT_DIR/.claude-toolkit/templates/e2e-scripts"
+E2E_SCRIPTS_DEST="$PROJECT_DIR/scripts"
+
+if [ -d "$E2E_SCRIPTS_SRC" ]; then
+  echo "  → Syncing E2E scripts..."
+  mkdir -p "$E2E_SCRIPTS_DEST"
+  for script in "$E2E_SCRIPTS_SRC"/*.mjs; do
+    if [ -f "$script" ]; then
+      cp "$script" "$E2E_SCRIPTS_DEST/"
+      chmod +x "$E2E_SCRIPTS_DEST/$(basename "$script")"
+    fi
+  done
+fi
+
 # Don't overwrite project-specific files
 echo "  → Preserving project-specific files (settings.json, config.yml)"
 
