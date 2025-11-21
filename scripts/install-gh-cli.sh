@@ -9,6 +9,9 @@ trap 'echo "❌ install-gh-cli.sh failed at line $LINENO: $BASH_COMMAND"' ERR
 set -e  # Exit on error
 
 echo "🔍 Checking GitHub CLI availability..."
+echo "  → CLAUDE_PROJECT_DIR: ${CLAUDE_PROJECT_DIR:-<not set>}"
+echo "  → CLAUDE_CODE_REMOTE: ${CLAUDE_CODE_REMOTE:-<not set>}"
+echo "  → Working dir: $(pwd)"
 
 # Check if gh is already installed
 if command -v gh &> /dev/null; then

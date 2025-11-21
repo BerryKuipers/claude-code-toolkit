@@ -19,14 +19,19 @@ TOOLKIT_DIR="$PROJECT_DIR/.claude-toolkit/.claude"
 TARGET_DIR="$PROJECT_DIR/.claude"
 
 echo "🔄 Syncing Claude Code Toolkit..."
-echo "  → Project: $PROJECT_DIR"
-echo "  → Toolkit: $TOOLKIT_DIR"
+echo "  → CLAUDE_PROJECT_DIR: ${CLAUDE_PROJECT_DIR:-<not set>}"
+echo "  → Git toplevel: $(git rev-parse --show-toplevel 2>/dev/null || echo '<not a git repo>')"
+echo "  → Using PROJECT_DIR: $PROJECT_DIR"
+echo "  → Toolkit source: $TOOLKIT_DIR"
+echo "  → Target .claude: $TARGET_DIR"
 
 # Check if toolkit exists
 if [ ! -d "$TOOLKIT_DIR" ]; then
-  echo "⚠️  Toolkit not found, skipping sync"
+  echo "⚠️  Toolkit not found at: $TOOLKIT_DIR"
+  echo "    Does .claude-toolkit submodule exist? Run: git submodule status"
   exit 0
 fi
+echo "  ✓ Toolkit found"
 
 # Update submodule (pull latest from toolkit repo)
 # Note: SessionStart hook runs this first, but we include fallback for robustness
