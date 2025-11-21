@@ -12,10 +12,31 @@ Systematically fix E2E test failures using automated scripts, MCP tools, and par
 This workflow integrates:
 - ✅ `run-failed-tests.mjs` - Run and track failing tests from `failed-tests.json`
 - ✅ `run-iterative.mjs` - Iterative test runner with flaky test detection
+- ✅ `sync-failed-tests-from-report.mjs` - Sync results from JSON reporter
 - ✅ Playwright MCP - Browser automation and debugging
 - ✅ Jam MCP - Visual bug reporting with screenshots
 - ✅ Parallel agents - Fix multiple test files concurrently
 - ✅ TodoWrite - Track progress across all test fixes
+
+## ⚠️ CRITICAL: JSON Reporter Requirement
+
+**ALL Playwright test commands MUST include JSON reporter with a UNIQUE output folder per suite:**
+```bash
+# Use suite name to avoid conflicts when running parallel agents
+npx playwright test e2e/api-smoke-test.spec.ts --reporter=json --output-folder=test-results/api-smoke-test
+npx playwright test e2e/universe-settings.spec.ts --reporter=json --output-folder=test-results/universe-settings
+```
+
+This generates separate `test-results/{suite-name}/results.json` files. After agents complete, merge all results:
+
+```bash
+# Sync ALL JSON results from all agent folders
+node scripts/sync-failed-tests-from-report.mjs --all
+# OR sync specific folder
+node scripts/sync-failed-tests-from-report.mjs --folder test-results/api-smoke-test
+```
+
+**Without unique folders, parallel agents will overwrite each other's results!**
 
 ---
 
@@ -25,7 +46,7 @@ This workflow integrates:
 
 ```bash
 # Verify scripts exist
-ls -la scripts/run-failed-tests.mjs scripts/run-iterative.mjs
+ls -la scripts/run-failed-tests.mjs scripts/run-iterative.mjs scripts/sync-failed-tests-from-report.mjs
 
 # If missing, copy from toolkit templates
 cp .claude-toolkit/templates/e2e-scripts/*.mjs scripts/
@@ -256,8 +277,9 @@ await expect(page.getByTestId('result')).toBeVisible();
 #### Step 4: Verify Fix
 
 ```bash
-# Run just this test
-npx playwright test e2e/suite.spec.ts -g "test title" --project=chromium
+# Run just this test (use JSON reporter with UNIQUE folder per suite)
+# Replace {suite-name} with your suite, e.g., api-smoke-test, universe-settings
+npx playwright test e2e/{suite-name}.spec.ts -g "test title" --project=chromium --reporter=json --output-folder=test-results/{suite-name}
 ```
 
 **If passing:**
@@ -289,12 +311,15 @@ Test: e2e/{suite}.spec.ts -g \"{test-title}\"
 **When all tests in suite pass:**
 
 ```bash
-# Verify entire suite is green
-npx playwright test e2e/{suite}.spec.ts --project=chromium
+# Verify entire suite is green (ALWAYS use JSON reporter with UNIQUE folder)
+# Example for api-smoke-test suite:
+npx playwright test e2e/api-smoke-test.spec.ts --project=chromium --reporter=json --output-folder=test-results/api-smoke-test
 
 # If all pass:
 ✅ Suite complete
 ```
+
+**IMPORTANT:** Use unique output folders per suite (e.g., `test-results/api-smoke-test`, `test-results/universe-settings`) so parallel agents don't overwrite each other's results.
 
 **Report back to main workflow:**
 ```markdown
@@ -342,12 +367,24 @@ PW_PROJECT=chromium PW_MAX_ATTEMPTS=5 node scripts/run-iterative.mjs
 
 ## Phase 5: Update Failed Tests Tracking
 
-### Sync failed-tests.json
+### Sync JSON Reports from All Agents
+
+**After all parallel agents complete, sync their results:**
 
 ```bash
-# Run failed tests script one more time to update JSON
-node scripts/run-failed-tests.mjs
+# Sync ALL JSON reports from all agent folders
+node scripts/sync-failed-tests-from-report.mjs --all
 
+# This will find and merge:
+#   test-results/api-smoke-test/results.json
+#   test-results/universe-settings/results.json
+#   test-results/account-management/results.json
+#   etc.
+```
+
+### Verify Remaining Failures
+
+```bash
 # Check remaining failures
 cat e2e/failed-tests.json | jq '.tests | length'
 
@@ -564,6 +601,30 @@ failed-tests.json: 0 tests remaining
 ---
 
 ## Scripts Reference
+
+### sync-failed-tests-from-report.mjs
+
+**Purpose:** Sync failed tests from Playwright JSON reporter output
+
+**Usage:**
+```bash
+# Sync all JSON reports from test-results subfolders
+node scripts/sync-failed-tests-from-report.mjs --all
+
+# Sync from specific folder
+node scripts/sync-failed-tests-from-report.mjs --folder test-results/api-smoke-test
+
+# Sync from specific file
+node scripts/sync-failed-tests-from-report.mjs test-results/results.json
+```
+
+**Behavior:**
+- Finds `results.json` files in `test-results/` and subdirectories
+- Parses Playwright JSON format for failures
+- Merges failures into `e2e/failed-tests.json`
+- Supports parallel agent output (unique folders per suite)
+
+---
 
 ### run-failed-tests.mjs
 
