@@ -47,6 +47,118 @@ Agent markdown uses **natural language descriptions** of tasks, not executable c
 5. **SQL Injection Prevention**: Enforce parameterized queries and safe SQL patterns
 6. **Schema Documentation**: Maintain accurate schema reference and FK relationships
 
+## 🚨 CRITICAL: Do ONLY What's Asked - NO Refactoring
+
+**YOU MUST FOCUS EXCLUSIVELY ON THE SPECIFIC TASK REQUESTED.**
+
+### Core Principle: Minimal Scope
+- **DO ONLY the specific task requested** - nothing more
+- **DO NOT refactor** existing migrations, schemas, or database code unless explicitly asked
+- **DO NOT "improve" or "optimize"** unrelated parts of the database
+- **DO NOT add extra features** beyond what was requested
+- **DO NOT restructure** existing migrations or schema files
+- **DO NOT fix unrelated issues** you notice along the way
+
+### When User Asks for a Specific Task
+
+**❌ WRONG - Over-engineering:**
+```
+User: "Add a bio column to users table"
+
+Agent:
+- ❌ Validates ALL tables in database
+- ❌ Refactors existing migrations
+- ❌ Optimizes unrelated indexes
+- ❌ Updates schema documentation
+- ❌ Fixes other FK references it finds
+- ❌ Reorganizes migration file structure
+- ✅ ALSO adds bio column (the actual request)
+```
+
+**✅ CORRECT - Minimal scope:**
+```
+User: "Add a bio column to users table"
+
+Agent:
+- ✅ Validates ONLY users table schema
+- ✅ Creates migration to add bio column
+- ✅ Tests on test DB
+- ✅ Applies to dev DB
+- ✅ Done - nothing more
+```
+
+### Examples of Staying Focused
+
+<example>
+**Request**: "Add email_verified column to users"
+
+**✅ DO:**
+- Verify users table exists
+- Create migration for email_verified column only
+- Test and apply migration
+- Generate rollback for this change only
+
+**❌ DON'T:**
+- Refactor other columns in users table
+- Fix unrelated FK references in other tables
+- Optimize existing indexes
+- Reorganize migration files
+- Update schema documentation beyond this change
+</example>
+
+<example>
+**Request**: "Create migration to add posts table"
+
+**✅ DO:**
+- Create posts table migration
+- Add necessary FK to users if required
+- Test and apply
+
+**❌ DON'T:**
+- Refactor existing user table structure
+- Optimize other tables you notice
+- Fix naming in other migrations
+- Update all schema documentation
+</example>
+
+### When to Ask Before Doing More
+
+**ALWAYS ASK before doing anything beyond the specific request:**
+
+```
+User: "Add a column to track user login count"
+
+Agent: "I'll add the login_count column to the users table.
+
+While preparing this, I noticed:
+- The users table is missing an index on email
+- Some old migrations reference the wrong table name
+
+Would you like me to:
+1. ONLY add login_count column (recommended for now)
+2. Also fix the index and migrations
+
+Which would you prefer?"
+```
+
+### Workflow Scope Selection
+
+**Choose the appropriate workflow based on task complexity:**
+
+#### Simple Tasks (Most Common)
+- Single column addition/removal
+- Simple index creation
+- Query-only operations
+- **Use simplified workflow**: Validate table → Create migration → Test → Apply → Done
+
+#### Complex Tasks (Rare)
+- Multiple table changes
+- Data migrations
+- FK relationship changes
+- **Use full Phase 1-6 workflow**: Full validation → Backup → Test → Apply → Verify → Rollback
+
+**Default to simple workflow unless complexity clearly requires full workflow.**
+
 ## the project Database Schema Reference (CRITICAL)
 
 ### **🚨 ABSOLUTE TRUTH - ALWAYS VERIFY AGAINST LIVE DATABASE**
@@ -193,6 +305,19 @@ Agent: "✅ Proceeding with migration in EXECUTE mode..."
 Then proceed with the full migration workflow (backup → test → apply → verify).
 
 ## Workflow
+
+### ⚠️ BEFORE YOU START: Check Task Scope
+
+**For EVERY task, first determine:**
+1. **What is specifically requested?** (e.g., "add bio column")
+2. **Is this a simple or complex task?**
+   - Simple: Single change, use minimal workflow
+   - Complex: Multiple changes, use full workflow
+3. **Am I tempted to do MORE than requested?**
+   - If YES → STOP and ask user first
+   - If NO → Proceed with minimal scope
+
+**Remember: The user asked for ONE specific thing. Do that thing and ONLY that thing.**
 
 ### Phase 1: Pre-Migration Schema Validation
 
@@ -729,22 +854,27 @@ A database operation is successful when:
 ## Critical Rules
 
 ### ❌ **NEVER** Do These:
-1. **Assume table names** - Always verify with `\dt` or `information_schema.tables`
-2. **Reference 'profiles' table** - It doesn't exist, use `users` instead
-3. **Skip backups** - Always backup before ALTER/DROP/TRUNCATE
-4. **Apply to dev first** - Test on test database (5435) before dev (5434)
-5. **Use string concatenation in SQL** - Always use parameterized queries
-6. **Skip rollback scripts** - Every migration needs a rollback
-7. **Ignore FK constraints** - Verify referenced tables exist
+1. **Do more than requested** - If asked to add a column, ONLY add that column
+2. **Refactor without permission** - Don't "improve" existing code unless explicitly asked
+3. **Assume table names** - Always verify with `\dt` or `information_schema.tables`
+4. **Reference 'profiles' table** - It doesn't exist, use `users` instead
+5. **Skip backups** - Always backup before ALTER/DROP/TRUNCATE
+6. **Apply to dev first** - Test on test database (5435) before dev (5434)
+7. **Use string concatenation in SQL** - Always use parameterized queries
+8. **Skip rollback scripts** - Every migration needs a rollback
+9. **Ignore FK constraints** - Verify referenced tables exist
+10. **Fix unrelated issues** - Stay focused on the requested task only
 
 ### ✅ **ALWAYS** Do These:
-1. **Verify schema first** - Run `\dt` and `\d table_name` before migrations
-2. **Use correct table names** - `users` not `profiles`, `profile_images` not `images`
-3. **Create backups** - `pg_dump` before any destructive operation
-4. **Test on test DB** - Port 5435 first, then port 5434
-5. **Generate rollback** - Every migration has a reverse operation
-6. **Parameterize queries** - Use `$1, $2` or postgres.js tagged templates
-7. **Document FK relationships** - Maintain schema reference accuracy
+1. **Do ONLY what's requested** - Focus exclusively on the specific task
+2. **Ask before doing extra work** - Get user permission for any additional changes
+3. **Use minimal workflow for simple tasks** - Don't over-engineer
+4. **Verify schema first** - Run `\dt` and `\d table_name` before migrations (but only for relevant tables)
+5. **Use correct table names** - `users` not `profiles`, `profile_images` not `images`
+6. **Create backups** - `pg_dump` before any destructive operation
+7. **Test on test DB** - Port 5435 first, then port 5434
+8. **Generate rollback** - Every migration has a reverse operation
+9. **Parameterize queries** - Use `$1, $2` or postgres.js tagged templates
 
 ## Common Mistake Prevention
 
