@@ -1,0 +1,70 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude-toolkit/scripts/sync-claude-toolkit.sh\" 2>&1 || echo 'Toolkit sync skipped'"
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/install-gh-cli.sh\" 2>&1 || echo 'gh CLI install skipped'"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/enforce-agent-routing.sh\" \"$CLAUDE_USER_PROMPT\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/validate-code-quality.sh\" \"$CLAUDE_TOOL_NAME\" \"$CLAUDE_TOOL_ARGS\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/pre-tool-use.sh\" \"$CLAUDE_TOOL_NAME\" \"$CLAUDE_TOOL_ARGS\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/post-tool-quality-gate.sh\" \"$CLAUDE_TOOL_NAME\" \"$CLAUDE_TOOL_ARGS\""
+          }
+        ]
+      },
+      {
+        "matcher": "Task|SlashCommand",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/post-tool-use.sh\" \"$CLAUDE_TOOL_NAME\" \"$CLAUDE_TOOL_ARGS\""
+          }
+        ]
+      }
+    ]
+  }
+}
