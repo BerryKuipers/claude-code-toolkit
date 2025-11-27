@@ -41,14 +41,14 @@ ISSUES=""
 # ============================================
 # TypeScript Type Check (if applicable)
 # ============================================
+# NOTE: Single-file tsc checks produce false positives without project context.
+# We skip the automatic check here and recommend running full project validation.
+# Users should run `npm run typecheck` or `npx tsc --noEmit` manually for accurate results.
 if [[ "$FILE_PATH" =~ \.(ts|tsx)$ ]]; then
   # Check if tsconfig exists (use ls for glob expansion instead of [ -f ] which doesn't expand)
   if [ -f "$PROJECT_DIR/tsconfig.json" ] || ls "$PROJECT_DIR"/packages/*/tsconfig.json >/dev/null 2>&1; then
-    # Quick type check on the specific file
-    TYPE_ERRORS=$(npx tsc --noEmit "$FILE_PATH" 2>&1 | grep -c "error TS" || true)
-    if [ "$TYPE_ERRORS" -gt 0 ]; then
-      ISSUES="$ISSUES\n- **TypeScript Errors**: $TYPE_ERRORS type errors in modified file"
-    fi
+    # Add reminder to run full type check (don't auto-run as it's slow and single-file is unreliable)
+    ISSUES="$ISSUES\n- **TypeScript**: Run \`npx tsc --noEmit\` to verify types across project"
   fi
 fi
 
