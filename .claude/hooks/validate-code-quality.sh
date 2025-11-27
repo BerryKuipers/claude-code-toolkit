@@ -12,10 +12,11 @@ if [[ "$TOOL_NAME" != "Edit" ]] && [[ "$TOOL_NAME" != "Write" ]]; then
   exit 0
 fi
 
-# Extract file path from tool arguments
-FILE_PATH=$(echo "$TOOL_ARGS" | grep -oE '"file_path"\s*:\s*"[^"]+' | sed 's/"file_path"\s*:\s*"//')
+# Extract file path from tool arguments (use jq for reliable JSON parsing)
+FILE_PATH=$(echo "$TOOL_ARGS" | jq -r '.file_path // ""' 2>/dev/null)
 if [ -z "$FILE_PATH" ]; then
-  FILE_PATH=$(echo "$TOOL_ARGS" | grep -oE 'file_path[^"]*"[^"]+' | grep -oE '"[^"]+$' | tr -d '"')
+  # Fallback to regex if jq fails
+  FILE_PATH=$(echo "$TOOL_ARGS" | grep -oE '"file_path"\s*:\s*"[^"]+' | sed 's/"file_path"\s*:\s*"//')
 fi
 
 # Skip validation for non-code files
@@ -26,8 +27,8 @@ case "$FILE_PATH" in
     ;;
 esac
 
-# Extract new content being written
-NEW_CONTENT=$(echo "$TOOL_ARGS" | grep -oE '"(new_string|content)"\s*:\s*"[^"]*' | sed 's/"[^"]*"\s*:\s*"//' | head -1)
+# Extract new content being written (use jq for reliable JSON parsing with multi-line/escaped content)
+NEW_CONTENT=$(echo "$TOOL_ARGS" | jq -r '.new_string // .content // ""' 2>/dev/null || echo "")
 
 # ============================================
 # PRINCIPLE VIOLATION CHECKS
@@ -49,13 +50,16 @@ if [[ "$FILE_PATH" =~ \.(ts|tsx|js|jsx)$ ]]; then
 fi
 
 # Check 2: Magic strings/numbers (potential DRY violation)
-MAGIC_COUNT=$(echo "$NEW_CONTENT" | grep -oE "['\"][^'\"]{10,}['\"]" | wc -l)
+# Count single and double quoted strings separately to handle nested quotes correctly
+MAGIC_SINGLE=$(echo "$NEW_CONTENT" | grep -oE "'[^']{10,}'" 2>/dev/null | wc -l || echo 0)
+MAGIC_DOUBLE=$(echo "$NEW_CONTENT" | grep -oE '"[^"]{10,}"' 2>/dev/null | wc -l || echo 0)
+MAGIC_COUNT=$((MAGIC_SINGLE + MAGIC_DOUBLE))
 if [ "$MAGIC_COUNT" -gt 3 ]; then
   VIOLATIONS="$VIOLATIONS\n- **DRY Violation**: $MAGIC_COUNT hardcoded strings detected - consider centralizing in constants"
 fi
 
 # Check 3: Large function (potential SRP violation)
-LINE_COUNT=$(echo "$NEW_CONTENT" | grep -c "")
+LINE_COUNT=$(echo "$NEW_CONTENT" | wc -l)
 if [ "$LINE_COUNT" -gt 50 ]; then
   VIOLATIONS="$VIOLATIONS\n- **SOLID/SRP Warning**: Code block is $LINE_COUNT lines - consider breaking into smaller functions"
 fi

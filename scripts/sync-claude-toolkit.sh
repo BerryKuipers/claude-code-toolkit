@@ -78,7 +78,7 @@ rsync -a --delete "$TOOLKIT_DIR/commands/" "$TARGET_DIR/commands/" 2>/dev/null |
 
 echo "  → Syncing hooks..."
 mkdir -p "$TARGET_DIR/hooks"
-rsync -a "$TOOLKIT_DIR/hooks/" "$TARGET_DIR/hooks/" 2>/dev/null || \
+rsync -a --delete "$TOOLKIT_DIR/hooks/" "$TARGET_DIR/hooks/" 2>/dev/null || \
   cp -rf "$TOOLKIT_DIR/hooks"/* "$TARGET_DIR/hooks/" 2>/dev/null || true
 # Make hooks executable
 chmod +x "$TARGET_DIR/hooks/"*.sh 2>/dev/null || true

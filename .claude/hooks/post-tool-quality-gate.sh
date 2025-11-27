@@ -15,10 +15,11 @@ if [[ "$TOOL_NAME" != "Edit" ]] && [[ "$TOOL_NAME" != "Write" ]]; then
   exit 0
 fi
 
-# Extract file path
-FILE_PATH=$(echo "$TOOL_ARGS" | grep -oE '"file_path"\s*:\s*"[^"]+' | sed 's/"file_path"\s*:\s*"//')
+# Extract file path (use jq for reliable JSON parsing)
+FILE_PATH=$(echo "$TOOL_ARGS" | jq -r '.file_path // ""' 2>/dev/null)
 if [ -z "$FILE_PATH" ]; then
-  FILE_PATH=$(echo "$TOOL_ARGS" | grep -oE 'file_path[^"]*"[^"]+' | grep -oE '"[^"]+$' | tr -d '"')
+  # Fallback to regex if jq fails
+  FILE_PATH=$(echo "$TOOL_ARGS" | grep -oE '"file_path"\s*:\s*"[^"]+' | sed 's/"file_path"\s*:\s*"//')
 fi
 
 # Skip non-code files
@@ -41,8 +42,8 @@ ISSUES=""
 # TypeScript Type Check (if applicable)
 # ============================================
 if [[ "$FILE_PATH" =~ \.(ts|tsx)$ ]]; then
-  # Check if tsconfig exists
-  if [ -f "$PROJECT_DIR/tsconfig.json" ] || [ -f "$PROJECT_DIR/packages/*/tsconfig.json" ]; then
+  # Check if tsconfig exists (use ls for glob expansion instead of [ -f ] which doesn't expand)
+  if [ -f "$PROJECT_DIR/tsconfig.json" ] || ls "$PROJECT_DIR"/packages/*/tsconfig.json >/dev/null 2>&1; then
     # Quick type check on the specific file
     TYPE_ERRORS=$(npx tsc --noEmit "$FILE_PATH" 2>&1 | grep -c "error TS" || true)
     if [ "$TYPE_ERRORS" -gt 0 ]; then

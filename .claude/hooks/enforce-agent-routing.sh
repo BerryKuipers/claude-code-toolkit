@@ -15,52 +15,54 @@ PROMPT_LOWER=$(echo "$USER_PROMPT" | tr '[:upper:]' '[:lower:]')
 DETECTED_TASKS=""
 RECOMMENDED_AGENTS=""
 
+# Use bash built-in regex matching [[ =~ ]] for better performance (avoids forking processes)
+
 # Database operations -> database agent
-if echo "$PROMPT_LOWER" | grep -qE "(database|migration|schema|sql|table|column|index|drizzle|prisma|supabase)"; then
-  DETECTED_TASKS="$DETECTED_TASKS- Database operation detected\n"
-  RECOMMENDED_AGENTS="$RECOMMENDED_AGENTS- **database** agent: Safe database operations with schema validation\n"
+if [[ "$PROMPT_LOWER" =~ (database|migration|schema|sql|table|column|index|drizzle|prisma|supabase) ]]; then
+  DETECTED_TASKS+="- Database operation detected\n"
+  RECOMMENDED_AGENTS+="- **database** agent: Safe database operations with schema validation\n"
 fi
 
 # Refactoring -> refactor agent
-if echo "$PROMPT_LOWER" | grep -qE "(refactor|clean up|simplify|extract|consolidate|dry|duplication|technical debt)"; then
-  DETECTED_TASKS="$DETECTED_TASKS- Refactoring task detected\n"
-  RECOMMENDED_AGENTS="$RECOMMENDED_AGENTS- **refactor** agent: Safe refactoring with Clean Code principles\n"
+if [[ "$PROMPT_LOWER" =~ (refactor|clean\ up|simplify|extract|consolidate|dry|duplication|technical\ debt) ]]; then
+  DETECTED_TASKS+="- Refactoring task detected\n"
+  RECOMMENDED_AGENTS+="- **refactor** agent: Safe refactoring with Clean Code principles\n"
 fi
 
 # Architecture review -> architect agent
-if echo "$PROMPT_LOWER" | grep -qE "(architect|solid|structure|layer|pattern|design pattern|vertical slice|vsa|separation of concern|soc)"; then
-  DETECTED_TASKS="$DETECTED_TASKS- Architecture review detected\n"
-  RECOMMENDED_AGENTS="$RECOMMENDED_AGENTS- **architect** agent: SOLID/VSA/Layer validation\n"
+if [[ "$PROMPT_LOWER" =~ (architect|solid|structure|layer|pattern|design\ pattern|vertical\ slice|vsa|separation\ of\ concern|soc) ]]; then
+  DETECTED_TASKS+="- Architecture review detected\n"
+  RECOMMENDED_AGENTS+="- **architect** agent: SOLID/VSA/Layer validation\n"
 fi
 
 # Feature implementation -> implementation agent
-if echo "$PROMPT_LOWER" | grep -qE "(implement|create|build|add feature|new feature|develop)"; then
-  DETECTED_TASKS="$DETECTED_TASKS- Feature implementation detected\n"
-  RECOMMENDED_AGENTS="$RECOMMENDED_AGENTS- **implementation** agent: Structured feature development\n"
+if [[ "$PROMPT_LOWER" =~ (implement|create|build|add\ feature|new\ feature|develop) ]]; then
+  DETECTED_TASKS+="- Feature implementation detected\n"
+  RECOMMENDED_AGENTS+="- **implementation** agent: Structured feature development\n"
 fi
 
 # Code review -> code-reviewer agent
-if echo "$PROMPT_LOWER" | grep -qE "(review|code review|check code|validate|audit code)"; then
-  DETECTED_TASKS="$DETECTED_TASKS- Code review detected\n"
-  RECOMMENDED_AGENTS="$RECOMMENDED_AGENTS- **code-reviewer** agent: Comprehensive code review\n"
+if [[ "$PROMPT_LOWER" =~ (review|code\ review|check\ code|validate|audit\ code) ]]; then
+  DETECTED_TASKS+="- Code review detected\n"
+  RECOMMENDED_AGENTS+="- **code-reviewer** agent: Comprehensive code review\n"
 fi
 
 # Security -> security-pentest agent
-if echo "$PROMPT_LOWER" | grep -qE "(security|vulnerability|xss|sql injection|auth|authentication|authorization|owasp)"; then
-  DETECTED_TASKS="$DETECTED_TASKS- Security task detected\n"
-  RECOMMENDED_AGENTS="$RECOMMENDED_AGENTS- **security-pentest** agent: Security analysis and testing\n"
+if [[ "$PROMPT_LOWER" =~ (security|vulnerability|xss|sql\ injection|auth|authentication|authorization|owasp) ]]; then
+  DETECTED_TASKS+="- Security task detected\n"
+  RECOMMENDED_AGENTS+="- **security-pentest** agent: Security analysis and testing\n"
 fi
 
 # UI/Frontend -> design or ui-frontend-agent
-if echo "$PROMPT_LOWER" | grep -qE "(ui|frontend|component|react|vue|styling|css|design|ux)"; then
-  DETECTED_TASKS="$DETECTED_TASKS- UI/Frontend task detected\n"
-  RECOMMENDED_AGENTS="$RECOMMENDED_AGENTS- **design** or **ui-frontend-agent**: UI development and testing\n"
+if [[ "$PROMPT_LOWER" =~ (ui|frontend|component|react|vue|styling|css|design|ux) ]]; then
+  DETECTED_TASKS+="- UI/Frontend task detected\n"
+  RECOMMENDED_AGENTS+="- **design** or **ui-frontend-agent**: UI development and testing\n"
 fi
 
 # Complex workflow -> orchestrator or conductor
-if echo "$PROMPT_LOWER" | grep -qE "(workflow|multiple|coordinate|end.to.end|full feature|complete|from scratch)"; then
-  DETECTED_TASKS="$DETECTED_TASKS- Complex workflow detected\n"
-  RECOMMENDED_AGENTS="$RECOMMENDED_AGENTS- **orchestrator** or **conductor** agent: Multi-agent coordination\n"
+if [[ "$PROMPT_LOWER" =~ (workflow|multiple|coordinate|end-to-end|full\ feature|complete|from\ scratch) ]]; then
+  DETECTED_TASKS+="- Complex workflow detected\n"
+  RECOMMENDED_AGENTS+="- **orchestrator** or **conductor** agent: Multi-agent coordination\n"
 fi
 
 # ============================================
