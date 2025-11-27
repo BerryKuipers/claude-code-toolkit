@@ -76,6 +76,13 @@ echo "  → Syncing commands..."
 rsync -a --delete "$TOOLKIT_DIR/commands/" "$TARGET_DIR/commands/" 2>/dev/null || \
   cp -rf "$TOOLKIT_DIR/commands" "$TARGET_DIR/"
 
+echo "  → Syncing hooks..."
+mkdir -p "$TARGET_DIR/hooks"
+rsync -a --delete "$TOOLKIT_DIR/hooks/" "$TARGET_DIR/hooks/" 2>/dev/null || \
+  cp -rf "$TOOLKIT_DIR/hooks"/* "$TARGET_DIR/hooks/" 2>/dev/null || true
+# Make hooks executable
+chmod +x "$TARGET_DIR/hooks/"*.sh 2>/dev/null || true
+
 echo "  → Syncing skills..."
 rsync -a --delete "$TOOLKIT_DIR/skills/" "$TARGET_DIR/skills/" 2>/dev/null || \
   cp -rf "$TOOLKIT_DIR/skills" "$TARGET_DIR/"
@@ -112,6 +119,37 @@ if [ -d "$E2E_SCRIPTS_SRC" ]; then
       chmod +x "$SCRIPTS_DEST/$(basename "$script")"
     fi
   done
+fi
+
+# ============================================
+# Settings.json Hook Configuration
+# ============================================
+echo "  → Checking settings.json for hook configuration..."
+
+SETTINGS_FILE="$TARGET_DIR/settings.json"
+SETTINGS_TEMPLATE="$TOOLKIT_DIR/../templates/settings-with-hooks.json"
+
+# If settings.json doesn't exist, create from template
+if [ ! -f "$SETTINGS_FILE" ]; then
+  if [ -f "$SETTINGS_TEMPLATE" ]; then
+    echo "  → Creating settings.json from template with hooks..."
+    cp "$SETTINGS_TEMPLATE" "$SETTINGS_FILE"
+  fi
+elif [ -f "$SETTINGS_TEMPLATE" ]; then
+  # Check if hooks are configured
+  if ! grep -q "PreToolUse\|PostToolUse\|UserPromptSubmit" "$SETTINGS_FILE" 2>/dev/null; then
+    echo ""
+    echo "  ⚠️  HOOKS NOT CONFIGURED in settings.json!"
+    echo "     Your code quality enforcement hooks exist but aren't wired up."
+    echo ""
+    echo "     To enable enforcement, add hooks to your settings.json:"
+    echo "     - See template: $SETTINGS_TEMPLATE"
+    echo "     - Or run: cp $SETTINGS_TEMPLATE $SETTINGS_FILE"
+    echo ""
+    echo "     Available hooks in .claude/hooks/:"
+    ls -1 "$TARGET_DIR/hooks/"*.sh 2>/dev/null | xargs -I {} basename {} | sed 's/^/       - /'
+    echo ""
+  fi
 fi
 
 # Don't overwrite project-specific files
