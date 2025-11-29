@@ -632,6 +632,84 @@ echo "✅ Migration applied successfully to development database"
 - ✅ Migration recorded
 - ✅ Rollback plan documented
 
+---
+
+### Phase 5.5: Regenerate Prisma Client (NEW - CRITICAL)
+
+**Goal:** Automatically regenerate Prisma client after schema changes
+
+**💡 Why this matters:** Schema changes require Prisma client regeneration or TypeScript types will be out of sync
+
+**Check if Prisma is used:**
+```bash
+echo "=== Checking for Prisma Client Regeneration ==="
+
+# Check if project uses Prisma
+if [[ -f "package.json" ]] && grep -q "@prisma/client" package.json; then
+  echo "✅ Project uses Prisma - checking if regeneration needed..."
+
+  # Check if schema.prisma exists and was recently modified
+  if [[ -f "prisma/schema.prisma" ]]; then
+    echo "→ Regenerating Prisma client..."
+
+    npx prisma generate 2>&1 | tee /tmp/prisma-generate.log
+    PRISMA_EXIT=$?
+
+    if [[ $PRISMA_EXIT -eq 0 ]]; then
+      echo "✅ Prisma client regenerated successfully"
+
+      # Verify TypeScript compiles with new types
+      echo "→ Validating TypeScript after Prisma regeneration..."
+      npx tsc --noEmit 2>&1 | tee /tmp/tsc-post-prisma.log
+      TSC_EXIT=$?
+
+      if [[ $TSC_EXIT -eq 0 ]]; then
+        echo "✅ TypeScript validation passed"
+      else
+        echo "❌ TypeScript errors after Prisma regeneration"
+        echo "⚠️ Schema changes broke existing code - review errors:"
+        cat /tmp/tsc-post-prisma.log
+        echo ""
+        echo "🔄 ROLLBACK RECOMMENDED"
+        echo "   The schema changes are incompatible with existing code"
+        exit 1
+      fi
+    else
+      echo "❌ Prisma client generation failed"
+      echo "⚠️ Check logs: /tmp/prisma-generate.log"
+      exit 1
+    fi
+  else
+    echo "ℹ️  No prisma/schema.prisma file found"
+  fi
+else
+  echo "ℹ️  Project doesn't use Prisma - skipping client generation"
+fi
+```
+
+**Success Criteria:**
+- ✅ Prisma client regenerated (if using Prisma)
+- ✅ TypeScript validates successfully with new types
+- ✅ No breaking changes detected
+
+**If TypeScript fails after regeneration:**
+```markdown
+❌ BLOCKING: Schema changes broke existing code
+
+This means:
+1. The migration changed schema in a way that breaks existing queries
+2. Existing code needs updates to work with new schema
+3. Migration should be rolled back and schema redesigned
+
+Actions:
+1. Review TypeScript errors to understand breaking changes
+2. Either:
+   a. Update code to handle schema changes, OR
+   b. Rollback migration and redesign schema
+```
+
+---
+
 ### Phase 6: Generate Rollback Script
 
 **Goal:** Create migration rollback for emergency recovery

@@ -1027,6 +1027,106 @@ echo "✅ Completeness validated: ALL items addressed"
 
 ---
 
+**Step 3.5: Run Migrations and Code Generation (NEW - CRITICAL)**
+
+**💡 Why this matters**: Schema changes require migrations and code regeneration
+
+**OUTPUT TO USER:**
+```
+→ Checking for database schema changes and code generation needs...
+```
+
+**Check for migrations:**
+```bash
+# Check if migrations or Prisma schema were modified
+MIGRATION_FILES=$(git diff development..HEAD --name-only | grep "migrations/\|prisma/schema.prisma" || echo "")
+
+if [[ -n "$MIGRATION_FILES" ]]; then
+  echo "✅ Database schema changes detected:"
+  echo "$MIGRATION_FILES"
+
+  # Run migrations automatically
+  echo ""
+  echo "→ Running database migrations..."
+
+  if [[ -f "package.json" ]] && grep -q "\"migrate\"" package.json; then
+    npm run migrate 2>&1 | tee /tmp/migration.log
+    MIGRATE_EXIT=$?
+
+    if [[ $MIGRATE_EXIT -eq 0 ]]; then
+      echo "✅ Migrations applied successfully"
+    else
+      echo "❌ Migration failed - check logs: /tmp/migration.log"
+      echo "⚠️ BLOCKING: Cannot proceed with failed migrations"
+      exit 1
+    fi
+  elif [[ -f "package.json" ]] && grep -q "\"db:migrate\"" package.json; then
+    npm run db:migrate 2>&1 | tee /tmp/migration.log
+    MIGRATE_EXIT=$?
+
+    if [[ $MIGRATE_EXIT -eq 0 ]]; then
+      echo "✅ Migrations applied successfully"
+    else
+      echo "❌ Migration failed"
+      exit 1
+    fi
+  else
+    echo "⚠️ No migration script found in package.json"
+    echo "   Expected: 'npm run migrate' or 'npm run db:migrate'"
+    echo "   Action: Run migrations manually before proceeding"
+  fi
+fi
+```
+
+**Check for Prisma and regenerate client:**
+```bash
+# Check if Prisma schema changed
+PRISMA_CHANGED=$(echo "$MIGRATION_FILES" | grep "prisma/schema.prisma" || echo "")
+
+if [[ -n "$PRISMA_CHANGED" ]]; then
+  echo ""
+  echo "→ Prisma schema changed - regenerating client..."
+
+  if grep -q "@prisma/client" package.json 2>/dev/null; then
+    npx prisma generate 2>&1 | tee /tmp/prisma-generate.log
+    PRISMA_EXIT=$?
+
+    if [[ $PRISMA_EXIT -eq 0 ]]; then
+      echo "✅ Prisma client regenerated successfully"
+
+      # Verify TypeScript still compiles
+      echo "→ Validating TypeScript after Prisma regeneration..."
+      npx tsc --noEmit 2>&1 | tee /tmp/tsc-post-prisma.log
+      TSC_EXIT=$?
+
+      if [[ $TSC_EXIT -eq 0 ]]; then
+        echo "✅ TypeScript validation passed"
+      else
+        echo "❌ TypeScript errors after Prisma regeneration"
+        echo "⚠️ Schema changes broke existing code"
+        echo "⚠️ BLOCKING: Fix TypeScript errors before proceeding"
+        exit 1
+      fi
+    else
+      echo "❌ Prisma client generation failed"
+      echo "⚠️ BLOCKING: Cannot proceed without Prisma client"
+      exit 1
+    fi
+  fi
+fi
+```
+
+**OUTPUT TO USER:**
+```
+✅ Database setup complete
+   Migrations: [APPLIED/SKIPPED]
+   Prisma client: [REGENERATED/SKIPPED]
+   TypeScript: ✅
+→ Proceeding to test generation...
+```
+
+---
+
 **Step 4: Generate Test Files**
 
 **For each new file created** (excluding existing test files):
@@ -1553,6 +1653,87 @@ Then apply fixes and verify flows work end-to-end."
 
 ---
 
+**Step 4.5: Integration Validation (NEW - CRITICAL)**
+
+**💡 Why this matters**: Prevents "implemented but not connected" bugs
+
+**OUTPUT TO USER:**
+```
+→ Validating end-to-end feature wiring...
+```
+
+**Describe the integration validation need:**
+
+"I need the integration-validator specialist to validate E2E feature wiring for issue #[ISSUE_NUMBER].
+
+Implementation context:
+- Backend changes: [BACKEND_FILES_LIST]
+- Frontend changes: [FRONTEND_FILES_LIST]
+- Database migrations: [MIGRATION_FILES_LIST]
+
+Critical validation checks:
+1. **Frontend → Backend Wiring**
+   - Are new backend endpoints actually called by frontend?
+   - Old endpoints removed or deprecated?
+
+2. **Dead Code Detection**
+   - Are new exported functions actually used?
+   - Functions defined but never called?
+
+3. **Old Code Retirement**
+   - When new implementation exists, is old code removed?
+   - Both old and new versions coexisting?
+
+4. **Database Schema Integration**
+   - Are new database columns actually queried?
+   - Migrations without corresponding code usage?
+
+5. **Job Queue Integration**
+   - Do async operations have proper frontend polling?
+   - Job enqueued but no status tracking?
+
+This prevents the bug where features are implemented but users can't access them.
+
+Please provide:
+- List of orphaned endpoints (backend exists, frontend doesn't call)
+- List of dead code (functions defined but never used)
+- List of old code still used (when new version exists)
+- List of orphaned schema (columns added but never queried)
+- Missing job polling (async ops without UI feedback)
+
+Severity: All integration issues are CRITICAL/HIGH priority."
+
+**After receiving integration validation results:**
+
+**If integration issues found**:
+
+**OUTPUT TO USER:**
+```
+❌ Integration issues detected:
+   Orphaned endpoints: [COUNT]
+   Dead code: [COUNT] functions
+   Old code still used: [COUNT]
+→ Integration issues must be fixed before PR creation
+```
+
+**CRITICAL**: Integration issues are **BLOCKING** - must fix before proceeding to Phase 4
+
+Delegate fixes to implementation agent with specific integration findings.
+
+**If no integration issues**:
+
+**OUTPUT TO USER:**
+```
+✅ Integration validation passed
+   All endpoints wired: ✅
+   No dead code: ✅
+   Old code properly retired: ✅
+   Schema properly integrated: ✅
+→ Proceeding to build validation...
+```
+
+---
+
 **Step 5: Build Validation**
 
 Validate production build:
@@ -1581,6 +1762,12 @@ npm run build
 - ✅ All integration tests passing
 - ✅ UI tests passing
 - ✅ E2E flow tests passing (if applicable)
+- ✅ **Integration validation passed (NEW - CRITICAL)**
+  - ✅ No orphaned endpoints
+  - ✅ No dead code
+  - ✅ Old code properly retired
+  - ✅ Schema properly integrated
+  - ✅ Job queue polling implemented
 - ✅ Audit score ≥ 8.0
 - ✅ Production build successful
 - ✅ No critical security issues
@@ -1589,7 +1776,7 @@ npm run build
 **OUTPUT TO USER:**
 ```
 ✅ Phase 3 Complete - All Quality Gates Passed
-   Tests: ✅ | Audit: [SCORE]/10 | Build: ✅ | UI Tests: ✅
+   Tests: ✅ | Audit: [SCORE]/10 | Build: ✅ | UI Tests: ✅ | Integration: ✅
 
 🎯 Phase 4: PR Creation and Documentation
 → Preparing comprehensive PR description...
@@ -1610,6 +1797,10 @@ npm run build
 **⚠️ CRITICAL PRE-REQUISITE CHECK**:
 Before starting Phase 4, verify ALL Phase 3 validation passed:
 - ✅ All tests passing (unit, integration, UI, E2E)
+- ✅ **Integration validation passed** (NEW - CRITICAL)
+  - ✅ No orphaned endpoints
+  - ✅ No dead code
+  - ✅ Old code retired
 - ✅ Audit score ≥ 8.0
 - ✅ Build successful (npm run build)
 - ✅ Architect validation complete

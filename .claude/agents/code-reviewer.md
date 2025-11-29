@@ -356,7 +356,50 @@ done
 npm run test -- --coverage --collectCoverageFrom="$CHANGED_FILES" 2>&1 | tee /tmp/coverage-delta.log
 ```
 
-#### **4.6: Documentation Review**
+#### **4.6: Migration and Code Generation (NEW - CRITICAL)**
+- [ ] **Database Migrations**: New migrations run and applied?
+- [ ] **Prisma Client**: Regenerated after schema changes?
+- [ ] **TypeScript Post-Regeneration**: Still compiles after Prisma?
+- [ ] **GraphQL Codegen**: Regenerated if schema changed?
+- [ ] **Other Codegen**: API clients, protobuf, etc. regenerated?
+
+**Migration and codegen checks:**
+```bash
+# Check for migration files
+MIGRATION_FILES=$(echo "$CHANGED_FILES" | grep "migrations/\|prisma/schema.prisma" || echo "")
+
+if [[ -n "$MIGRATION_FILES" ]]; then
+  echo "⚠️ Database schema changes detected - verify migrations run"
+  echo "   Files: $MIGRATION_FILES"
+  echo "   Action: Ensure 'npm run migrate' was executed"
+fi
+
+# Check for Prisma schema changes
+if echo "$CHANGED_FILES" | grep -q "prisma/schema.prisma"; then
+  echo "⚠️ Prisma schema changed - verify client regenerated"
+  echo "   Action: Ensure 'npx prisma generate' was run"
+
+  # Check if client is outdated
+  SCHEMA_MTIME=$(stat -c %Y prisma/schema.prisma 2>/dev/null || echo 0)
+  CLIENT_MTIME=$(stat -c %Y node_modules/.prisma/client/index.js 2>/dev/null || echo 0)
+
+  if [[ $SCHEMA_MTIME -gt $CLIENT_MTIME ]]; then
+    echo "❌ Prisma client is OUTDATED - schema changed but client not regenerated"
+    echo "   Impact: TypeScript types out of sync, runtime errors likely"
+    echo "   Fix: Run 'npx prisma generate'"
+  fi
+fi
+
+# Check for GraphQL schema changes
+if echo "$CHANGED_FILES" | grep -q "schema.graphql\|\.graphql$"; then
+  if grep -q "@graphql-codegen" package.json 2>/dev/null; then
+    echo "⚠️ GraphQL schema changed - verify codegen run"
+    echo "   Action: Ensure 'npm run codegen' was executed"
+  fi
+fi
+```
+
+#### **4.7: Documentation Review**
 - [ ] **Code Comments**: Complex logic explained?
 - [ ] **JSDoc/TSDoc**: Public APIs documented?
 - [ ] **README Updates**: Feature documented?
@@ -429,6 +472,43 @@ npm run check:circular 2>&1 || echo "No circular dependency checker configured"
 ```
 
 **Success Criteria**: Architecture alignment validated or delegated to specialist
+
+---
+
+### Phase 5.5: Integration Validation (NEW - CRITICAL)
+
+**Goal**: Verify end-to-end feature wiring for PR changes
+
+**For integration validation, consult the integration-validator specialist:**
+
+Describe the need for integration validation:
+```markdown
+"I need the integration-validator specialist to check E2E feature wiring for PR #${PR_NUMBER}.
+
+Changed files:
+${CHANGED_FILES}
+
+PR Context:
+- Backend changes: ${BACKEND_CHANGES_COUNT} files
+- Frontend changes: ${FRONTEND_CHANGES_COUNT} files
+- Migrations: ${MIGRATION_CHANGES_COUNT} files
+
+Validate:
+- Frontend → Backend endpoint wiring (all new endpoints called?)
+- Dead code detection (new functions actually used?)
+- Old code retirement (old code removed when new exists?)
+- Database schema integration (new columns queried?)
+- Job queue integration (polling logic for async ops?)
+
+Focus: Catch 'implemented but not connected' bugs where features exist but don't work E2E"
+```
+
+**Integration validation findings should be HIGH/CRITICAL priority**:
+- Orphaned endpoints: CRITICAL (feature inaccessible)
+- Dead code: CRITICAL (maintenance burden)
+- Old code still used: HIGH (inconsistent behavior)
+
+**Success Criteria**: Integration validation completed, E2E wiring verified
 
 ---
 

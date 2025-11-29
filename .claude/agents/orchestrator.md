@@ -83,6 +83,9 @@ Categorize the task using semantic understanding:
 **Code Review/PR Review**: review PR, code review, pull request review, code quality assessment
 → Route to: code-reviewer agent or /review-pr command
 
+**Integration Validation**: integration check, endpoint wiring, dead code, orphaned endpoints, E2E validation, frontend-backend connection
+→ Route to: integration-validator agent
+
 **Dependency Management**: dependencies, npm audit, package updates, outdated packages, vulnerability fixes
 → Route to: dependency-manager agent or /update-deps, /fix-vulns commands
 
@@ -333,6 +336,7 @@ End every orchestration with:
 - implementation - Feature implementation
 - database - Safe DB operations
 - audit - Comprehensive quality audits
+- **integration-validator** - E2E feature wiring validation (orphaned endpoints, dead code, frontend-backend connections)
 
 **Commands:**
 - /architect - Architecture analysis

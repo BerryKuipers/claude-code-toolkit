@@ -307,6 +307,38 @@ fi
 
 ---
 
+### Phase 7.5: Integration Validation (NEW - CRITICAL)
+
+**Goal**: Validate end-to-end feature wiring and detect dead code
+
+**Natural Language Delegation:**
+
+"I need the integration-validator specialist to check for E2E integration issues.
+
+The integration validator should analyze:
+- Frontend ↔ Backend endpoint wiring
+- Dead code and orphaned functions
+- Old code retirement when new implementations exist
+- Database schema integration (new columns actually queried)
+- Job queue integration (polling logic for async operations)
+
+Scope: ${AUDIT_SCOPE}
+Output format: JSON for aggregation
+
+The integration validator should return findings with:
+- Orphaned endpoints (backend not called by frontend)
+- Dead code (functions defined but never called)
+- Old/new code conflicts (both versions in use)
+- Orphaned schema (columns added but never queried)
+- Missing job polling (async jobs without UI feedback)
+
+This validation prevents 'implemented but not connected' bugs where features
+exist in code but don't work end-to-end for users."
+
+**Success Criteria**: Integration validator completes analysis, findings saved
+
+---
+
 ### Phase 8: Aggregate Results
 
 **Goal**: Consolidate findings from all audits with severity prioritization
@@ -329,6 +361,7 @@ ARCH_FINDINGS=$(cat .claude/audit-results/$SESSION_ID/architecture-audit.json 2>
 CODE_QUALITY_ISSUES=$(grep -c "error\|warning" .claude/audit-results/$SESSION_ID/code-quality.log 2>/dev/null || echo 0)
 SECURITY_VULNS=$(( $HIGH_VULNS + $CRITICAL_VULNS ))
 DESIGN_FINDINGS=$(cat .claude/audit-results/$SESSION_ID/design-audit.json 2>/dev/null || echo '{"findings":[]}')
+INTEGRATION_FINDINGS=$(cat .claude/audit-results/$SESSION_ID/integration-audit.json 2>/dev/null || echo '{"findings":{"orphanedEndpoints":[],"deadCode":[],"oldCodeStillUsed":[]}}')
 
 # Aggregate counts
 TOTAL_CRITICAL=$(jq '[.findings[] | select(.severity=="critical")] | length' <<< "$ARCH_FINDINGS")
@@ -339,6 +372,13 @@ TOTAL_LOW=$(jq '[.findings[] | select(.severity=="low")] | length' <<< "$ARCH_FI
 # Add security vulnerabilities to totals
 TOTAL_CRITICAL=$(( $TOTAL_CRITICAL + $CRITICAL_VULNS ))
 TOTAL_HIGH=$(( $TOTAL_HIGH + $HIGH_VULNS ))
+
+# Add integration findings (all are critical/high severity)
+INTEGRATION_ORPHANED=$(jq '.findings.orphanedEndpoints | length' <<< "$INTEGRATION_FINDINGS" 2>/dev/null || echo 0)
+INTEGRATION_DEAD_CODE=$(jq '.findings.deadCode | length' <<< "$INTEGRATION_FINDINGS" 2>/dev/null || echo 0)
+INTEGRATION_OLD_CODE=$(jq '.findings.oldCodeStillUsed | length' <<< "$INTEGRATION_FINDINGS" 2>/dev/null || echo 0)
+TOTAL_CRITICAL=$(( $TOTAL_CRITICAL + $INTEGRATION_ORPHANED + $INTEGRATION_DEAD_CODE ))
+TOTAL_HIGH=$(( $TOTAL_HIGH + $INTEGRATION_OLD_CODE ))
 
 echo "   Aggregation complete:"
 echo "   - Critical: $TOTAL_CRITICAL"
@@ -408,6 +448,26 @@ $(cat .claude/audit-results/$SESSION_ID/design-audit.json 2>/dev/null || echo "N
 ### 6. Performance Audit
 $(cat .claude/audit-results/$SESSION_ID/bundle-size.log 2>/dev/null || echo "Performance audit skipped")
 
+### 7. Integration Validation (NEW)
+**Orphaned Endpoints**: $INTEGRATION_ORPHANED
+**Dead Code Functions**: $INTEGRATION_DEAD_CODE
+**Old Code Still Used**: $INTEGRATION_OLD_CODE
+
+$(cat .claude/audit-results/$SESSION_ID/integration-audit.json 2>/dev/null | jq -r '
+if .findings.orphanedEndpoints | length > 0 then
+  "#### Orphaned Endpoints\n" +
+  (.findings.orphanedEndpoints[] | "- \(.method) \(.path) (file: \(.file))\n")
+else "" end +
+if .findings.deadCode | length > 0 then
+  "#### Dead Code\n" +
+  (.findings.deadCode[] | "- \(.function) (file: \(.file))\n")
+else "" end +
+if .findings.oldCodeStillUsed | length > 0 then
+  "#### Old Code Still Used\n" +
+  (.findings.oldCodeStillUsed[] | "- \(.oldFunction) → \(.newFunction) (\(.calls) calls)\n")
+else "" end
+' || echo "No integration findings")
+
 ---
 
 ## Critical Findings (Immediate Action Required)
@@ -418,6 +478,15 @@ $(if [[ $CRITICAL_VULNS -gt 0 ]]; then
   npm audit --audit-level=critical --json | jq -r '.vulnerabilities | to_entries[] | "### \(.value.name)\n**Severity**: Critical\n**Via**: \(.value.via | if type == "array" then join(", ") else . end)\n**Fix**: Run \`npm audit fix\` or update manually\n"'
 fi)
 
+$(cat .claude/audit-results/$SESSION_ID/integration-audit.json 2>/dev/null | jq -r '
+if .findings.orphanedEndpoints | length > 0 then
+  (.findings.orphanedEndpoints[] | "### Integration: Orphaned Endpoint\n**Endpoint**: \(.method) \(.path)\n**File**: \(.file)\n**Issue**: Backend endpoint exists but frontend doesn'\''t call it\n**Impact**: Feature implemented but inaccessible to users\n**Fix**: Wire frontend to call this endpoint\n\n")
+else "" end +
+if .findings.deadCode | length > 0 then
+  (.findings.deadCode[] | "### Integration: Dead Code\n**Function**: \(.function)\n**File**: \(.file)\n**Issue**: Function defined but never called\n**Impact**: Unused code increases maintenance burden\n**Fix**: Remove function or wire up callers\n\n")
+else "" end
+' || echo "")
+
 ---
 
 ## High Priority Findings (Address This Sprint)
@@ -427,6 +496,12 @@ $(jq -r '.findings[] | select(.severity=="high") | "### \(.title)\n**File**: \(.
 $(if [[ $HIGH_VULNS -gt 0 ]]; then
   npm audit --audit-level=high --json | jq -r '.vulnerabilities | to_entries[] | "### \(.value.name)\n**Severity**: High\n**Via**: \(.value.via | if type == "array" then join(", ") else . end)\n**Fix**: Run \`npm audit fix\` or update manually\n"'
 fi)
+
+$(cat .claude/audit-results/$SESSION_ID/integration-audit.json 2>/dev/null | jq -r '
+if .findings.oldCodeStillUsed | length > 0 then
+  (.findings.oldCodeStillUsed[] | "### Integration: Old Code Still in Use\n**Old Function**: \(.oldFunction)\n**New Function**: \(.newFunction)\n**Calls to Old**: \(.calls)\n**File**: \(.file)\n**Issue**: Both old and new implementations coexist\n**Impact**: Inconsistent behavior, harder to maintain\n**Fix**: Migrate all callers to new version and deprecate old\n\n")
+else "" end
+' || echo "")
 
 ---
 
