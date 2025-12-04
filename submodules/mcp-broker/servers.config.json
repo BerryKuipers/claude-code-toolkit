@@ -1,6 +1,24 @@
 {
   "servers": [
     {
+      "id": "a11y",
+      "transport": "stdio",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "a11y-mcp-server"],
+      "env": {},
+      "startMode": "lazy"
+    },
+    {
+      "id": "memory",
+      "transport": "stdio",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "mcp-memory-service"],
+      "env": {
+        "MCP_MEMORY_STORAGE_BACKEND": "sqlite"
+      },
+      "startMode": "lazy"
+    },
+    {
       "id": "qdrant",
       "transport": "stdio",
       "command": "uvx",
