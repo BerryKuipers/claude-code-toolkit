@@ -12,7 +12,7 @@
       "id": "memory",
       "transport": "stdio",
       "command": "cmd",
-      "args": ["/c", "npx", "-y", "mcp-memory-service"],
+      "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-memory"],
       "env": {
         "MCP_MEMORY_STORAGE_BACKEND": "sqlite"
       },
