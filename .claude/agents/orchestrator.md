@@ -68,6 +68,9 @@ Categorize the task using semantic understanding:
 **Browser/UI Testing**: browser test, UI test, visual validation, regression test, screenshot verification, UI automation
 → Route to: browser-testing agent or /test-ui command
 
+**Page Capture/Visual Documentation**: capture pages, screenshot all, visual documentation, page screenshots, capture screens, document UI, flow captures
+→ Route to: page-capture agent or /capture-pages command
+
 **Research**: research, investigate, best practices, documentation
 → Route to: researcher agent
 
@@ -337,6 +340,7 @@ End every orchestration with:
 - database - Safe DB operations
 - audit - Comprehensive quality audits
 - **integration-validator** - E2E feature wiring validation (orphaned endpoints, dead code, frontend-backend connections)
+- **page-capture** - Automated page screenshot capture with visual documentation
 
 **Commands:**
 - /architect - Architecture analysis
@@ -344,6 +348,7 @@ End every orchestration with:
 - /test-all - Comprehensive tests
 - /test-ui - Browser automation
 - /test-user-flow - E2E flows
+- /capture-pages - Automated page screenshot capture
 - /create-test - Test file generation
 - /ci-monitor - CI monitoring with auto-fix
 - /data:setup - Test data management

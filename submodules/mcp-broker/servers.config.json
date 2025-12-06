@@ -13,7 +13,9 @@
       "transport": "stdio",
       "command": "cmd",
       "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-memory"],
-      "env": {},
+      "env": {
+        "MCP_MEMORY_STORAGE_BACKEND": "sqlite"
+      },
       "startMode": "lazy"
     },
     {
