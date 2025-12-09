@@ -1,6 +1,13 @@
 {
   "servers": [
     {
+      "id": "example-sse",
+      "transport": "sse",
+      "url": "http://localhost:3000/sse",
+      "env": {},
+      "startMode": "lazy"
+    },
+    {
       "id": "example-stdio",
       "transport": "stdio",
       "command": "node",

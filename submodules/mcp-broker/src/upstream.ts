@@ -1,6 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import type { ServerConfig } from './config.js';
 import { getOAuthToken } from './oauth.js';
 
@@ -84,6 +85,27 @@ async function createHttpClient(config: ServerConfig): Promise<Client> {
   return client;
 }
 
+async function createSseClient(config: ServerConfig): Promise<Client> {
+  if (!config.url) {
+    throw new Error(`Server ${config.id} has sse transport but no url specified`);
+  }
+
+  const transport = new SSEClientTransport(new URL(config.url));
+
+  const client = new Client(
+    {
+      name: 'mcp-broker',
+      version: '1.0.0',
+    },
+    {
+      capabilities: {},
+    }
+  );
+
+  await client.connect(transport);
+  return client;
+}
+
 async function getOrCreateClient(config: ServerConfig): Promise<Client> {
   let client = upstreamClients.get(config.id);
 
@@ -92,6 +114,8 @@ async function getOrCreateClient(config: ServerConfig): Promise<Client> {
       client = await createStdioClient(config);
     } else if (config.transport === 'http') {
       client = await createHttpClient(config);
+    } else if (config.transport === 'sse') {
+      client = await createSseClient(config);
     } else {
       throw new Error(`Unknown transport type: ${config.transport}`);
     }

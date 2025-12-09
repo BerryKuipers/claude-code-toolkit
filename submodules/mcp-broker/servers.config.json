@@ -1,6 +1,13 @@
 {
   "servers": [
     {
+      "id": "chrome-devtools",
+      "transport": "sse",
+      "url": "http://localhost:3000/sse",
+      "env": {},
+      "startMode": "lazy"
+    },
+    {
       "id": "a11y",
       "transport": "stdio",
       "command": "cmd",

@@ -20,7 +20,7 @@ const OAuthConfigSchema = z.object({
 
 const ServerConfigSchema = z.object({
   id: z.string(),
-  transport: z.enum(['stdio', 'http']),
+  transport: z.enum(['stdio', 'http', 'sse']),
   command: z.string().optional(),
   args: z.array(z.string()).optional(),
   url: z.string().optional(),
