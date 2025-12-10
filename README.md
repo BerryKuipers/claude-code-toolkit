@@ -38,6 +38,10 @@ This repository serves as the **single source of truth** for Claude Code configu
 - Quality gates and validation
 - Test execution and coverage
 - Build validation
+- **Dev Memory System** - Automatic development timeline tracking
+  - Extracts events from git commits
+  - Generates session briefings
+  - Tracks open questions and next steps
 
 ### `scripts/` - Automation Scripts
 
@@ -147,6 +151,52 @@ git push
 
 ---
 
+## ✨ Key Features
+
+### 🧠 Developer Memory System
+
+Automatic development timeline tracking via git commits:
+
+- **Event Extraction:** Automatically extracts features, bugs, refactorings from commit messages
+- **Session Briefings:** Generate context-rich briefings at session start
+- **Timeline View:** See what happened recently across branches and epics
+- **Open Questions:** Track unresolved decisions from commit messages
+- **Next Steps:** Automatically extract TODOs and action items
+
+**Usage:**
+```bash
+# Memory updates automatically on each commit
+git commit -m "feat: Add user auth
+
+Implemented JWT-based authentication.
+
+Fixes #123
+
+TODO: Add rate limiting
+"
+
+# Generate session briefing
+# Ask Claude: "Generate a session briefing from dev memory"
+```
+
+**See:** [`docs/dev_memory/README.md`](docs/dev_memory/README.md)
+
+### 📐 Generic Architectural Rules
+
+Reusable, framework-agnostic coding guidelines:
+
+- **Layered Architecture:** Clean separation of concerns (UI → Services → Domain → Infrastructure)
+- **TypeScript/JavaScript Style:** Single quotes, async/await, naming conventions
+- **Backend HTTP Layer:** Thin routes/controllers, no direct DB access
+- **Backend Persistence:** Repository patterns, data access boundaries
+- **Frontend React:** Component organization, data fetching, state management
+
+**Cross-tool compatible:** Works with both Claude Code and Cursor via `.mdc` format.
+
+**See:** [`.claude/rules/`](.claude/rules/) and [`CLAUDE.md`](CLAUDE.md)
+
+---
+
 ## 🔧 Customization
 
 Each project has different requirements. Customize the toolkit for your project:
@@ -186,10 +236,18 @@ See `docs/PROJECT_CUSTOMIZATION_CHECKLIST.md` for complete list.
 
 ## 📖 Documentation
 
+### Core Documentation
 - **[Setup Guide](docs/CLAUDE_CODE_WEB_SETUP_GUIDE.md)** - How SessionStart hooks work
 - **[Customization](docs/PROJECT_CUSTOMIZATION_CHECKLIST.md)** - What to customize
 - **[Copy Guide](docs/COPY_TO_NEW_REPO.md)** - Copy to new repositories
 - **[Central Strategy](docs/CENTRAL_REPO_STRATEGY.md)** - Why this repo exists
+
+### Feature Documentation
+- **[Architectural Rules](CLAUDE.md)** - Generic coding guidelines and layered architecture
+- **[Dev Memory System](docs/dev_memory/README.md)** - Automatic development timeline tracking
+  - [Format Specification](docs/dev_memory/dev-memory-format.md)
+  - [Rules and Hooks](docs/dev_memory/dev-memory-rules-and-hooks.md)
+  - [Toolkit Integration](docs/dev_memory/dev-memory-context.md)
 
 ---
 

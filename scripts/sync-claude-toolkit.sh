@@ -155,4 +155,29 @@ fi
 # Don't overwrite project-specific files
 echo "  → Preserving project-specific files (settings.json, config.yml)"
 
+# ============================================
+# Dev Memory Integration
+# ============================================
+echo "  → Ensuring ai_memory directory exists..."
+MEMORY_DIR="$PROJECT_DIR/ai_memory"
+mkdir -p "$MEMORY_DIR"
+
+# Create .gitkeep if first time
+if [ ! -f "$MEMORY_DIR/.gitkeep" ]; then
+  cat > "$MEMORY_DIR/.gitkeep" <<'EOF'
+# AI Development Memory
+
+This directory contains automatically generated development memory files:
+- events.jsonl - Development events (commits, features, fixes, decisions)
+- sessions.jsonl - Coding sessions
+- SESSION_BRIEFING.md - Generated session briefings
+
+These files are maintained by the dev-memory-update skill and should be
+committed to git to track project history.
+
+For more information, see: .claude-toolkit/docs/dev_memory/
+EOF
+  echo "  ✅ Created ai_memory directory with .gitkeep"
+fi
+
 echo "✅ Toolkit synced successfully!"
