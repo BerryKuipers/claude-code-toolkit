@@ -1,0 +1,504 @@
+---
+description: Frontend React architecture rules for modern React applications
+globs:
+  - '**/src/**/*.tsx'
+  - '**/src/**/*.jsx'
+  - '**/app/**/*.tsx'
+  - '**/app/**/*.jsx'
+  - '**/components/**/*.tsx'
+  - '**/components/**/*.jsx'
+  - '!**/node_modules/**'
+  - '!**/dist/**'
+  - '!**/build/**'
+  - '!**/*.test.tsx'
+  - '!**/*.test.jsx'
+targets: ['*']
+---
+
+# Frontend React Architecture Guidelines
+
+Generic React architecture principles for building maintainable, scalable applications.
+
+## React Component Layers
+
+### Layer Hierarchy
+
+```
+┌─────────────────────────────────────┐
+│  Pages/Routes                       │  ← Composition, navigation, data wiring
+├─────────────────────────────────────┤
+│  Features                           │  ← Domain-specific UI and logic
+├─────────────────────────────────────┤
+│  UI Components                      │  ← Reusable, presentational components
+├─────────────────────────────────────┤
+│  Hooks/Utils                        │  ← Shared logic and utilities
+├─────────────────────────────────────┤
+│  API/Data Layer                     │  ← Backend communication
+└─────────────────────────────────────┘
+```
+
+### Pages/Routes
+**Purpose:** Wire data, layout, and navigation together
+
+```typescript
+// ✅ Good - page composes features and handles routing
+export function UserProfilePage() {
+  const { userId } = useParams();
+  const { data: user, isLoading } = useUser(userId);
+
+  if (isLoading) return <LoadingSpinner />;
+  if (!user) return <NotFound />;
+
+  return (
+    <PageLayout>
+      <UserHeader user={user} />
+      <UserPosts userId={userId} />
+      <UserActivity userId={userId} />
+    </PageLayout>
+  );
+}
+```
+
+### Feature Modules
+**Purpose:** Domain-specific UI and state for a feature
+
+```typescript
+// ✅ Good - feature owns its domain logic
+export function UserPosts({ userId }: { userId: string }) {
+  const { data: posts, isLoading } = usePosts(userId);
+  const [filter, setFilter] = useState<PostFilter>('all');
+
+  const filteredPosts = useMemo(
+    () => posts?.filter(p => matchesFilter(p, filter)) ?? [],
+    [posts, filter]
+  );
+
+  return (
+    <div>
+      <PostFilter value={filter} onChange={setFilter} />
+      <PostList posts={filteredPosts} />
+    </div>
+  );
+}
+```
+
+### UI Components
+**Purpose:** Reusable, presentational components
+
+```typescript
+// ✅ Good - pure UI component
+export function Button({
+  children,
+  variant = 'primary',
+  onClick,
+  disabled = false,
+}: ButtonProps) {
+  return (
+    <button
+      className={`btn btn-${variant}`}
+      onClick={onClick}
+      disabled={disabled}
+    >
+      {children}
+    </button>
+  );
+}
+```
+
+## Data Fetching
+
+### Rule: Centralize Data Fetching
+
+**DON'T scatter fetch calls across components:**
+```typescript
+// ❌ Bad - fetch in components
+export function UserProfile({ userId }: Props) {
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    fetch(`/api/users/${userId}`)
+      .then(r => r.json())
+      .then(setUser);
+  }, [userId]);
+
+  return <div>{user?.name}</div>;
+}
+```
+
+**DO centralize in hooks or API modules:**
+```typescript
+// ✅ Good - centralized data fetching hook
+export function useUser(userId: string) {
+  return useQuery({
+    queryKey: ['user', userId],
+    queryFn: () => api.users.getById(userId),
+  });
+}
+
+// Usage in component
+export function UserProfile({ userId }: Props) {
+  const { data: user, isLoading } = useUser(userId);
+
+  if (isLoading) return <Spinner />;
+  return <div>{user.name}</div>;
+}
+```
+
+### Recommended: Separate Server State from Client State
+
+**Server state** (data from backend):
+- Use query libraries: React Query, SWR, Apollo Client
+- Don't duplicate in `useState`
+- Let the library handle caching, refetching, loading states
+
+**Client state** (UI state):
+- Use `useState`, `useReducer`, or state management libraries
+- Form values, modal open/closed, selected tabs, filters
+
+```typescript
+// ✅ Good - clear separation
+export function UserList() {
+  // Server state - managed by React Query
+  const { data: users, isLoading } = useUsers();
+
+  // Client state - managed by React
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredUsers = users?.filter(u =>
+    u.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div>
+      <SearchInput value={searchTerm} onChange={setSearchTerm} />
+      <UserTable
+        users={filteredUsers}
+        selectedId={selectedId}
+        onSelect={setSelectedId}
+      />
+    </div>
+  );
+}
+```
+
+### Pattern: API Module
+```typescript
+// api/users.api.ts
+export const usersApi = {
+  getAll: () => fetch('/api/users').then(r => r.json()),
+
+  getById: (id: string) =>
+    fetch(`/api/users/${id}`).then(r => r.json()),
+
+  create: (data: CreateUserData) =>
+    fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(r => r.json()),
+
+  update: (id: string, data: Partial<User>) =>
+    fetch(`/api/users/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(r => r.json()),
+};
+
+// hooks/use-users.ts
+export function useUsers() {
+  return useQuery({
+    queryKey: ['users'],
+    queryFn: usersApi.getAll,
+  });
+}
+
+export function useUser(id: string) {
+  return useQuery({
+    queryKey: ['user', id],
+    queryFn: () => usersApi.getById(id),
+  });
+}
+```
+
+## Component Organization
+
+### Functional Components with Hooks
+
+**Always use functional components:**
+```typescript
+// ✅ Good
+export function UserCard({ user }: UserCardProps) {
+  return <div>{user.name}</div>;
+}
+
+// ❌ Avoid class components (unless legacy)
+export class UserCard extends React.Component<UserCardProps> {
+  render() {
+    return <div>{this.props.user.name}</div>;
+  }
+}
+```
+
+### Custom Hooks for Reusable Logic
+```typescript
+// ✅ Good - extract reusable logic
+export function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+// Usage
+export function SearchInput() {
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
+
+  const { data } = useSearchResults(debouncedSearch);
+
+  return <input value={search} onChange={e => setSearch(e.target.value)} />;
+}
+```
+
+### File Organization
+```typescript
+// One component per file (default)
+// components/UserCard.tsx
+export function UserCard({ user }: UserCardProps) {
+  return <div>...</div>;
+}
+
+// Related small components together (acceptable)
+// components/UserCard.tsx
+function UserAvatar({ url }: { url: string }) {
+  return <img src={url} alt="avatar" />;
+}
+
+function UserBadge({ role }: { role: string }) {
+  return <span className="badge">{role}</span>;
+}
+
+export function UserCard({ user }: UserCardProps) {
+  return (
+    <div>
+      <UserAvatar url={user.avatarUrl} />
+      <UserBadge role={user.role} />
+    </div>
+  );
+}
+```
+
+## State Management
+
+### Local State First
+```typescript
+// ✅ Good - start with local state
+export function Counter() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div>
+      <p>Count: {count}</p>
+      <button onClick={() => setCount(count + 1)}>Increment</button>
+    </div>
+  );
+}
+```
+
+### Lift State When Needed
+```typescript
+// ✅ Good - lift to nearest common parent
+export function ShoppingCart() {
+  const [items, setItems] = useState<CartItem[]>([]);
+
+  return (
+    <div>
+      <CartSummary items={items} />
+      <CartItems items={items} onUpdate={setItems} />
+    </div>
+  );
+}
+```
+
+### Global State for Cross-Cutting Concerns
+Use context or state libraries for:
+- Authentication state
+- Theme/preferences
+- Toast notifications
+- Multi-step forms spanning routes
+
+```typescript
+// ✅ Good - context for auth
+export const AuthContext = createContext<AuthContextValue>(null!);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+
+  const login = async (credentials: Credentials) => {
+    const user = await authApi.login(credentials);
+    setUser(user);
+  };
+
+  const logout = () => setUser(null);
+
+  return (
+    <AuthContext.Provider value={{ user, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+```
+
+## Performance
+
+### Memoization (Use Sparingly)
+```typescript
+// ✅ Good - memoize expensive calculations
+export function ProductList({ products }: Props) {
+  const sortedProducts = useMemo(
+    () => products.sort((a, b) => a.price - b.price),
+    [products]
+  );
+
+  return <div>{sortedProducts.map(p => <ProductCard key={p.id} product={p} />)}</div>;
+}
+
+// ❌ Don't over-optimize
+export function UserName({ user }: Props) {
+  // Unnecessary - this is fast
+  const name = useMemo(() => user.name, [user.name]);
+  return <div>{name}</div>;
+}
+```
+
+### Callback Memoization
+```typescript
+// ✅ Good - prevent re-renders when passing callbacks
+export function Parent() {
+  const [count, setCount] = useState(0);
+
+  const handleClick = useCallback(() => {
+    setCount(c => c + 1);
+  }, []);
+
+  return <ExpensiveChild onClick={handleClick} />;
+}
+```
+
+## Guidelines for Claude
+
+### When Creating New Components
+
+1. **Start with functional components and hooks**
+2. **Keep components small** (< 200 lines ideally)
+3. **Separate server state from client state**
+4. **Use TypeScript props interfaces**:
+   ```typescript
+   interface UserCardProps {
+     user: User;
+     onEdit?: (user: User) => void;
+   }
+   ```
+
+### When Editing Existing Components
+
+**If you see heavy logic in components, suggest:**
+1. **Extract to custom hooks**
+2. **Move data fetching to hooks/API layer**
+3. **Split large components** into smaller ones
+
+**Example refactor:**
+```typescript
+// Before - too much in one component
+export function UserDashboard() {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/users')
+      .then(r => r.json())
+      .then(data => {
+        setUsers(data);
+        setLoading(false);
+      });
+  }, []);
+
+  const activeUsers = users.filter(u => u.isActive);
+  const sortedUsers = activeUsers.sort((a, b) => a.name.localeCompare(b.name));
+
+  return (
+    <div>
+      {loading ? <Spinner /> : <UserList users={sortedUsers} />}
+    </div>
+  );
+}
+
+// After - cleaner with hooks and features
+export function UserDashboard() {
+  const { data: users, isLoading } = useUsers();
+  const activeUsers = useActiveUsers(users);
+
+  if (isLoading) return <Spinner />;
+  return <UserList users={activeUsers} />;
+}
+```
+
+### Framework-Specific Patterns
+
+**Next.js (App Router):**
+```typescript
+// app/users/[id]/page.tsx
+export default async function UserPage({ params }: { params: { id: string } }) {
+  const user = await getUser(params.id);
+
+  return <UserProfile user={user} />;
+}
+```
+
+**Next.js (Pages Router):**
+```typescript
+// pages/users/[id].tsx
+export default function UserPage({ user }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  return <UserProfile user={user} />;
+}
+
+export const getServerSideProps = async (context) => {
+  const user = await getUser(context.params.id);
+  return { props: { user } };
+};
+```
+
+**Remix:**
+```typescript
+export async function loader({ params }: LoaderFunctionArgs) {
+  return json(await getUser(params.id));
+}
+
+export default function UserPage() {
+  const user = useLoaderData<typeof loader>();
+  return <UserProfile user={user} />;
+}
+```
+
+### Red Flags to Watch For
+
+- Multiple `fetch` calls scattered across components
+- `useState` for server data instead of query library
+- 500+ line components
+- Deeply nested prop drilling (use context instead)
+- Business logic in UI components
+
+### Suggest Improvements When You See
+
+1. **Data fetching in components** → "Let's extract this to a custom hook"
+2. **Complex calculations in render** → "We could memoize this with useMemo"
+3. **Large components** → "Should we split this into smaller components?"
+4. **Prop drilling 3+ levels** → "Consider using context or a state library here"
+
+But always respect the user's decision if they want to keep it simple.

@@ -1,0 +1,110 @@
+---
+description: Global architecture principles for any project using this toolkit
+globs:
+  - '**/*'
+alwaysApply: true
+targets: ['*']
+---
+
+# Global Architecture Principles
+
+These rules apply to all projects using this toolkit, regardless of framework or technology stack.
+
+## Layered Architecture
+
+Follow a clean, layered architecture with clear separation of concerns:
+
+### Layer Hierarchy (Dependencies flow downward)
+
+```
+┌─────────────────────────────────────┐
+│  Edge Layer (UI, HTTP, CLI, etc.)  │  ← Thin adapters
+├─────────────────────────────────────┤
+│  Application Layer (Services)      │  ← Business workflows
+├─────────────────────────────────────┤
+│  Domain Layer (Entities, Logic)    │  ← Core business rules
+├─────────────────────────────────────┤
+│  Infrastructure (DB, APIs, Queue)  │  ← External integrations
+└─────────────────────────────────────┘
+```
+
+### Dependency Direction
+
+**CRITICAL:** Dependencies must flow from outer layers inward:
+- ✅ `UI → Services → Domain → Infrastructure`
+- ❌ Never `Infrastructure → Domain` or `Domain → UI`
+
+**Edge layers must be thin:**
+- Parse and validate input
+- Call application services
+- Map results to appropriate output format
+- No business logic, no direct database access
+
+**Core logic lives in application/domain layers:**
+- Application services orchestrate workflows
+- Domain models encapsulate business rules
+- Keep these layers framework-agnostic where possible
+
+**Infrastructure is plugged in via adapters:**
+- Database clients, ORMs
+- External API clients
+- Message queue adapters
+- File system operations
+- These should be isolated behind clear interfaces
+
+## Cross-Cutting Concerns
+
+Handle these consistently, not scattered throughout code:
+
+- **Logging:** Centralized logging service or middleware
+- **Metrics:** Instrumentation at boundaries (API, DB, external calls)
+- **Validation:** Input validation at edge layer, business rules in domain
+- **Authentication/Authorization:** Middleware or guards at entry points
+- **Error handling:** Consistent error types, centralized error mapping
+
+## Guidelines for Claude
+
+When editing code in projects using this toolkit:
+
+### Respect Layer Boundaries
+- Before making changes, identify which layer each file belongs to
+- Preserve the dependency direction; don't introduce reverse dependencies
+- If you see violations (e.g., UI importing DB client), suggest refactoring
+
+### Prefer Small Refactors Over Technical Debt
+- When you encounter code that violates these principles, propose small improvements
+- Extract methods, introduce interfaces, move logic to appropriate layers
+- Don't just add more code on top of existing violations
+
+### Suggest Architecture Improvements
+- If a change would be cleaner with better separation, mention it
+- Example: "This route handler has business logic; should we extract a service?"
+- But respect the user's decision if they want to defer refactoring
+
+### Keep It Simple
+- Don't over-engineer; add layers only when they serve a clear purpose
+- Three lines of duplication is better than a premature abstraction
+- Follow the existing project's conventions if they differ from these defaults
+
+## Common Patterns
+
+### Backend (Node/TS)
+```
+routes/          ← HTTP adapters (thin)
+services/        ← Application logic
+domain/          ← Business entities and rules
+repositories/    ← Database adapters
+infrastructure/  ← External integrations
+```
+
+### Frontend (React)
+```
+pages/           ← Routing and page composition
+features/        ← Feature-specific UI and state
+components/      ← Reusable UI components
+api/             ← Backend communication
+hooks/           ← Reusable logic
+store/           ← Global state management
+```
+
+Adapt these patterns to your framework, but maintain the layer separation.

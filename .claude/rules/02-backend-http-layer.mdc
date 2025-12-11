@@ -1,0 +1,277 @@
+---
+description: Guidance for HTTP route and controller layers in backend services
+globs:
+  - '**/routes/**/*.ts'
+  - '**/routes/**/*.js'
+  - '**/controllers/**/*.ts'
+  - '**/controllers/**/*.js'
+  - '**/handlers/**/*.ts'
+  - '**/handlers/**/*.js'
+  - '**/api/**/*.ts'
+  - '**/api/**/*.js'
+  - '!**/node_modules/**'
+  - '!**/test/**'
+  - '!**/tests/**'
+targets: ['*']
+---
+
+# Backend HTTP Layer Guidelines
+
+Rules for HTTP routes, controllers, and handlers in backend services.
+
+## The Role of Routes/Controllers
+
+Routes and controllers are **thin adapters** between HTTP and your application logic.
+
+### Responsibilities (What They Should Do)
+
+1. **Parse and validate HTTP input**
+   - Extract params, query, body from request
+   - Validate using schema libraries (Zod, Joi, class-validator, etc.)
+   - Return 400 Bad Request for invalid input
+
+2. **Call application services**
+   - Delegate business logic to service layer
+   - Pass validated, typed data to services
+   - Don't implement business rules here
+
+3. **Map service results to HTTP responses**
+   - Transform domain objects to DTOs/response shapes
+   - Set appropriate status codes (200, 201, 404, 500, etc.)
+   - Handle errors consistently
+
+### Anti-Responsibilities (What They Must NOT Do)
+
+❌ **No direct database access**
+❌ **No business logic**
+❌ **No complex transformations**
+❌ **No external API calls** (unless the route IS an API proxy)
+
+## Critical Rules
+
+### Rule 1: No Database Imports
+
+**FORBIDDEN in routes/controllers:**
+```typescript
+// ❌ NEVER do this
+import { db } from '@/infrastructure/database';
+import { prisma } from '@/lib/prisma';
+import { Pool } from 'pg';
+import { getRepository } from 'typeorm';
+
+// Route handler
+const user = await db.users.findOne({ id });
+const posts = await prisma.post.findMany({ where: { userId } });
+```
+
+**Instead:**
+```typescript
+// ✅ Good - delegate to service
+import { userService } from '@/services/user.service';
+
+// Route handler
+const user = await userService.getUserById(id);
+const posts = await userService.getUserPosts(userId);
+```
+
+### Rule 2: No Inline Business Logic
+
+**FORBIDDEN:**
+```typescript
+// ❌ Bad - business logic in controller
+app.post('/orders', async (req, res) => {
+  const { items, userId } = req.body;
+
+  // Calculating totals, applying discounts, checking inventory - all business logic!
+  let total = 0;
+  for (const item of items) {
+    const product = await db.products.findOne(item.productId);
+    if (product.stock < item.quantity) {
+      return res.status(400).json({ error: 'Insufficient stock' });
+    }
+    const price = product.price * item.quantity;
+    const discount = user.isPremium ? price * 0.1 : 0;
+    total += price - discount;
+  }
+
+  const order = await db.orders.create({ userId, total, items });
+  res.json(order);
+});
+```
+
+**Instead:**
+```typescript
+// ✅ Good - thin controller
+app.post('/orders', async (req, res) => {
+  const createOrderDto = validateCreateOrder(req.body);
+
+  const order = await orderService.createOrder(
+    createOrderDto.userId,
+    createOrderDto.items
+  );
+
+  res.status(201).json(toOrderResponse(order));
+});
+```
+
+### Rule 3: Consistent Error Handling
+
+Use centralized error handling:
+```typescript
+// ✅ Good - throw typed errors, let middleware handle
+app.get('/users/:id', async (req, res) => {
+  const userId = req.params.id;
+
+  const user = await userService.getUserById(userId);
+  if (!user) {
+    throw new NotFoundError(`User ${userId} not found`);
+  }
+
+  res.json(toUserResponse(user));
+});
+
+// Error handling middleware (elsewhere)
+app.use((err, req, res, next) => {
+  if (err instanceof NotFoundError) {
+    return res.status(404).json({ error: err.message });
+  }
+  if (err instanceof ValidationError) {
+    return res.status(400).json({ error: err.message, details: err.details });
+  }
+  // ... handle other error types
+});
+```
+
+## Recommended Patterns
+
+### Pattern 1: Input Validation Layer
+```typescript
+import { z } from 'zod';
+
+const createUserSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(1),
+  age: z.number().min(18).optional(),
+});
+
+app.post('/users', async (req, res) => {
+  const input = createUserSchema.parse(req.body); // Throws on invalid input
+
+  const user = await userService.createUser(input);
+
+  res.status(201).json(toUserResponse(user));
+});
+```
+
+### Pattern 2: Dependency Injection
+```typescript
+// ✅ Good - services injected, easy to test
+export function createUserRoutes(userService: UserService) {
+  const router = Router();
+
+  router.get('/:id', async (req, res) => {
+    const user = await userService.getUserById(req.params.id);
+    if (!user) throw new NotFoundError('User not found');
+    res.json(toUserResponse(user));
+  });
+
+  return router;
+}
+```
+
+### Pattern 3: Response Mapping
+```typescript
+// ✅ Good - keep internal models separate from API responses
+function toUserResponse(user: User): UserResponse {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    createdAt: user.createdAt.toISOString(),
+    // Don't leak: password, internalFlags, etc.
+  };
+}
+```
+
+## Guidelines for Claude
+
+### When Creating New Routes
+1. **Always route through services**, never through DB clients
+2. **Validate input** at the boundary
+3. **Map outputs** to clean response shapes
+4. **Handle errors** with appropriate HTTP status codes
+5. **Keep handlers under 15 lines** where possible
+
+### When Editing Existing Routes
+
+If you see direct DB usage:
+1. **Suggest refactoring**: "This route accesses the database directly. Should we extract this to a service?"
+2. **Propose a service method**: Show what the service would look like
+3. **Move DB interaction** to repository/service layer
+
+Example refactor suggestion:
+```typescript
+// Current (problematic)
+app.get('/users/:id', async (req, res) => {
+  const user = await db.users.findOne({ id: req.params.id });
+  res.json(user);
+});
+
+// Suggested refactor
+// 1. Create userService.getUserById(id: string)
+// 2. Update route:
+app.get('/users/:id', async (req, res) => {
+  const user = await userService.getUserById(req.params.id);
+  if (!user) throw new NotFoundError('User not found');
+  res.json(toUserResponse(user));
+});
+```
+
+### Framework-Specific Adaptations
+
+**Express:**
+```typescript
+router.get('/users/:id', async (req, res, next) => {
+  try {
+    const user = await userService.getUserById(req.params.id);
+    res.json(toUserResponse(user));
+  } catch (error) {
+    next(error);
+  }
+});
+```
+
+**NestJS:**
+```typescript
+@Get(':id')
+async getUser(@Param('id') id: string): Promise<UserResponse> {
+  const user = await this.userService.getUserById(id);
+  return toUserResponse(user);
+}
+```
+
+**Fastify:**
+```typescript
+fastify.get('/users/:id', async (request, reply) => {
+  const user = await userService.getUserById(request.params.id);
+  return toUserResponse(user);
+});
+```
+
+### Red Flags to Watch For
+
+When you see these patterns, suggest refactoring:
+- Database client imported in routes/controllers
+- Inline SQL queries in handlers
+- Complex loops or calculations in request handlers
+- Multiple database operations in one route handler
+- Business rules (discounts, eligibility, calculations) in controllers
+
+### Acceptable Exceptions
+
+Rare cases where DB access might be acceptable:
+- **Health check endpoints** - `GET /health` checking DB connectivity
+- **Admin/debug routes** - explicitly for DB inspection (clearly labeled)
+- **Very simple CRUD apps** - if explicitly single-layer architecture
+
+In all cases, ask the user before adding these exceptions.
