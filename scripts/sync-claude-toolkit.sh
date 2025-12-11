@@ -95,6 +95,11 @@ echo "  → Syncing prompts..."
 rsync -a --delete "$TOOLKIT_DIR/prompts/" "$TARGET_DIR/prompts/" 2>/dev/null || \
   cp -rf "$TOOLKIT_DIR/prompts" "$TARGET_DIR/"
 
+echo "  → Syncing rules..."
+mkdir -p "$TARGET_DIR/rules"
+rsync -a --delete "$TOOLKIT_DIR/rules/" "$TARGET_DIR/rules/" 2>/dev/null || \
+  cp -rf "$TOOLKIT_DIR/rules"/* "$TARGET_DIR/rules/" 2>/dev/null || true
+
 # Sync scripts to project scripts directory
 SCRIPTS_DEST="$PROJECT_DIR/scripts"
 mkdir -p "$SCRIPTS_DEST"
