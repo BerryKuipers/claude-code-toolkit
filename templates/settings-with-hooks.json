@@ -15,6 +15,10 @@
           {
             "type": "command",
             "command": "bash -c \"test -f .claude/hooks/process-pending-memory.sh && bash .claude/hooks/process-pending-memory.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash -c \"test -f .claude/hooks/session-briefing.sh && bash .claude/hooks/session-briefing.sh || true\""
           }
         ]
       }
