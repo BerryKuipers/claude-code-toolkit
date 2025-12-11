@@ -1,37 +1,54 @@
 # Initialize Autonomous Coding Harness
 
-Initialize the autonomous-coding harness for feature-driven development sessions.
-
-## What This Does
-
-1. Creates `.claude/harness/` directory with:
-   - `feature_list.json` - Define features to implement
-   - `claude-progress.txt` - Session progress tracking
-   - `app_spec.txt` - Project context description
-   - Session hooks for automatic progress updates
-
-2. Copies harness scripts from toolkit templates
+Initialize the autonomous-coding harness and import features from GitHub issues.
 
 ## Instructions
 
-Run the harness initialization script:
+### Import from GitHub Issues (Recommended)
+
+```bash
+# Import all open issues
+bash .claude-toolkit/templates/harness/import-github-issues.sh
+
+# Import issues with specific label
+bash .claude-toolkit/templates/harness/import-github-issues.sh --label "feature"
+
+# Import issues from a milestone
+bash .claude-toolkit/templates/harness/import-github-issues.sh --milestone "v2.0"
+
+# Import a single issue
+bash .claude-toolkit/templates/harness/import-github-issues.sh --issue 123
+
+# Combine filters
+bash .claude-toolkit/templates/harness/import-github-issues.sh --label "enhancement" --limit 10
+```
+
+### Or Initialize Empty Harness
 
 ```bash
 bash .claude-toolkit/templates/harness/init.sh
 ```
 
-After initialization:
-1. Edit `.claude/harness/app_spec.txt` to describe your project
-2. Edit `.claude/harness/feature_list.json` to define features
-3. Start coding - progress is tracked automatically
+## After Import
 
-## Next Steps
+The script creates `.claude/harness/feature_list.json` with features mapped from GitHub issues:
 
-After running the init script, help the user:
-1. Show them the created files
-2. Offer to help populate `feature_list.json` with their planned features
-3. Offer to help fill in `app_spec.txt` based on the codebase
+- Issue number → `id: "issue-123"`
+- Title → `name`
+- Body → `description`
+- Labels with "priority" → `priority` (critical/high/medium/low)
+- Milestone → `milestone`
 
-## Documentation
+## Working with Features
 
-See: `.claude-toolkit/docs/AUTONOMOUS_CODING_HARNESS.md`
+After importing, help the user:
+1. Show the imported features: `jq '.features[] | {id, name, priority}' .claude/harness/feature_list.json`
+2. Pick a feature to work on
+3. Update feature status as work progresses
+
+## Syncing Back to GitHub
+
+When a feature is completed, close the GitHub issue:
+```bash
+gh issue close 123 --comment "Completed via autonomous coding session"
+```
