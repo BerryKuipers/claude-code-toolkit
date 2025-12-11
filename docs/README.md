@@ -67,15 +67,24 @@ Or ensure SessionStart hooks are configured (deployment script does this automat
 
 | Document | Description |
 |----------|-------------|
+| [INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md) | How toolkit components work together |
 | [CROSS_PLATFORM_SUBMODULE_STRATEGY.md](CROSS_PLATFORM_SUBMODULE_STRATEGY.md) | How toolkit works as submodule, sync strategy |
 | [SANDBOX_COMPATIBILITY.md](SANDBOX_COMPATIBILITY.md) | **Critical**: Sandbox configuration for GitHub access |
 | [TOOLKIT_MODERNIZATION_2025.md](TOOLKIT_MODERNIZATION_2025.md) | Architecture analysis, hooks vs agents |
+
+### Memory & Harness Systems
+
+| Document | Description |
+|----------|-------------|
+| [dev_memory/README.md](dev_memory/README.md) | Developer memory system for context tracking |
+| [AUTONOMOUS_CODING_HARNESS.md](AUTONOMOUS_CODING_HARNESS.md) | Feature-driven autonomous development |
 
 ### Examples
 
 | File | Description |
 |------|-------------|
 | [settings-with-sandbox.json](settings-examples/settings-with-sandbox.json) | Complete settings.json with sandbox config |
+| [settings-wescobar.json](settings-examples/settings-wescobar.json) | Full-stack TypeScript project example |
 
 ### Scripts
 

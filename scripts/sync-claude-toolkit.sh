@@ -173,6 +173,30 @@ fi
 echo "  → Preserving project-specific files (settings.json, config.yml)"
 
 # ============================================
+# Autonomous Coding Harness (optional)
+# ============================================
+HARNESS_TEMPLATE_DIR="$PROJECT_DIR/.claude-toolkit/templates/harness"
+HARNESS_DIR="$TARGET_DIR/harness"
+
+# Only sync harness if it exists in toolkit
+if [ -d "$HARNESS_TEMPLATE_DIR" ]; then
+  # Don't overwrite existing harness (user customizations)
+  if [ ! -d "$HARNESS_DIR" ]; then
+    echo "  → Harness template available but not initialized"
+    echo "    Run: bash .claude-toolkit/templates/harness/init.sh"
+  else
+    # Sync harness scripts (keep user data files like feature_list.json)
+    echo "  → Syncing harness scripts..."
+    for script in "$HARNESS_TEMPLATE_DIR"/*.sh; do
+      if [ -f "$script" ]; then
+        cp "$script" "$HARNESS_DIR/"
+        chmod +x "$HARNESS_DIR/$(basename "$script")"
+      fi
+    done
+  fi
+fi
+
+# ============================================
 # Dev Memory Integration
 # ============================================
 echo "  → Ensuring ai_memory directory exists..."

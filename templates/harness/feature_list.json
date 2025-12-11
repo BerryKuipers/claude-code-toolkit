@@ -1,0 +1,33 @@
+{
+  "$schema": "./feature_list.schema.json",
+  "_comment": "Feature list for autonomous coding sessions. Edit this file to define your features.",
+  "project": {
+    "name": "Your Project Name",
+    "description": "Brief project description"
+  },
+  "features": [
+    {
+      "id": "feature-001",
+      "name": "Example Feature",
+      "description": "Detailed description of what this feature should accomplish",
+      "status": "pending",
+      "priority": "high",
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Criterion 1: What must be true when complete",
+        "Criterion 2: Another requirement"
+      ],
+      "files_affected": [
+        "src/example.ts"
+      ],
+      "notes": "Optional implementation notes"
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "created_at": "",
+    "updated_at": "",
+    "total_features": 1,
+    "completed_features": 0
+  }
+}

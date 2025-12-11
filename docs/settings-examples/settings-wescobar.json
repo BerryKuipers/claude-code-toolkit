@@ -1,4 +1,5 @@
 {
+  "$comment": "Example settings.json for Wescobar project - Full-stack TypeScript with strict architecture",
   "hooks": {
     "SessionStart": [
       {

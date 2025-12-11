@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Feature List Schema",
+  "description": "Schema for autonomous-coding harness feature list",
+  "type": "object",
+  "required": ["project", "features", "metadata"],
+  "properties": {
+    "project": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "status"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$",
+            "description": "Unique feature identifier"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable feature name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Detailed description of the feature"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "in_progress", "completed", "blocked", "deferred"],
+            "description": "Current feature status"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["critical", "high", "medium", "low"],
+            "description": "Feature priority"
+          },
+          "dependencies": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "List of feature IDs this depends on"
+          },
+          "acceptance_criteria": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Criteria that must be met for completion"
+          },
+          "files_affected": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Files expected to be modified"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Implementation notes"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the feature was completed"
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "version": { "type": "string" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" },
+        "total_features": { "type": "integer" },
+        "completed_features": { "type": "integer" }
+      }
+    }
+  }
+}

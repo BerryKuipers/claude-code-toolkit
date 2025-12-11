@@ -1,0 +1,57 @@
+# Application Specification
+# This file describes your application for autonomous coding sessions
+
+================================================================================
+PROJECT OVERVIEW
+================================================================================
+Name: [Your Project Name]
+Type: [web-app | cli | library | api | mobile | other]
+Language: [Primary language/framework]
+
+================================================================================
+ARCHITECTURE
+================================================================================
+[Describe your project's architecture here]
+
+Example:
+- Frontend: React + TypeScript
+- Backend: Node.js + Express
+- Database: PostgreSQL with Prisma ORM
+- Testing: Jest + Playwright
+
+================================================================================
+KEY DIRECTORIES
+================================================================================
+src/           - Source code
+tests/         - Test files
+docs/          - Documentation
+scripts/       - Build and utility scripts
+
+================================================================================
+CONVENTIONS
+================================================================================
+[List your coding conventions, patterns, and standards]
+
+- Use TypeScript strict mode
+- Follow repository pattern for data access
+- All API endpoints must have OpenAPI documentation
+- Tests required for all new features
+
+================================================================================
+CONSTRAINTS
+================================================================================
+[List any constraints or limitations to respect]
+
+- Do not modify files in /vendor
+- All database changes require migrations
+- No direct API SDK calls (use service layer)
+
+================================================================================
+CONTEXT FILES
+================================================================================
+[List important files Claude should read for context]
+
+- CLAUDE.md - Project-specific Claude instructions
+- .claude/rules/*.mdc - Architecture rules
+- docs/ARCHITECTURE.md - System design documentation
+

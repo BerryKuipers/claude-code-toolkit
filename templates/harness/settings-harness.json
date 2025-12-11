@@ -1,4 +1,5 @@
 {
+  "$comment": "Settings template for autonomous-coding harness mode. Copy to .claude/settings.json",
   "hooks": {
     "SessionStart": [
       {
@@ -10,7 +11,7 @@
           },
           {
             "type": "command",
-            "command": "bash -c \"test -f scripts/install-gh-cli.sh && bash scripts/install-gh-cli.sh\""
+            "command": "bash -c \"test -f .claude/harness/harness-session-start.sh && bash .claude/harness/harness-session-start.sh\""
           },
           {
             "type": "command",
@@ -23,6 +24,10 @@
       {
         "matcher": "",
         "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c \"test -f .claude/harness/harness-session-stop.sh && bash .claude/harness/harness-session-stop.sh\""
+          },
           {
             "type": "command",
             "command": "bash -c \"test -f .claude/hooks/process-pending-memory.sh && bash .claude/hooks/process-pending-memory.sh\""
@@ -50,15 +55,6 @@
             "command": "bash -c \"test -f .claude/hooks/validate-code-quality.sh && bash .claude/hooks/validate-code-quality.sh '$CLAUDE_TOOL_NAME' '$CLAUDE_TOOL_ARGS'\""
           }
         ]
-      },
-      {
-        "matcher": "Bash|Task",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -c \"test -f .claude/hooks/pre-tool-use.sh && bash .claude/hooks/pre-tool-use.sh '$CLAUDE_TOOL_NAME' '$CLAUDE_TOOL_ARGS'\""
-          }
-        ]
       }
     ],
     "PostToolUse": [
@@ -68,15 +64,6 @@
           {
             "type": "command",
             "command": "bash -c \"test -f .claude/hooks/post-tool-quality-gate.sh && bash .claude/hooks/post-tool-quality-gate.sh '$CLAUDE_TOOL_NAME' '$CLAUDE_TOOL_ARGS'\""
-          }
-        ]
-      },
-      {
-        "matcher": "Task|SlashCommand",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -c \"test -f .claude/hooks/post-tool-use.sh && bash .claude/hooks/post-tool-use.sh '$CLAUDE_TOOL_NAME' '$CLAUDE_TOOL_ARGS'\""
           }
         ]
       },
