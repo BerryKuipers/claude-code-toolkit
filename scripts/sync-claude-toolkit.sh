@@ -95,10 +95,22 @@ echo "  → Syncing prompts..."
 rsync -a --delete "$TOOLKIT_DIR/prompts/" "$TARGET_DIR/prompts/" 2>/dev/null || \
   cp -rf "$TOOLKIT_DIR/prompts" "$TARGET_DIR/"
 
-echo "  → Syncing rules..."
+echo "  → Syncing rules (preserving project-specific 10+)..."
 mkdir -p "$TARGET_DIR/rules"
+# Backup project-specific rules (10-99) before sync
+if ls "$TARGET_DIR/rules"/1[0-9]-*.mdc "$TARGET_DIR/rules"/[2-9][0-9]-*.mdc 2>/dev/null | head -1 > /dev/null; then
+  mkdir -p "/tmp/project-rules-backup"
+  cp "$TARGET_DIR/rules"/1[0-9]-*.mdc "$TARGET_DIR/rules"/[2-9][0-9]-*.mdc /tmp/project-rules-backup/ 2>/dev/null || true
+fi
+# Sync toolkit rules (00-09)
 rsync -a --delete "$TOOLKIT_DIR/rules/" "$TARGET_DIR/rules/" 2>/dev/null || \
   cp -rf "$TOOLKIT_DIR/rules"/* "$TARGET_DIR/rules/" 2>/dev/null || true
+# Restore project-specific rules
+if [ -d "/tmp/project-rules-backup" ] && ls /tmp/project-rules-backup/*.mdc 2>/dev/null | head -1 > /dev/null; then
+  cp /tmp/project-rules-backup/*.mdc "$TARGET_DIR/rules/" 2>/dev/null || true
+  rm -rf /tmp/project-rules-backup
+  echo "  ✓ Preserved project-specific rules"
+fi
 
 # Sync scripts to project scripts directory
 SCRIPTS_DEST="$PROJECT_DIR/scripts"
