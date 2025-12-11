@@ -71,10 +71,9 @@ your-project/
    - `update/SKILL.md` - Extract events from commits
    - `briefing/SKILL.md` - Generate session briefings
 
-2. **Hook** (`.claude/hooks/post-commit-memory.sh`)
-   - Triggers after each commit
-   - Extracts commit metadata
-   - Invokes dev-memory-update skill
+2. **Hooks** (`.claude/hooks/`)
+   - `post-commit-memory.sh` - Called by husky, writes to `.pending_updates`
+   - `process-pending-memory.sh` - Processes pending updates into `events.jsonl`
 
 3. **Data Storage** (`ai_memory/`)
    - `events.jsonl` - One event per line
@@ -89,19 +88,29 @@ your-project/
 ### Data Flow
 
 ```
-git commit
+git commit (outside Claude session)
     ↓
-post-commit hook
+husky post-commit hook (.husky/post-commit)
     ↓
-dev-memory-update skill
+post-commit-memory.sh
     ↓
-events.jsonl (append)
-    ↓
-sessions.jsonl (append)
+ai_memory/.pending_updates (append)
 
 ---
 
-Session start
+Claude session start/stop
+    ↓
+process-pending-memory.sh (SessionStart & Stop hooks)
+    ↓
+Read .pending_updates
+    ↓
+events.jsonl (append)
+    ↓
+Clear .pending_updates
+
+---
+
+Session briefing (on demand)
     ↓
 dev-memory-briefing skill
     ↓
@@ -111,6 +120,24 @@ Generate SESSION_BRIEFING.md
     ↓
 Display to user
 ```
+
+### Hook Architecture
+
+1. **Husky Git Hook** (`.husky/post-commit`)
+   - Runs after every `git commit`
+   - Calls `.claude/hooks/post-commit-memory.sh`
+   - Writes commit metadata to `ai_memory/.pending_updates`
+   - Works even when Claude is not running
+
+2. **Claude Code Hooks** (in `.claude/settings.json`)
+   - `SessionStart`: Runs `process-pending-memory.sh` to catch up on commits made outside Claude
+   - `Stop`: Runs `process-pending-memory.sh` to capture commits made during the session
+
+3. **Processing Hook** (`.claude/hooks/process-pending-memory.sh`)
+   - Reads `.pending_updates` file
+   - Extracts commit type from message (feat/fix/refactor/etc.)
+   - Writes structured events to `events.jsonl`
+   - Clears pending file after processing
 
 ## Event Format
 

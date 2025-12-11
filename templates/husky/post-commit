@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Dev memory tracking - automatic timeline generation
+# Records commits to ai_memory/.pending_updates for Claude to process
+if [ -f ".claude/hooks/post-commit-memory.sh" ]; then
+  bash ".claude/hooks/post-commit-memory.sh"
+fi
