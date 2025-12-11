@@ -1,6 +1,6 @@
 # Claude Code Toolkit
 
-[![Run in Smithery](https://smithery.ai/badge/skills/berrykuipers)](https://smithery.ai/skills?ns=berrykuipers&utm_source=github&utm_medium=badge)
+[![Run in Smithery](https://smithery.ai/badge/skills/BerryKuipers)](https://smithery.ai/skills?ns=BerryKuipers&utm_source=github&utm_medium=badge)
 
 
 **Universal Claude Code configuration: agents, skills, workflows, and SessionStart hooks for consistent development across projects.**
