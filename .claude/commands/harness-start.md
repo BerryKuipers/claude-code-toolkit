@@ -60,12 +60,16 @@ jq --arg id "$FEATURE_ID" '
   && mv .claude/harness/feature_list.json.tmp .claude/harness/feature_list.json
 ```
 
-### Step 4: Route to Conductor Agent
+### Step 4: Route to Orchestrator Agent
 
-**If feature has github_issue**, delegate to conductor with issue number:
+The **orchestrator** is the central routing hub. It will analyze the feature and delegate appropriately:
+- For full-cycle features → Routes to **conductor agent** (6-phase workflow)
+- For simpler tasks → Routes to appropriate specialized agent
+
+**If feature has github_issue**, delegate to orchestrator:
 
 ```markdown
-I need the conductor agent to implement this feature from the harness.
+I need the orchestrator agent to handle this feature from the harness.
 
 Feature: [FEATURE_NAME]
 GitHub Issue: #[GITHUB_ISSUE_NUMBER]
@@ -75,20 +79,18 @@ Description: [DESCRIPTION]
 Acceptance Criteria:
 [LIST_FROM_FEATURE]
 
-Please execute full-cycle workflow:
-1. Architecture planning
-2. Implementation following project patterns
-3. Quality assurance (tests, audit, build)
-4. PR creation linked to issue #[GITHUB_ISSUE_NUMBER]
-5. Gemini review handling
-6. CI validation
+This is a full-cycle feature implementation task. Please:
+1. Route to the conductor agent for complete 6-phase workflow
+2. Pass the GitHub issue number for proper tracking
+3. Ensure all specialized agents are used as needed
 
-Use all specialized agents as needed:
-- architect for VSA compliance
-- implementation for coding
-- database for migrations
-- refactor for quality improvements
-- audit for code review
+The conductor will handle:
+- Phase 1: Planning (architect agent, research if needed)
+- Phase 2: Implementation (implementation agent, database agent)
+- Phase 3: Quality (tests, audit agent, refactor agent)
+- Phase 4: PR creation with proper issue linking
+- Phase 5: Gemini review + CI validation
+- Phase 6: Final report for human review
 ```
 
 **If feature has NO github_issue**, create one first:
@@ -151,18 +153,30 @@ echo "$TIMESTAMP - Completed: [FEATURE_NAME] (PR #[PR_NUMBER])" >> .claude/harne
     ├── Select next feature
     ├── Update status → in_progress
     │
-    └── Delegate to Conductor Agent
+    └── Delegate to Orchestrator Agent
             │
-            ├── Architect Agent (VSA validation)
-            ├── Implementation Agent (coding)
-            ├── Database Agent (migrations)
-            ├── Refactor Agent (quality)
-            ├── Audit Agent (review)
-            ├── UI Frontend Agent (browser testing)
-            │
-            └── PR Created + CI Validated
+            └── Routes to Conductor Agent (full-cycle)
                     │
-                    └── Update feature → completed
+                    ├── Phase 1: Planning
+                    │   └── Architect Agent (VSA validation)
+                    │
+                    ├── Phase 2: Implementation
+                    │   ├── Implementation Agent (coding)
+                    │   └── Database Agent (migrations)
+                    │
+                    ├── Phase 3: Quality Assurance
+                    │   ├── Test Suite (all tests)
+                    │   ├── Audit Agent (review)
+                    │   ├── Refactor Agent (if needed)
+                    │   └── UI Frontend Agent (browser testing)
+                    │
+                    ├── Phase 4: PR Creation
+                    │
+                    ├── Phase 5: Gemini Review + CI
+                    │
+                    └── Phase 6: Final Report
+                            │
+                            └── Update feature → completed
 ```
 
 ## Continuous Mode
