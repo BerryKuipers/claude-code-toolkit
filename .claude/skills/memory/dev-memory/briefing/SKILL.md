@@ -64,6 +64,8 @@ fi
 
 ### Step 2: Load and Filter Events
 
+**Note:** For large files, consider using a streaming approach (e.g., Node.js `readline` module) instead of loading the entire file into memory.
+
 ```typescript
 const loadEvents = (options: BriefingOptions): DevEvent[] => {
   const eventsFile = 'ai_memory/events.jsonl';
@@ -110,6 +112,51 @@ const loadEvents = (options: BriefingOptions): DevEvent[] => {
 
   // Limit results
   return events.slice(0, options.max_events || 20);
+};
+```
+
+### Step 2.5: Load Sessions Data
+
+**Note:** For large files, consider reading backwards to find recent sessions more efficiently.
+
+```typescript
+const loadSessions = (options: BriefingOptions): DevSession[] => {
+  const sessionsFile = 'ai_memory/sessions.jsonl';
+  if (!fs.existsSync(sessionsFile)) return [];
+
+  const lines = fs.readFileSync(sessionsFile, 'utf-8').split('\n').filter(l => l.trim());
+  const sessionsMap = new Map<string, DevSession>();
+
+  // Load all sessions, keeping only the latest version of each session ID
+  for (const line of lines) {
+    try {
+      const session = JSON.parse(line);
+
+      // Filter by repo
+      if (options.repo && session.repo !== options.repo) continue;
+
+      // Filter by branch
+      if (options.branch && session.branch !== options.branch) continue;
+
+      // Filter by date range
+      if (options.days_back) {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - options.days_back);
+        if (new Date(session.timestamp_end) < cutoff) continue;
+      }
+
+      // Keep latest version of each session (sessions can be updated)
+      sessionsMap.set(session.id, session);
+    } catch (e) {
+      console.warn(`Skipping malformed session line: ${line.substring(0, 50)}...`);
+    }
+  }
+
+  // Convert map to array and sort by end time descending
+  const sessions = Array.from(sessionsMap.values());
+  sessions.sort((a, b) => new Date(b.timestamp_end).getTime() - new Date(a.timestamp_end).getTime());
+
+  return sessions.slice(0, 5); // Return last 5 sessions
 };
 ```
 
@@ -194,6 +241,7 @@ const generateMarkdownBriefing = (
   repo: string,
   branch: string | undefined,
   events: DevEvent[],
+  sessions: DevSession[],
   state: ReturnType<typeof analyzeState>,
   actions: ReturnType<typeof collectActions>
 ): string => {
@@ -227,6 +275,24 @@ const generateMarkdownBriefing = (
       lines.push(`- **${type}:** ${count}`);
     });
   lines.push('');
+
+  // Recent sessions
+  if (sessions.length > 0) {
+    lines.push('## Recent Sessions');
+    lines.push('');
+    sessions.forEach(session => {
+      const startDate = session.timestamp_start.split('T')[0];
+      const duration = Math.round(
+        (new Date(session.timestamp_end).getTime() - new Date(session.timestamp_start).getTime()) / (1000 * 60)
+      );
+      lines.push(`- **[${startDate}]** ${session.agent} - ${duration}min`);
+      lines.push(`  - ${session.summary}`);
+      if (session.notes && session.notes.length > 0) {
+        session.notes.forEach(note => lines.push(`  - 📝 ${note}`));
+      }
+    });
+    lines.push('');
+  }
 
   // Timeline
   lines.push('## Timeline (Last 20 Events)');

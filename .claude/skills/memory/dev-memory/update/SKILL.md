@@ -131,6 +131,13 @@ const inferEventType = (commitType: string | null, message: string): EventType =
 
 ### Step 4: Generate Event ID
 
+**Performance Note:** For large files, this implementation reads the entire file. Consider optimizing by reading backwards (using `tac` command or a reverse-reading library) to find the last event ID more efficiently:
+
+```bash
+# Alternative: Read last matching event backwards (shell example)
+LAST_EVENT=$(tac ai_memory/events.jsonl 2>/dev/null | grep -m1 "\"id\":\"evt-$TODAY_DATE" | jq -r '.id')
+```
+
 ```typescript
 const generateEventId = (): string => {
   const date = new Date().toISOString().split('T')[0].replace(/-/g, '');
@@ -245,6 +252,13 @@ echo "$EVENT_JSON" >> ai_memory/events.jsonl
 
 ### Step 8: Update or Create Session
 
+**Performance Note:** This implementation reads the entire sessions file. For better performance, consider reading backwards to find the most recent session for the current branch and day:
+
+```bash
+# Alternative: Read sessions backwards (shell example)
+LAST_SESSION=$(tac ai_memory/sessions.jsonl 2>/dev/null | grep -m1 "\"branch\":\"$BRANCH\"" | jq -r 'select(.timestamp_start | startswith("'$TODAY'"))')
+```
+
 ```typescript
 const updateSession = (event: DevEvent, commitInput: CommitInput) => {
   const sessionFile = 'ai_memory/sessions.jsonl';
@@ -259,7 +273,7 @@ const updateSession = (event: DevEvent, commitInput: CommitInput) => {
     for (const line of lines) {
       try {
         const session = JSON.parse(line);
-        if (session.timestamp_start.startsWith(today) && session.branch === event.branch) {
+        if (session.timestamp_start.startswith(today) && session.branch === event.branch) {
           existingSession = session;
           break;
         }

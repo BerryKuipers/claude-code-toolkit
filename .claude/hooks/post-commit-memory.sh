@@ -11,8 +11,9 @@ CONFIG_FILE="$CLAUDE_PROJECT_DIR/.claude/config.yml"
 # Default to enabled if config doesn't exist or doesn't specify
 ENABLED=true
 if [ -f "$CONFIG_FILE" ]; then
-  # Check if devMemory.enabled is explicitly set to false
-  if grep -q "devMemory:" "$CONFIG_FILE" && grep -A 1 "devMemory:" "$CONFIG_FILE" | grep -q "enabled: false"; then
+  # Check if devMemory.enabled is explicitly set to false. This is more robust
+  # than `grep -A 1` as it looks within the entire (simple) YAML block.
+  if sed -n '/^devMemory:/,/^[^[:space:]]/p' "$CONFIG_FILE" | grep -q '^\s*enabled:\s*false\b'; then
     ENABLED=false
   fi
 fi
@@ -28,7 +29,7 @@ COMMIT_HASH=$(git rev-parse HEAD)
 COMMIT_SHORT_HASH=$(git rev-parse --short HEAD)
 COMMIT_MESSAGE=$(git log -1 --pretty=%B HEAD)
 COMMIT_TIMESTAMP=$(git log -1 --format=%aI HEAD)
-FILES_CHANGED=$(git diff-tree --no-commit-id --name-only -r HEAD | wc -l)
+FILES_CHANGED=$(git diff-tree --no-commit-id --name-only -r HEAD | wc -l | tr -d ' ')
 
 # Log update (non-blocking)
 echo "→ Updating dev memory for commit $COMMIT_SHORT_HASH..." >&2
