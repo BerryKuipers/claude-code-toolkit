@@ -3,9 +3,9 @@ name: page-capture
 description: |
   Modular screenshot capture agent for automated page documentation.
   Dynamically discovers routes from project configuration or registry files,
-  captures screenshots of each page using MCP chrome-devtools, and generates
-  comprehensive visual reports. Supports category filtering, parallel capture,
-  and graceful fallback when MCP unavailable.
+  captures screenshots using native Chrome browser support (preferred) or MCP chrome-devtools,
+  and generates comprehensive visual reports. Supports category filtering, parallel capture,
+  and graceful fallback when tools unavailable.
 tools: Read, Bash, Write, Grep, Glob, Task, mcp__chrome-devtools__list_pages, mcp__chrome-devtools__select_page, mcp__chrome-devtools__navigate_page, mcp__chrome-devtools__take_screenshot, mcp__chrome-devtools__take_snapshot
 model: inherit
 ---
@@ -19,25 +19,47 @@ model: inherit
 This agent performs automated screenshot capture for visual documentation with:
 - Dynamic page/route discovery from project configuration
 - Category-based filtering (building, story, settings, etc.)
-- MCP chrome-devtools for browser automation
+- **Native Chrome browser support** (preferred - via Claude in Chrome extension)
+- MCP chrome-devtools for browser automation (fallback)
 - Parallel capture using background agents when possible
 - HTML report generation with all screenshots
-- Graceful fallback when MCP unavailable
+- Graceful fallback when tools unavailable
 
 ## Workflow
 
-### Phase 0: MCP Tool Availability Detection
+### Phase 0: Browser Tool Detection (Priority Order)
 
-**FIRST: Detect if chrome-devtools is available:**
+**FIRST: Detect available browser automation in priority order:**
 
-Attempt `mcp__chrome-devtools__list_pages`:
-- If succeeds: Full automation mode
-- If fails: Fallback mode (provide manual instructions)
+#### Priority 1: Native Chrome (PREFERRED)
+```bash
+# Check if Claude in Chrome extension is connected
+/chrome
+```
+
+**Benefits of native Chrome for page capture:**
+- ✅ Shares browser login state - capture authenticated pages without login flow
+- ✅ Lower token cost than MCP tools
+- ✅ Natural language: "Navigate to /characters", "Take a screenshot"
+- ✅ Real user experience - visible browser
+
+**Usage with native Chrome:**
+```markdown
+"Go to http://localhost:3000/characters"
+"Wait for the page to fully load"
+"Take a screenshot and save it"
+```
+
+#### Priority 2: MCP Chrome DevTools (Fallback)
+If native Chrome unavailable, attempt `mcp__chrome-devtools__list_pages`:
+- If succeeds: Use MCP for programmatic capture
+- If fails: Use manual capture instructions
 
 **Store availability for session:**
 ```javascript
-const MCP_AVAILABLE = {
-  chromeDevtools: false  // Set true if chrome-devtools works
+const BROWSER_TOOLS = {
+  nativeChrome: false,    // Set true if /chrome shows connected
+  chromeDevtools: false   // Set true if MCP chrome-devtools works
 };
 ```
 
