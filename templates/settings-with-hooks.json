@@ -19,6 +19,10 @@
           {
             "type": "command",
             "command": "bash -c \"test -f .claude/hooks/session-briefing.sh && bash .claude/hooks/session-briefing.sh || true\""
+          },
+          {
+            "type": "command",
+            "command": "bash -c \"test -f .claude/hooks/loop-session-start.sh && bash .claude/hooks/loop-session-start.sh || true\""
           }
         ]
       }
@@ -30,6 +34,10 @@
           {
             "type": "command",
             "command": "bash -c \"test -f .claude/hooks/process-pending-memory.sh && bash .claude/hooks/process-pending-memory.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash -c \"test -f .claude/hooks/loop-controller.sh && bash .claude/hooks/loop-controller.sh || true\""
           }
         ]
       }

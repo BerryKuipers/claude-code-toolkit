@@ -24,6 +24,47 @@ These rules are **framework-agnostic** and can be used across multiple projects 
 ### Frontend Rules
 - **[04-frontend-react-architecture.mdc](.claude/rules/04-frontend-react-architecture.mdc)**: React component organization, data fetching, state management
 
+## Key Commands
+
+The toolkit includes powerful orchestration commands:
+
+### `/loop` - Autonomous Task Orchestration
+Transform short tasks into fully autonomous workflows:
+```bash
+/loop fix the failing tests            # Auto-detect and fix test failures
+/loop implement user dark mode         # Full feature workflow
+/loop refactor the payment service     # Code improvement loop
+/loop audit for security issues        # Security audit with auto-fix
+```
+
+The loop:
+- Expands tasks into comprehensive plans
+- Selects appropriate agents (conductor, audit, refactor, etc.)
+- Enforces verification gates (tests, lint, build)
+- Continues automatically until done or max iterations
+
+See [Loop Orchestration Guide](./docs/LOOP_ORCHESTRATION.md) for details.
+
+### `/conductor` - Full Workflow Orchestration
+Complete feature development from issue to PR:
+```bash
+/conductor                    # Auto-select issue, full workflow
+/conductor issue=123          # Specific issue
+/conductor quality-gate       # Validation only
+```
+
+### `/audit` - Code Quality Audit
+```bash
+/audit                        # Full audit
+/audit --scope=security       # Security focus
+```
+
+### Other Commands
+- `/start-workflow` - Full development cycle
+- `/refactor` - Code improvement
+- `/test-all` - Comprehensive testing
+- `/help` - Command documentation
+
 ## Using This Toolkit in Your Projects
 
 ### Option 1: As a Git Submodule (Recommended)
