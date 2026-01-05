@@ -83,9 +83,22 @@ rsync -a --delete "$TOOLKIT_DIR/hooks/" "$TARGET_DIR/hooks/" 2>/dev/null || \
 # Make hooks executable
 chmod +x "$TARGET_DIR/hooks/"*.sh 2>/dev/null || true
 
-echo "  → Syncing skills..."
+echo "  → Syncing skills (preserving project-learned skills)..."
+# Backup project-learned skills before sync
+if [ -d "$TARGET_DIR/skills/learned" ]; then
+  mkdir -p "/tmp/learned-skills-backup"
+  cp -rf "$TARGET_DIR/skills/learned"/* /tmp/learned-skills-backup/ 2>/dev/null || true
+fi
+# Sync toolkit skills (overwrites all except learned/)
 rsync -a --delete "$TOOLKIT_DIR/skills/" "$TARGET_DIR/skills/" 2>/dev/null || \
   cp -rf "$TOOLKIT_DIR/skills" "$TARGET_DIR/"
+# Restore project-learned skills
+if [ -d "/tmp/learned-skills-backup" ] && ls /tmp/learned-skills-backup/* 2>/dev/null | head -1 > /dev/null; then
+  mkdir -p "$TARGET_DIR/skills/learned"
+  cp -rf /tmp/learned-skills-backup/* "$TARGET_DIR/skills/learned/" 2>/dev/null || true
+  rm -rf /tmp/learned-skills-backup
+  echo "  ✓ Preserved project-learned skills"
+fi
 
 echo "  → Syncing API skills..."
 rsync -a --delete "$TOOLKIT_DIR/api-skills-source/" "$TARGET_DIR/api-skills-source/" 2>/dev/null || \
