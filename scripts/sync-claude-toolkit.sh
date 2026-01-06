@@ -67,14 +67,44 @@ if [ -d ".git" ] && [ -f ".gitmodules" ]; then
   fi
 fi
 
-# Sync universal files from toolkit
-echo "  → Syncing agents..."
-rsync -a --delete "$TOOLKIT_DIR/agents/" "$TARGET_DIR/agents/" 2>/dev/null || \
-  cp -rf "$TOOLKIT_DIR/agents" "$TARGET_DIR/"
+# ============================================
+# Sync with project-specific preservation
+# Pattern: 00-09 = toolkit, 10+ = project-specific
+# ============================================
 
-echo "  → Syncing commands..."
+echo "  → Syncing agents (preserving project-specific 10+)..."
+mkdir -p "$TARGET_DIR/agents"
+# Backup project-specific agents (10-99) before sync
+if ls "$TARGET_DIR/agents"/1[0-9]-*.md "$TARGET_DIR/agents"/[2-9][0-9]-*.md 2>/dev/null | head -1 > /dev/null; then
+  mkdir -p "/tmp/project-agents-backup"
+  cp "$TARGET_DIR/agents"/1[0-9]-*.md "$TARGET_DIR/agents"/[2-9][0-9]-*.md /tmp/project-agents-backup/ 2>/dev/null || true
+fi
+# Sync toolkit agents
+rsync -a --delete "$TOOLKIT_DIR/agents/" "$TARGET_DIR/agents/" 2>/dev/null || \
+  cp -rf "$TOOLKIT_DIR/agents"/* "$TARGET_DIR/agents/" 2>/dev/null || true
+# Restore project-specific agents
+if [ -d "/tmp/project-agents-backup" ] && ls /tmp/project-agents-backup/*.md 2>/dev/null | head -1 > /dev/null; then
+  cp /tmp/project-agents-backup/*.md "$TARGET_DIR/agents/" 2>/dev/null || true
+  rm -rf /tmp/project-agents-backup
+  echo "  ✓ Preserved project-specific agents"
+fi
+
+echo "  → Syncing commands (preserving project-specific 10+)..."
+mkdir -p "$TARGET_DIR/commands"
+# Backup project-specific commands (10-99) before sync
+if ls "$TARGET_DIR/commands"/1[0-9]-*.md "$TARGET_DIR/commands"/[2-9][0-9]-*.md 2>/dev/null | head -1 > /dev/null; then
+  mkdir -p "/tmp/project-commands-backup"
+  cp "$TARGET_DIR/commands"/1[0-9]-*.md "$TARGET_DIR/commands"/[2-9][0-9]-*.md /tmp/project-commands-backup/ 2>/dev/null || true
+fi
+# Sync toolkit commands
 rsync -a --delete "$TOOLKIT_DIR/commands/" "$TARGET_DIR/commands/" 2>/dev/null || \
-  cp -rf "$TOOLKIT_DIR/commands" "$TARGET_DIR/"
+  cp -rf "$TOOLKIT_DIR/commands"/* "$TARGET_DIR/commands/" 2>/dev/null || true
+# Restore project-specific commands
+if [ -d "/tmp/project-commands-backup" ] && ls /tmp/project-commands-backup/*.md 2>/dev/null | head -1 > /dev/null; then
+  cp /tmp/project-commands-backup/*.md "$TARGET_DIR/commands/" 2>/dev/null || true
+  rm -rf /tmp/project-commands-backup
+  echo "  ✓ Preserved project-specific commands"
+fi
 
 echo "  → Syncing hooks..."
 mkdir -p "$TARGET_DIR/hooks"
@@ -83,16 +113,28 @@ rsync -a --delete "$TOOLKIT_DIR/hooks/" "$TARGET_DIR/hooks/" 2>/dev/null || \
 # Make hooks executable
 chmod +x "$TARGET_DIR/hooks/"*.sh 2>/dev/null || true
 
-echo "  → Syncing skills (preserving project-learned skills)..."
-# Backup project-learned skills before sync
+echo "  → Syncing skills (preserving project-specific 10+ and learned/)..."
+mkdir -p "$TARGET_DIR/skills"
+# Backup project-specific skills (10-99 prefix) before sync
+if ls "$TARGET_DIR/skills"/1[0-9]-* "$TARGET_DIR/skills"/[2-9][0-9]-* 2>/dev/null | head -1 > /dev/null; then
+  mkdir -p "/tmp/project-skills-backup"
+  cp -rf "$TARGET_DIR/skills"/1[0-9]-* "$TARGET_DIR/skills"/[2-9][0-9]-* /tmp/project-skills-backup/ 2>/dev/null || true
+fi
+# Backup learned skills
 if [ -d "$TARGET_DIR/skills/learned" ]; then
   mkdir -p "/tmp/learned-skills-backup"
   cp -rf "$TARGET_DIR/skills/learned"/* /tmp/learned-skills-backup/ 2>/dev/null || true
 fi
-# Sync toolkit skills (overwrites all except learned/)
+# Sync toolkit skills
 rsync -a --delete "$TOOLKIT_DIR/skills/" "$TARGET_DIR/skills/" 2>/dev/null || \
-  cp -rf "$TOOLKIT_DIR/skills" "$TARGET_DIR/"
-# Restore project-learned skills
+  cp -rf "$TOOLKIT_DIR/skills"/* "$TARGET_DIR/skills/" 2>/dev/null || true
+# Restore project-specific skills
+if [ -d "/tmp/project-skills-backup" ] && ls /tmp/project-skills-backup/* 2>/dev/null | head -1 > /dev/null; then
+  cp -rf /tmp/project-skills-backup/* "$TARGET_DIR/skills/" 2>/dev/null || true
+  rm -rf /tmp/project-skills-backup
+  echo "  ✓ Preserved project-specific skills"
+fi
+# Restore learned skills
 if [ -d "/tmp/learned-skills-backup" ] && ls /tmp/learned-skills-backup/* 2>/dev/null | head -1 > /dev/null; then
   mkdir -p "$TARGET_DIR/skills/learned"
   cp -rf /tmp/learned-skills-backup/* "$TARGET_DIR/skills/learned/" 2>/dev/null || true
