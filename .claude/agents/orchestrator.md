@@ -98,6 +98,10 @@ Categorize the task using semantic understanding:
 **Repository Health**: repo health, repository status, health check
 → Route to: scripts/repo-health-check.sh
 
+**Credit-Saving Delegation (Optional)**: delegate to gemini, save credits, bulk changes, repetitive tasks, high-volume low-risk
+→ Route to: gemini-delegation agent or /delegate-gemini command
+→ Note: ALWAYS requires user approval before delegating. Proposes, never auto-delegates.
+
 ### Step 2: Discover Available Commands
 
 ALWAYS check what tools exist before routing:
@@ -341,6 +345,7 @@ End every orchestration with:
 - audit - Comprehensive quality audits
 - **integration-validator** - E2E feature wiring validation (orphaned endpoints, dead code, frontend-backend connections)
 - **page-capture** - Automated page screenshot capture with visual documentation
+- **gemini-delegation** - Optional credit-saving delegation to Gemini (always requires user approval)
 
 **Commands:**
 - /architect - Architecture analysis
@@ -352,6 +357,7 @@ End every orchestration with:
 - /create-test - Test file generation
 - /ci-monitor - CI monitoring with auto-fix
 - /data:setup - Test data management
+- /delegate-gemini - Credit-saving delegation workflow (optional, user-approved)
 
 **MCP Servers:**
 - Chrome DevTools - Frontend inspection

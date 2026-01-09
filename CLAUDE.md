@@ -59,6 +59,15 @@ Complete feature development from issue to PR:
 /audit --scope=security       # Security focus
 ```
 
+### `/delegate-gemini` - Credit-Saving Delegation (Optional)
+Optionally offload high-volume, low-risk work to Gemini:
+```bash
+/delegate-gemini add JSDoc to src/utils/  # Propose delegation
+/delegate-gemini --verify-only             # Verify Gemini's results
+```
+
+See [Gemini Delegation Guide](./docs/GEMINI_DELEGATION.md) for details.
+
 ### Other Commands
 - `/start-workflow` - Full development cycle
 - `/refactor` - Code improvement

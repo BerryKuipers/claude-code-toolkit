@@ -1,10 +1,71 @@
 # Help - Unified Command System Guide
 
-**Arguments:** [command] [--patterns] [--examples]
+**Arguments:** [command] [--quick] [--patterns] [--examples]
 
 **Success Criteria:** Clear understanding of command system, collaboration patterns, and usage examples
 
 **Description:** Comprehensive help system explaining the hub-and-spoke architecture, command collaboration patterns, and intelligent workflows.
+
+---
+
+## ⚡ Quick Reference - What to Use When
+
+### "I want to..."
+
+| Goal | Command | Notes |
+|------|---------|-------|
+| **Work on a GitHub issue** | `/conductor` or `/issue-pickup` | Full workflow: issue → PR |
+| **Run an autonomous task loop** | `/loop <task>` | Loops until done or max iterations |
+| **Review architecture** | `/architect` | SOLID, layers, patterns |
+| **Improve code quality** | `/refactor` | Safe, atomic improvements |
+| **Run all tests** | `/test-all` | Comprehensive test suite |
+| **Test UI in browser** | `/test-ui` | Chrome-based UI testing |
+| **Audit code quality** | `/audit` | Scores code 0-10 |
+| **Review a PR** | `/review-pr` | Code review with recommendations |
+| **Create a PR** | `/pr-process` | PR creation workflow |
+| **Save credits (delegate to Gemini)** | `/delegate-gemini` | Optional, requires approval |
+| **Capture page screenshots** | `/capture-pages` | Visual documentation |
+| **Fix failing E2E tests** | `/fix-e2e-tests` | Automated test fixing |
+| **Update dependencies** | `/update-deps` | Safe dependency updates |
+| **Fix vulnerabilities** | `/fix-vulns` | Security vulnerability fixes |
+| **General task routing** | `/orchestrator` | Routes to appropriate agent |
+
+### Quick Decision Tree
+
+```
+Start here: What's your task?
+    │
+    ├─ Full feature from issue? ──────→ /conductor or /loop implement <feature>
+    │
+    ├─ Fix something? ────────────────→ /loop fix <problem>
+    │
+    ├─ Improve existing code? ────────→ /refactor <target>
+    │
+    ├─ Check code quality? ───────────→ /audit
+    │
+    ├─ Repetitive bulk work? ─────────→ /delegate-gemini (saves credits)
+    │
+    ├─ Run tests? ────────────────────→ /test-all or /test-ui
+    │
+    └─ Not sure? ─────────────────────→ /orchestrator task="<describe it>"
+```
+
+### Agent Specializations
+
+| Agent | Specialty | Use When |
+|-------|-----------|----------|
+| **conductor** | Full workflows | Issue → implementation → PR → merge |
+| **orchestrator** | Task routing | Unsure which agent to use |
+| **architect** | Architecture | Reviewing design, SOLID, layers |
+| **implementation** | Feature dev | Building new features |
+| **refactor** | Code improvement | Cleaning up, simplifying |
+| **audit** | Quality checks | Pre-deployment, PR reviews |
+| **design** | UI/UX | Styling, accessibility |
+| **database** | DB operations | Migrations, schema changes |
+| **security-pentest** | Security | Vulnerability scanning |
+| **gemini-delegation** | Credit saving | Bulk repetitive work |
+
+---
 
 ## 🎯 Command System Overview
 
@@ -98,29 +159,42 @@ User: /debug (finds DB performance issue)
 
 ## 🛠️ Command Categories
 
+### Workflow Orchestration
+- `/loop <task>` - Autonomous task loop (runs until done or max iterations)
+- `/conductor` - Full-cycle workflow: issue → implementation → PR → merge
+- `/orchestrator` - Central task routing hub
+- `/issue-pickup` - Smart GitHub issue selection with resumption
+
 ### Analysis & Debugging
 - `/debug` - Multi-source issue analysis (Loki + Chrome DevTools + System)
-- `/architecture-tester` - Validate command system architecture
-- `/command-analyzer` - Analyze command performance and patterns
+- `/audit` - Comprehensive code quality audit (scores 0-10)
+- `/architect` - Architecture analysis, SOLID/VSA validation
 
 ### Development & Refactoring
-- `/refactor` - Intelligent code refactoring with architectural awareness
-- `/architect` - System architecture analysis and recommendations
-- `/design-review` - UI/UX component analysis and improvements
+- `/refactor` - Safe code improvement with quality gates
+- `/design-review` - UI/UX component analysis
+- `/delegate-gemini` - Credit-saving delegation to Gemini (optional)
 
 ### Testing & Validation
 - `/test-all` - Comprehensive testing orchestration
+- `/test-ui` - Browser-based UI testing with Chrome
 - `/test-user-flow` - End-to-end user workflow validation
-- `/ci-test-fixer` - Continuous integration test resolution
+- `/fix-e2e-tests` - Automated E2E test fixing
 
-### Workflow & Project Management
-- `/issue-pickup-smart` - Intelligent GitHub issue selection
-- `/pr-process` - Pull request creation and management
-- `/orchestrator` - Central workflow coordination hub
+### Pull Requests & Code Review
+- `/review-pr` - Comprehensive PR code review
+- `/pr-process` - Pull request creation workflow
+- `/pick-next-pr` - Intelligently select safest PR to work on
+
+### Security & Dependencies
+- `/fix-vulns` - Automated security vulnerability remediation
+- `/update-deps` - Safe dependency update workflow
+
+### Visual & Documentation
+- `/capture-pages` - Automated page screenshot capture
 
 ### Database & Infrastructure
 - `/db-manage` - Database operations and management
-- `/migrate-analysis` - Database migration analysis
 
 ## 🎛️ Orchestrator Modes
 
