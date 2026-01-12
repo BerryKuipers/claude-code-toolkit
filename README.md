@@ -51,6 +51,7 @@ This repository serves as the **single source of truth** for Claude Code configu
 - `install-gh-cli.sh` - Auto-install GitHub CLI (SessionStart hook)
 - `copy-claude-config-to-repos.sh` - Deploy to multiple repos
 - `deploy-claude-config-to-github-repos.sh` - Automated GitHub deployment
+- `brv-wrapper.sh` - Optional ByteRover CLI wrapper (project-agnostic helper)
 
 ### `docs/` - Documentation
 
