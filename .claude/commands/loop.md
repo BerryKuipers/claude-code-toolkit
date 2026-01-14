@@ -465,6 +465,23 @@ jq '.enabled = false' .claude/state/loop.local.json > tmp && mv tmp .claude/stat
 
 ---
 
+## Not the Same as /ralph-loop
+
+This `/loop` command uses an **internal protocol** with `<promise>DONE</promise>` completion markers.
+
+For **Ralph TUI-driven loops** with PRD JSON files, use `/ralph-loop` instead:
+- `/ralph-loop` - External ralph-tui with PRD JSON from GitHub issues
+- Different protocol, different state files, different use case
+
+| Feature | `/loop` (this command) | `/ralph-loop` |
+|---------|------------------------|---------------|
+| Protocol | Internal `<promise>` markers | External ralph-tui |
+| State | `.claude/state/loop.local.json` | `.ralph/prd.json` |
+| Input | Ad-hoc task description | GitHub issue |
+| Use Case | Quick task automation | Structured PRD development |
+
+---
+
 ## Technical Notes
 
 **State File Location:** `.claude/state/loop.local.json`
