@@ -29,6 +29,10 @@
 | **Update dependencies** | `/update-deps` | Safe dependency updates |
 | **Fix vulnerabilities** | `/fix-vulns` | Security vulnerability fixes |
 | **General task routing** | `/orchestrator` | Routes to appropriate agent |
+| **Deploy to staging/prod** | `/deploy` | Docker compose deployment |
+| **VPS operations** | `/vps` | Container logs, restart, health |
+| **DNS/Cloudflare** | `/dns` | DNS records, SSL, cache |
+| **Pre-deploy validation** | `/verify-deploy` | Check config before deploy |
 
 ### Quick Decision Tree
 
@@ -47,6 +51,10 @@ Start here: What's your task?
     │
     ├─ Run tests? ────────────────────→ /test-all or /test-ui
     │
+    ├─ Deploy to staging/prod? ───────→ /verify-deploy then /deploy
+    │
+    ├─ VPS issues? ───────────────────→ /vps logs or /vps health
+    │
     └─ Not sure? ─────────────────────→ /orchestrator task="<describe it>"
 ```
 
@@ -64,6 +72,7 @@ Start here: What's your task?
 | **database** | DB operations | Migrations, schema changes |
 | **security-pentest** | Security | Vulnerability scanning |
 | **gemini-delegation** | Credit saving | Bulk repetitive work |
+| **infrastructure** | DevOps | VPS, Docker, Cloudflare, deployments |
 
 ---
 
@@ -196,6 +205,12 @@ User: /debug (finds DB performance issue)
 ### Database & Infrastructure
 - `/db-manage` - Database operations and management
 
+### Infrastructure & Deployment
+- `/deploy` - Deploy to staging or production via Docker compose
+- `/vps` - VPS operations: container logs, restart, health checks
+- `/dns` - Cloudflare DNS, SSL, cache, tunnels, Access
+- `/verify-deploy` - Pre-flight validation before deployment
+
 ## 🎛️ Orchestrator Modes
 
 ### Advisory Mode (Recommended)
@@ -304,6 +319,27 @@ When commands disagree, orchestrator uses these rules:
 # → Runs targeted test suites
 # → If issues found: coordinates with /debug
 # → Provides actionable recommendations
+```
+
+### Scenario 5: "I want to deploy to staging"
+```bash
+/verify-deploy staging           # Pre-flight checks first
+# → Validates Docker, env vars, ports, DNS
+# → Reports errors and warnings
+# → Generates checklist
+
+/deploy staging                  # Then deploy
+# → Backs up database
+# → Pulls Docker images
+# → Deploys via docker compose
+# → Verifies health checks
+```
+
+### Scenario 6: "Something's wrong on the VPS"
+```bash
+/vps logs api                    # Check API logs
+/vps health                      # Run health checks
+/vps restart api                 # Restart if needed
 ```
 
 ## 💡 Pro Tips
