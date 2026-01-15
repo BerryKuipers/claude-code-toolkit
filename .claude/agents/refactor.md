@@ -411,6 +411,31 @@ Analysis only, no code changes:
 **When**: Same logic in multiple places
 **How**: Extract to shared utility function
 
+### Pattern 6: Type Hardening
+**When**: String literals that should be enums, `any` types that can be narrowed, inline types duplicating shared definitions
+**How**: Replace with existing enums/constants, narrow types, import shared types
+**Reference**: `.claude/skills/quality/type-hardening/SKILL.md`
+
+**Examples:**
+```typescript
+// String literal → Prisma enum
+if (user.role === 'admin')  →  if (user.role === UserRole.admin)
+
+// any → SPECIFIC type (not unknown - that's cheating)
+data: any  →  data: UserPayload  // ✅ Good
+data: any  →  data: unknown      // ❌ Bad - not a real fix
+
+// Inline → shared type
+type: 'info' | 'error'  →  type: NotificationType
+```
+
+**Workflow:**
+1. Search existing types first (Prisma enums, shared/, constants)
+2. Apply 1-3 changes at a time
+3. Verify with `tsc --noEmit` after each batch
+4. Commit atomically
+5. Create new types only when genuinely needed
+
 ## Auto-Detection Mode
 
 If no target specified:

@@ -18,6 +18,7 @@
 | **Run an autonomous task loop** | `/loop <task>` | Loops until done or max iterations |
 | **Review architecture** | `/architect` | SOLID, layers, patterns |
 | **Improve code quality** | `/refactor` | Safe, atomic improvements |
+| **Harden TypeScript types** | `/harden-types` | Strings → enums, `any` → specific types |
 | **Run all tests** | `/test-all` | Comprehensive test suite |
 | **Test UI in browser** | `/test-ui` | Chrome-based UI testing |
 | **Audit code quality** | `/audit` | Scores code 0-10 |
@@ -181,6 +182,7 @@ User: /debug (finds DB performance issue)
 
 ### Development & Refactoring
 - `/refactor` - Safe code improvement with quality gates
+- `/harden-types` - Replace string literals with enums, narrow `any` to specific types
 - `/design-review` - UI/UX component analysis
 - `/delegate-gemini` - Credit-saving delegation to Gemini (optional)
 
