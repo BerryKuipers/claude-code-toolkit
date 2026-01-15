@@ -376,6 +376,124 @@ npx tsc --noEmit  # Must pass - catches missed renames
 [Standard]
 ```
 
+### Template: Type Hardening
+
+```markdown
+# Gemini Handoff Pack
+
+## Session Context
+- **Delegated By**: Claude Cloud Agent
+- **Delegation ID**: {{DELEGATION_ID}}
+- **Project**: {{PROJECT_NAME}}
+- **Reference Skill**: `.claude/skills/quality/type-hardening/SKILL.md`
+
+## Allowed Scope
+```
+{{SCOPE_PATTERNS}}
+```
+
+**You may ONLY modify files matching these patterns.**
+
+## Task Instructions
+
+**Objective**: Harden types by replacing string literals with enums and narrowing `any` to specific types.
+
+**Priority Order:**
+1. Prisma Enums (most reliable)
+2. Shared Types (`shared/types/`, `@shared/types`)
+3. Constants (`*.constants.ts`)
+4. Create new types ONLY when genuinely needed
+
+**Check existing types FIRST:**
+```bash
+# Prisma enums
+grep -E "^enum " backend/prisma/schema.prisma
+
+# Shared types
+find shared/types -name "*.ts" -exec grep "export type\|export interface" {} \;
+
+# Constants
+find . -name "*.constants.ts" -exec cat {} \;
+```
+
+**Pattern - String Literals:**
+```typescript
+// ❌ BEFORE
+if (user.role === 'admin')
+
+// ✅ AFTER
+import { UserRole } from '../generated/prisma/index.js';
+if (user.role === UserRole.admin)
+```
+
+**Pattern - Any Types:**
+```typescript
+// ❌ BEFORE
+const data: any = response.body;
+
+// ✅ AFTER - narrow to SPECIFIC type
+const data: UserPayload = response.body;
+
+// ❌ WRONG - unknown is cheating, not fixing
+const data: unknown = response.body;  // NOT ALLOWED
+```
+
+**Work in small batches (1-3 changes), verify after each.**
+
+## Acceptance Criteria
+```bash
+# REQUIRED after EACH batch of changes
+npx tsc --noEmit
+
+# Before final completion
+{{PKG_MANAGER}} run lint
+```
+
+**If verification fails:** STOP, report the error, do NOT proceed.
+
+## Required Output Format
+```markdown
+## Type Hardening Report
+
+### Delegation ID
+{{DELEGATION_ID}}
+
+### Changes Applied
+| File | Line | Before | After |
+|------|------|--------|-------|
+| auth.service.ts | 45 | `'admin'` | `UserRole.admin` |
+| user.service.ts | 89 | `any` | `UserProfile` |
+
+### Existing Types Used
+- `UserRole` from `@prisma/client`
+- `UserProfile` from `shared/types/user`
+
+### New Types Created (if any)
+- None (or list with justification)
+
+### Verification
+- `npx tsc --noEmit` - ✅ Passed
+- `npm run lint` - ✅ Passed
+
+### Remaining Opportunities
+[List any skipped items with reason]
+```
+
+## Guardrails
+
+⚠️ **STOP and escalate** if:
+1. No existing type matches - need Cloud to create new type
+2. Changing `any` would require business logic changes
+3. Type is in security-critical code (auth, crypto)
+4. Uncertain about correct enum value casing
+
+⚠️ **NEVER:**
+- Replace `any` with `unknown` (that's cheating, not fixing)
+- Create types without checking existing first
+- Change any business logic
+- Proceed after verification failure
+```
+
 ## Best Practices
 
 1. **Scope narrowly** - Better to under-scope than over-scope

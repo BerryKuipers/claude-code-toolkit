@@ -225,6 +225,7 @@ Generating fix-up prompt...
 - Format/lint auto-fixes
 - Type definition generation from schemas
 - Expanding test cases with patterns
+- **Type hardening** - replacing string literals with existing enums (see Template: Type Hardening in handoff-pack skill)
 
 ### ❌ Keep in Cloud
 - Architecture and design decisions
