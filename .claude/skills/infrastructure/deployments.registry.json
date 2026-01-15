@@ -1,0 +1,90 @@
+{
+  "$schema": "./deployments.schema.json",
+  "_comment": "Project deployment registry - repo-agnostic infrastructure config",
+
+  "infrastructure": {
+    "vault": {
+      "host": "10.0.0.23",
+      "port": 8200,
+      "description": "HashiCorp Vault on home NAS for secrets"
+    },
+    "nas": {
+      "host": "10.0.0.23",
+      "user": "berry",
+      "sshKeyName": "home_nas",
+      "description": "Home NAS for backups, Qdrant, media services"
+    },
+    "dns": {
+      "provider": "cloudflare",
+      "cli": "wrangler",
+      "description": "Cloudflare DNS, tunnels, Access, CDN"
+    }
+  },
+
+  "projects": {
+    "tribevibe": {
+      "description": "Event management and social matching platform",
+      "repository": "BerryKuipers/TribeVibe",
+      "vps": {
+        "host": "148.230.71.1",
+        "user": "root",
+        "sshKeyName": "tribevibe_vps",
+        "provider": "hostinger"
+      },
+      "environments": {
+        "production": {
+          "domain": "tribevibe.events",
+          "apiDomain": "api.tribevibe.events",
+          "dockerCompose": "/opt/tribevibe/docker-compose.yml",
+          "services": ["tribevibe-api-prod", "tribevibe-web-prod", "tribevibe-postgres"]
+        },
+        "staging": {
+          "domain": "staging.tribevibe.events",
+          "apiDomain": "api-staging.tribevibe.events",
+          "dockerCompose": "/opt/tribevibe-staging/docker-compose.yml",
+          "services": ["tribevibe-api-staging", "tribevibe-web-staging"]
+        }
+      },
+      "monitoring": {
+        "seq": "seq.tribevibe.events",
+        "healthEndpoint": "/health"
+      },
+      "github": {
+        "deployWorkflow": "deploy-staging.yml",
+        "productionWorkflow": "deploy-production.yml"
+      }
+    },
+
+    "wescobar": {
+      "description": "Universe storytelling and narrative platform",
+      "repository": "BerryKuipers/WescoBar-Universe-Storyteller",
+      "vps": {
+        "host": null,
+        "comment": "Not yet deployed - local development only"
+      },
+      "environments": {
+        "development": {
+          "domain": "localhost:5173",
+          "apiDomain": "localhost:3000"
+        }
+      }
+    }
+  },
+
+  "sshKeys": {
+    "_location": "C:/Users/BerryLocal/.ssh/",
+    "_note": "All keys are passphrase-free for MCP automation",
+    "tribevibe_vps": {
+      "file": "tribevibe_vps",
+      "target": "Hostinger VPS"
+    },
+    "home_nas": {
+      "file": "home_nas",
+      "target": "Home NAS (10.0.0.23)"
+    },
+    "id_ed25519_nas_nopass": {
+      "file": "id_ed25519_nas_nopass",
+      "target": "NAS alternate key"
+    }
+  }
+}
