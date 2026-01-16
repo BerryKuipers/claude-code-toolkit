@@ -360,9 +360,13 @@ echo "DELEGATION PROTOCOL:"
 echo "-------------------"
 echo "1. Read story requirements above"
 echo "2. Delegate to: $STORY_EXECUTOR"
-echo "3. After completion, update PRD:"
-echo "   - Set passes=true for $STORY_ID"
-echo "   - Add timestamped notes"
+echo "3. After completion, update state files:"
+echo "   a. PRD (prd.json):"
+echo "      - Set passes=true for $STORY_ID"
+echo "      - Add timestamped notes"
+echo "   b. Progress (progress.txt):"
+echo "      - Append: [timestamp] $STORY_ID completed via $STORY_EXECUTOR"
+echo "      - Record any learnings or blockers"
 echo "4. Git commit changes"
 echo "5. Run /clear to continue loop"
 echo ""
@@ -409,6 +413,44 @@ If `.ralph/instructions.md` exists, follow its delegation rules.
 | `.ralph/progress.txt` | Learnings across iterations |
 | `.ralph/loop-active` | Flag for auto-resume |
 | `.ralph/instructions.md` | Delegation policy |
+
+---
+
+## State Update Protocol (MANDATORY)
+
+**After EVERY story completion, you MUST update BOTH state files:**
+
+### 1. Update prd.json
+
+```bash
+# Update the story's passes flag and add notes
+jq --arg id "$STORY_ID" --arg notes "Completed via $STORY_EXECUTOR at $(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  '(.userStories[] | select(.id == $id)) |= (.passes = true | .notes = $notes)' \
+  "$PRD_FILE" > "$PRD_FILE.tmp" && mv "$PRD_FILE.tmp" "$PRD_FILE"
+```
+
+### 2. Update progress.txt
+
+```bash
+# Append progress entry
+cat >> "$PROGRESS_FILE" << EOF
+
+---
+## $(date -u +%Y-%m-%dT%H:%M:%SZ) - $STORY_ID Complete
+
+**Executor**: $STORY_EXECUTOR
+**Status**: Completed
+**Learnings**: [Record any insights, blockers resolved, patterns discovered]
+**Files Changed**: [List key files modified]
+EOF
+```
+
+### Why Both Files Matter
+
+- **prd.json**: Tracks completion status for loop continuation logic
+- **progress.txt**: Preserves learnings across /clear cycles (context resets)
+
+**If you skip progress.txt updates, learnings are lost when context clears.**
 
 ---
 
