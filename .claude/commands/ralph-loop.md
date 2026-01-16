@@ -359,16 +359,19 @@ echo ""
 echo "DELEGATION PROTOCOL:"
 echo "-------------------"
 echo "1. Read story requirements above"
-echo "2. Delegate to: $STORY_EXECUTOR"
-echo "3. After completion, update state files:"
-echo "   a. PRD (prd.json):"
-echo "      - Set passes=true for $STORY_ID"
-echo "      - Add timestamped notes"
-echo "   b. Progress (progress.txt):"
-echo "      - Append: [timestamp] $STORY_ID completed via $STORY_EXECUTOR"
-echo "      - Record any learnings or blockers"
-echo "4. Git commit changes"
-echo "5. Run /clear to continue loop"
+echo "2. UPDATE session-state.json (before delegating)"
+echo "3. Delegate to: $STORY_EXECUTOR"
+echo "4. After completion, UPDATE ALL state files:"
+echo "   a. session-state.json - clear runningAgents, update checkpoint"
+echo "   b. prd.json - set passes=true, add notes"
+echo "   c. progress.txt - append completion entry with learnings"
+echo "5. Git commit changes"
+echo "6. Run /clear to continue loop"
+echo ""
+echo "STATE FILES TO UPDATE:"
+echo "  .ralph/session-state.json  <- BEFORE and AFTER delegation"
+echo "  .ralph/prd.json            <- AFTER completion"
+echo "  .ralph/progress.txt        <- AFTER completion"
 echo ""
 echo "To stop: /ralph-loop --stop"
 echo "=============================================="
@@ -413,6 +416,128 @@ If `.ralph/instructions.md` exists, follow its delegation rules.
 | `.ralph/progress.txt` | Learnings across iterations |
 | `.ralph/loop-active` | Flag for auto-resume |
 | `.ralph/instructions.md` | Delegation policy |
+| `.ralph/session-state.json` | **NEW** - Current session state for crash recovery |
+
+---
+
+## Session State Protocol (Crash Recovery)
+
+**You MUST maintain `.ralph/session-state.json` throughout the session for crash recovery.**
+
+### When to Update Session State
+
+Update session-state.json at these checkpoints:
+1. **Before delegating** to any agent
+2. **After agent completes** (success or failure)
+3. **When todo list changes** (task added, status changed)
+4. **Before running /clear**
+
+### Session State Schema
+
+```json
+{
+  "lastUpdated": "2026-01-16T17:30:00Z",
+  "currentStoryId": "US-001",
+  "currentPhase": "implementation",
+  "runningAgents": [
+    {
+      "agent": "implementation",
+      "taskId": "task-abc123",
+      "startedAt": "2026-01-16T17:25:00Z",
+      "task": "Implement dark mode toggle"
+    }
+  ],
+  "todoSnapshot": [
+    { "content": "Implement backend API", "status": "completed" },
+    { "content": "Implement frontend UI", "status": "in_progress" },
+    { "content": "Run tests", "status": "pending" }
+  ],
+  "lastCheckpoint": {
+    "action": "agent_delegated",
+    "agent": "implementation",
+    "timestamp": "2026-01-16T17:25:00Z"
+  },
+  "pendingWork": {
+    "description": "Waiting for implementation agent to complete frontend UI",
+    "resumeAction": "Check agent status, continue if complete, otherwise wait"
+  }
+}
+```
+
+### Update Commands
+
+**Before delegating to agent:**
+```bash
+cat > "$RALPH_DIR/session-state.json" << EOF
+{
+  "lastUpdated": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "currentStoryId": "$STORY_ID",
+  "currentPhase": "delegating",
+  "runningAgents": [
+    {
+      "agent": "$STORY_EXECUTOR",
+      "startedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+      "task": "$STORY_TITLE"
+    }
+  ],
+  "lastCheckpoint": {
+    "action": "agent_delegated",
+    "agent": "$STORY_EXECUTOR",
+    "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  },
+  "pendingWork": {
+    "description": "Waiting for $STORY_EXECUTOR to complete: $STORY_TITLE",
+    "resumeAction": "Check if agent completed, verify results, update PRD"
+  }
+}
+EOF
+```
+
+**After agent completes:**
+```bash
+jq '.runningAgents = [] | .currentPhase = "verification" | .lastCheckpoint = {
+  "action": "agent_completed",
+  "agent": "'$STORY_EXECUTOR'",
+  "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
+}' "$RALPH_DIR/session-state.json" > "$RALPH_DIR/session-state.json.tmp" \
+  && mv "$RALPH_DIR/session-state.json.tmp" "$RALPH_DIR/session-state.json"
+```
+
+### Resumption on Session Start
+
+When session starts (or after crash), check for session-state.json:
+
+```bash
+if [[ -f "$RALPH_DIR/session-state.json" ]]; then
+  echo "Found existing session state - checking for incomplete work..."
+
+  PENDING=$(jq -r '.pendingWork.description // empty' "$RALPH_DIR/session-state.json")
+  RUNNING=$(jq -r '.runningAgents | length' "$RALPH_DIR/session-state.json")
+
+  if [[ -n "$PENDING" || "$RUNNING" -gt 0 ]]; then
+    echo ""
+    echo "INCOMPLETE SESSION DETECTED"
+    echo "=========================="
+    echo "Pending: $PENDING"
+    echo "Running agents: $RUNNING"
+    echo ""
+    echo "Resume action: $(jq -r '.pendingWork.resumeAction' "$RALPH_DIR/session-state.json")"
+    echo ""
+  fi
+fi
+```
+
+### Why This Matters
+
+Without session state:
+- Crash = lost context about what was running
+- No way to know if agent finished or crashed mid-task
+- Manual investigation needed to figure out where to resume
+
+With session state:
+- Crash recovery knows exactly what was in progress
+- Can verify if pending work completed
+- Clear instructions for resumption
 
 ---
 
