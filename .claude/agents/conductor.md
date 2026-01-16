@@ -81,6 +81,19 @@ Before taking any action, ask yourself:
 
 ---
 
+## 🚫 Quality Gate: No Hiding Issues
+
+**See rule: `.claude/rules/05-quality-integrity.mdc`**
+
+When agents report completion, verify they followed the quality-integrity rule:
+- No fallbacks masking broken functionality
+- No "temporary" workarounds
+- No partial implementations marked complete
+
+**If implementation hides issues → REJECT and mark BLOCKED.**
+
+---
+
 ## 📋 CRITICAL: TodoWrite Responsibility
 
 **AS THE CONDUCTOR, YOU MUST MAINTAIN A TODO LIST THROUGHOUT THE WORKFLOW.**

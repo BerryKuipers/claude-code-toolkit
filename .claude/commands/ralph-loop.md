@@ -290,6 +290,17 @@ Before any action, ask:
 - Am I about to read code for analysis? → DELEGATE to architect agent
 
 **If you catch yourself doing work instead of delegating, STOP and delegate.**
+
+## 🚫 Quality Gate: No Hiding Issues
+
+**Follow rule: `.claude/rules/05-quality-integrity.mdc`**
+
+- NEVER hide problems with fallbacks or workarounds
+- FAIL LOUDLY when something is broken
+- Mark as BLOCKED if it can't be done properly
+- Quality over velocity - blocked is better than broken
+
+**If an implementation can't be done properly, STOP and report it as BLOCKED.**
 POLICY
     echo "Created minimal policy: $INSTRUCTIONS_FILE"
     echo "Review and customize before running Ralph."

@@ -1,0 +1,83 @@
+---
+description: Quality and integrity standards - no hiding issues, fail hard
+globs:
+  - '**/*'
+alwaysApply: true
+targets: ['*']
+---
+
+# Quality & Integrity Standards
+
+## 🚫 NO HIDING ISSUES - FAIL HARD
+
+**NEVER hide problems with backward compatibility hacks or half-baked implementations.**
+
+### Forbidden Patterns
+
+- ❌ **Silent error swallowing**: Catching errors and continuing without reporting
+- ❌ **Fallback masking**: Adding defaults that hide broken functionality
+- ❌ **Temporary workarounds**: "Fix later" hacks that become permanent
+- ❌ **Partial implementations**: Marking incomplete work as "done"
+- ❌ **Backward compat shims**: Code that papers over broken functionality
+- ❌ **Comment-out fixes**: Disabling code instead of fixing it
+- ❌ **Test workarounds**: Making tests pass by avoiding the broken path
+
+### Required Behavior
+
+- ✅ **FAIL LOUDLY** when something is broken
+- ✅ **Report exact errors** with file:line references
+- ✅ **Mark as BLOCKED** if it can't be done properly
+- ✅ **Document root cause**, not just symptoms
+- ✅ **Require proper fix**, not a band-aid
+
+### Examples
+
+**❌ WRONG - Hiding the issue:**
+```typescript
+// "Fixed" by adding fallback - but API is still broken!
+const data = await fetchData().catch(() => defaultData);
+// Tests pass because fallback masks the bug
+```
+
+**✅ CORRECT - Exposing the issue:**
+```typescript
+// API is broken - this will fail until fixed
+const data = await fetchData();
+// If this fails, we know immediately and can fix root cause
+```
+
+**❌ WRONG - Backward compat shim:**
+```typescript
+// Old code broken, adding shim to "support both"
+const result = newMethod() ?? legacyMethod() ?? fallback;
+```
+
+**✅ CORRECT - Clean migration:**
+```typescript
+// BLOCKED: legacyMethod is broken
+// TODO: Fix legacyMethod or remove it entirely
+// Do NOT ship with fallback that hides the problem
+throw new Error('Migration incomplete - legacyMethod broken');
+```
+
+### When Reviewing/Verifying Work
+
+Ask these questions:
+1. Does the implementation actually work, or does it just "not crash"?
+2. Do tests verify real functionality, or just that fallbacks work?
+3. Are there any `?? default`, `|| fallback`, or `.catch(() => ...)` that mask issues?
+4. Is there any "temporary" code that should be a blocker instead?
+
+### Blocking vs Shipping
+
+**Quality over velocity.**
+
+A feature marked BLOCKED with clear documentation is better than:
+- A "working" feature that hides bugs
+- A shipped feature that will cause production issues
+- Technical debt disguised as "backward compatibility"
+
+### Rule Reference
+
+When delegating or reviewing, remind agents:
+> "Follow quality-integrity rule: No hiding issues. Fail hard. If it can't be done properly, mark BLOCKED."
