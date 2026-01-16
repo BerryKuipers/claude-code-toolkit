@@ -25,21 +25,24 @@ fi
 # Check for RALPH loop auto-resume
 if [[ -f "$RALPH_DIR/loop-active" ]]; then
     echo ""
-    echo "RALPH LOOP DETECTED"
-    echo "==================="
+    echo "========================================"
+    echo "RALPH LOOP AUTO-RESUME REQUIRED"
+    echo "========================================"
 
     if [[ -f "$RALPH_DIR/session-state.json" ]]; then
         PENDING=$(jq -r '.pendingWork.description // "unknown"' "$RALPH_DIR/session-state.json" 2>/dev/null || echo "unknown")
         LAST_ACTION=$(jq -r '.lastCheckpoint.action // "unknown"' "$RALPH_DIR/session-state.json" 2>/dev/null || echo "unknown")
+        STORY_ID=$(jq -r '.currentStoryId // "unknown"' "$RALPH_DIR/session-state.json" 2>/dev/null || echo "unknown")
 
+        echo "Story: $STORY_ID"
         echo "Last action: $LAST_ACTION"
         echo "Pending: $PENDING"
-        echo ""
-        echo "Resume with: /ralph-loop --continue"
-    else
-        echo "Loop active but no session state found"
-        echo "Resume with: /ralph-loop --continue"
     fi
+
+    echo ""
+    echo "ACTION REQUIRED: You MUST immediately run /ralph-loop --continue"
+    echo "Do NOT ask the user what to do. The loop was interrupted and must resume."
+    echo "========================================"
 fi
 
 exit 0
