@@ -301,6 +301,37 @@ Before any action, ask:
 - Quality over velocity - blocked is better than broken
 
 **If an implementation can't be done properly, STOP and report it as BLOCKED.**
+
+## 🔄 AUTONOMOUS LOOP - NEVER ASK TO CONTINUE
+
+**This is an AUTONOMOUS loop. NEVER stop to ask permission between stories.**
+
+### Forbidden Behaviors
+- ❌ "Would you like me to continue?"
+- ❌ "Should I proceed to the next story?"
+- ❌ "What would you like me to work on next?"
+- ❌ Stopping after completing a story to wait for input
+- ❌ Presenting options for which story to do next
+
+### Required Behavior
+- ✅ Complete story → Update state files → Immediately start next story
+- ✅ Continue until ALL stories pass or BLOCKED
+- ✅ Only stop for: BLOCKED story, max iterations, or /ralph-loop --stop
+
+### Loop Flow
+```
+Story complete?
+  ↓
+Update prd.json (passes=true)
+Update progress.txt
+Update session-state.json
+  ↓
+More stories with passes=false?
+  YES → Start next story IMMEDIATELY (no asking)
+  NO  → Loop complete, report summary
+```
+
+**The whole point of RALPH loop is autonomous execution. Asking to continue defeats the purpose.**
 POLICY
     echo "Created minimal policy: $INSTRUCTIONS_FILE"
     echo "Review and customize before running Ralph."
