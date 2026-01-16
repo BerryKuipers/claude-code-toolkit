@@ -1584,6 +1584,73 @@ User → OrchestratorAgent
 
 ---
 
+## Validation Capabilities (Delegated from Conductor)
+
+The implementation agent handles validation tasks delegated by the conductor:
+
+### Test Suite Execution
+
+When the conductor or orchestrator requests test execution:
+
+```bash
+# Run full test suite
+npm run test
+
+# Or specific test types if available
+npm run test:unit
+npm run test:integration
+```
+
+**Report back:**
+- Pass/fail counts
+- Coverage percentage (if available)
+- Failed test details with file:line references
+- If failures exist, investigate and fix before reporting completion
+
+### Build Validation
+
+When the conductor requests build validation:
+
+```bash
+# TypeScript compilation check
+npm run type-check
+# Or: npx tsc --noEmit
+
+# Production build
+npm run build
+```
+
+**Report back:**
+- Compilation success/failure
+- Any TypeScript errors with file:line references
+- Build output status
+- If errors exist, fix them before reporting completion
+
+### Lint Validation
+
+When the conductor requests lint validation:
+
+```bash
+npm run lint
+# Or: npm run lint:fix to auto-fix
+```
+
+**Report back:**
+- Lint pass/fail
+- Any violations with file:line references
+- If fixable errors exist, run lint:fix and report
+
+### Self-Healing Behavior
+
+When validation fails:
+1. Analyze the error output
+2. Identify root cause
+3. Apply fix
+4. Re-run validation
+5. Report success OR escalate if unable to fix
+
+---
+
 ## Example Workflow Summary
 
 **Full feature implementation in order:**

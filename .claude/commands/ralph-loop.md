@@ -188,7 +188,119 @@ EOF
 fi
 ```
 
-### Step 5: Execute Loop
+### Step 5: Pre-flight Check - Instructions Policy
+
+```bash
+echo ""
+echo "PRE-FLIGHT CHECK: Agent delegation policy..."
+
+if [[ -f "$INSTRUCTIONS_FILE" ]]; then
+  echo "Found: $INSTRUCTIONS_FILE"
+  echo "Ralph will enforce project-specific agent delegation policies"
+
+  # Validate instructions file has required content
+  if grep -q "MUST delegate" "$INSTRUCTIONS_FILE" 2>/dev/null || \
+     grep -q "NOT ALLOWED TO IMPLEMENT" "$INSTRUCTIONS_FILE" 2>/dev/null; then
+    echo "Policy validated: Agent delegation enforcement present"
+  else
+    echo "WARNING: instructions.md may not enforce agent delegation"
+    echo "Consider adding explicit delegation requirements"
+  fi
+
+else
+  echo "No project-specific instructions found: $INSTRUCTIONS_FILE"
+  echo ""
+
+  if [[ "$NO_POLICY" == "true" ]]; then
+    echo "WARNING: Running without delegation policy (--no-policy flag set)"
+    echo "Ralph may implement directly instead of delegating to agents"
+  else
+    echo "BLOCKED: Running without delegation policy is not recommended."
+    echo ""
+    echo "Ralph works best when it delegates to existing Claude Code agents."
+    echo "Without instructions.md, Ralph may implement tasks directly,"
+    echo "bypassing your architectural rules and agent workflows."
+    echo ""
+    echo "Options:"
+    echo "  1. Create instructions.md (recommended):"
+    echo "     mkdir -p $RALPH_DIR"
+    echo "     # Add delegation policy - see documentation"
+    echo ""
+    echo "  2. Run anyway (not recommended):"
+    echo "     /ralph-loop $ISSUE_NUMBER --no-policy"
+    echo ""
+
+    # Create a minimal instructions.md template
+    echo "Creating minimal instructions template..."
+    mkdir -p "$RALPH_DIR"
+    cat > "$INSTRUCTIONS_FILE" << 'POLICY'
+# Ralph Loop Instructions
+
+## 🚨 CRITICAL: You Are a Coordinator, NOT an Implementer
+
+**You MUST delegate ALL work to specialist agents. You NEVER implement directly.**
+
+### Your Role
+- ✅ Analyze PRD stories
+- ✅ Decide which agent handles each story
+- ✅ Delegate using natural language
+- ✅ Track progress
+- ✅ Verify completion
+
+### NOT Your Role
+- ❌ Writing code
+- ❌ Running tests (npm run test)
+- ❌ Running builds (npm run build)
+- ❌ Analyzing architecture yourself
+- ❌ Debugging issues yourself
+
+## Delegation Mapping
+
+| Task Type | Delegate To |
+|-----------|-------------|
+| Architecture/Design | architect agent |
+| Code Implementation | implementation agent |
+| Database/Migrations | database agent |
+| Code Quality | audit agent |
+| Testing | /test-all or implementation agent |
+| Refactoring | refactor agent |
+| UI/UX | design agent |
+
+## Execution Protocol
+
+For each PRD user story:
+
+1. **Identify the task type** (architecture, implementation, testing, etc.)
+2. **Delegate to the appropriate agent** using natural language:
+   ```
+   I need the [agent] agent to [task description].
+
+   Context: [relevant details]
+   ```
+3. **Wait for agent response**
+4. **Verify completion** based on agent's report
+5. **Update passes flag** only when verified complete
+6. **Move to next story**
+
+## Self-Check
+
+Before any action, ask:
+- Am I about to write code? → DELEGATE to implementation agent
+- Am I about to run npm/npx? → DELEGATE to appropriate agent
+- Am I about to read code for analysis? → DELEGATE to architect agent
+
+**If you catch yourself doing work instead of delegating, STOP and delegate.**
+POLICY
+    echo "Created minimal policy: $INSTRUCTIONS_FILE"
+    echo "Review and customize before running Ralph."
+    echo ""
+    echo "Run again to continue: /ralph-loop $ISSUE_NUMBER"
+    exit 0
+  fi
+fi
+```
+
+### Step 6: Execute Loop
 
 ```bash
 echo ""
