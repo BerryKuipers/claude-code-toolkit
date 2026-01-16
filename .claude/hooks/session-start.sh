@@ -40,7 +40,10 @@ if [[ -f "$RALPH_DIR/loop-active" ]]; then
     fi
 
     echo ""
-    echo "ACTION REQUIRED: You MUST immediately run /ralph-loop --continue"
+    echo "ACTION REQUIRED:"
+    echo "1. Run /clear to reset context"
+    echo "2. Run /ralph-loop --continue to resume"
+    echo ""
     echo "Do NOT ask the user what to do. The loop was interrupted and must resume."
     echo "========================================"
 fi
