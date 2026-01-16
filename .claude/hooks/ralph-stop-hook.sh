@@ -71,9 +71,15 @@ EOF
 fi
 
 echo ""
-echo "-------------------------------------------"
-echo " RALPH Loop: Session state saved"
-echo " Resume with: /ralph-loop --continue"
-echo "-------------------------------------------"
+echo "========================================"
+echo "RALPH LOOP - SESSION INTERRUPTED"
+echo "========================================"
+echo "State: SAVED to session-state.json"
+echo ""
+echo "ACTION REQUIRED ON NEXT SESSION:"
+echo "You MUST immediately run /ralph-loop --continue"
+echo "Do NOT ask the user what to do."
+echo "The loop was interrupted and must resume automatically."
+echo "========================================"
 
 exit 0
