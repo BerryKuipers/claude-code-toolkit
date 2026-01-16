@@ -7,7 +7,10 @@
 
 set -e
 
+# Normalize path for cross-platform (Windows Git Bash / WSL / Linux)
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
+# Convert Windows backslashes to forward slashes if present
+PROJECT_DIR="${PROJECT_DIR//\\//}"
 PRD_FILE="${PROJECT_DIR}/.ralph/prd.json"
 LOOP_ACTIVE_FILE="${PROJECT_DIR}/.ralph/loop-active"
 PROGRESS_FILE="${PROJECT_DIR}/.ralph/progress.txt"
