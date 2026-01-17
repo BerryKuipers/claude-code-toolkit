@@ -1,17 +1,20 @@
 #!/bin/bash
 # Context Window Monitor Hook (PostToolUse)
 #
-# Smart context monitoring that:
-# 1. Checks context_window.used_percentage after tool use
-# 2. Waits for running agents to finish before clearing
-# 3. Warns at 75%, recommends /clear at 80%
+# Reads context percentage from .ralph/context-state.json
+# (Claude writes this file as it works)
 #
-# Reads context data from CLAUDE_CONTEXT_WINDOW env or stdin
+# Thresholds:
+# - 72%: Warn if agents running
+# - 75%: General warning
+# - 80%: Recommend /clear
+# - 90%: Critical
 
 set -e
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 RALPH_DIR="$PROJECT_DIR/.ralph"
+CONTEXT_STATE="$RALPH_DIR/context-state.json"
 SESSION_STATE="$RALPH_DIR/session-state.json"
 
 # Only active during RALPH loop
@@ -19,25 +22,23 @@ if [[ ! -f "$RALPH_DIR/loop-active" ]]; then
     exit 0
 fi
 
-# Get context percentage from environment (Claude Code sets this)
-CONTEXT_PERCENT="${CLAUDE_CONTEXT_USED_PERCENT:-0}"
-
-# If not in env, try to read from stdin JSON (fallback)
-if [[ "$CONTEXT_PERCENT" == "0" ]]; then
-    # Read stdin if available
-    if read -t 0.1 INPUT 2>/dev/null; then
-        if command -v jq &> /dev/null; then
-            CONTEXT_PERCENT=$(echo "$INPUT" | jq -r '.context_window.used_percentage // 0' 2>/dev/null || echo "0")
-        fi
-    fi
+# Read context percentage from our state file (Claude writes this)
+CONTEXT_PERCENT=0
+if [[ -f "$CONTEXT_STATE" ]] && command -v jq &> /dev/null; then
+    CONTEXT_PERCENT=$(jq -r '.usedPercent // 0' "$CONTEXT_STATE" 2>/dev/null || echo "0")
+    LAST_UPDATE=$(jq -r '.updatedAt // empty' "$CONTEXT_STATE" 2>/dev/null)
 fi
 
 # Remove decimal, ensure number
 CONTEXT_PERCENT=${CONTEXT_PERCENT%.*}
 CONTEXT_PERCENT=${CONTEXT_PERCENT:-0}
 
-# Exit if we can't determine context (don't block on missing data)
+# Exit if no data (Claude hasn't written yet)
 if [[ "$CONTEXT_PERCENT" == "0" || "$CONTEXT_PERCENT" == "null" ]]; then
+    # Remind Claude to update context state
+    echo ""
+    echo "📊 Context state not found. Claude should update .ralph/context-state.json"
+    echo ""
     exit 0
 fi
 
@@ -48,25 +49,22 @@ if [[ -f "$SESSION_STATE" ]] && command -v jq &> /dev/null; then
 fi
 
 # Thresholds
-AGENT_WARN_THRESHOLD=72  # Warn early if agents running
+AGENT_WARN_THRESHOLD=72
 WARN_THRESHOLD=75
 CLEAR_THRESHOLD=80
 CRITICAL_THRESHOLD=90
-STUCK_TIMEOUT_MINUTES=10  # Warn about processes running longer than this
 
 # Check for stuck/long-running agents
 STUCK_WARNING=""
 if [[ -f "$SESSION_STATE" ]] && command -v jq &> /dev/null; then
-    # Check oldest agent start time
     OLDEST_START=$(jq -r '.runningAgents[0].startedAt // empty' "$SESSION_STATE" 2>/dev/null)
     if [[ -n "$OLDEST_START" && "$OLDEST_START" != "null" ]]; then
-        # Calculate minutes running (simplified)
         START_EPOCH=$(date -d "$OLDEST_START" +%s 2>/dev/null || echo "0")
         NOW_EPOCH=$(date +%s)
         if [[ "$START_EPOCH" -gt 0 ]]; then
             RUNNING_MINS=$(( (NOW_EPOCH - START_EPOCH) / 60 ))
-            if [[ "$RUNNING_MINS" -ge "$STUCK_TIMEOUT_MINUTES" ]]; then
-                STUCK_WARNING="⏱️ Agent running for ${RUNNING_MINS}min (>${STUCK_TIMEOUT_MINUTES}min) - may be stuck!"
+            if [[ "$RUNNING_MINS" -ge 10 ]]; then
+                STUCK_WARNING="⏱️ Agent running for ${RUNNING_MINS}min - may be stuck!"
             fi
         fi
     fi
@@ -76,7 +74,7 @@ fi
 if [[ "$CONTEXT_PERCENT" -ge "$CRITICAL_THRESHOLD" ]]; then
     echo ""
     echo "🚨🚨🚨 CRITICAL: CONTEXT AT ${CONTEXT_PERCENT}% 🚨🚨🚨"
-    echo "Autocompact imminent! MUST /clear NOW regardless of running agents."
+    echo "MUST /clear NOW regardless of running agents."
     if [[ -n "$STUCK_WARNING" ]]; then
         echo "$STUCK_WARNING"
         echo "KILL stuck processes and /clear NOW!"

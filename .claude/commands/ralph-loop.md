@@ -398,23 +398,30 @@ Prevents premature exits when:
 
 ## 📊 Context Window Management (CRITICAL)
 
-**NEVER let autocompact trigger. Always `/clear` before 75% context usage.**
+**NEVER let autocompact trigger. Always `/clear` before 80% context usage.**
 
-### Check Context Percentage
+### MANDATORY: Write Context % to State File
 
-Claude Code exposes `context_window.used_percentage`. Check it actively:
+**After EVERY tool use, update `.ralph/context-state.json`:**
+```bash
+echo '{"usedPercent": [YOUR_%], "updatedAt": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' > .ralph/context-state.json
+```
 
-**IF `context_window.used_percentage >= 75%` → IMMEDIATELY `/clear`**
+The PostToolUse hook reads this file and warns at:
+- 72%: Early warning if agents running
+- 75%: General warning
+- 80%: Must /clear
+- 90%: Critical
 
-### The 75% Rule
-1. Check context percentage regularly during work
-2. At 75% → save state → `/clear` → continue via hook
-3. Never let it reach autocompact threshold
+### The 80% Rule
+1. Write context % to context-state.json after each tool
+2. Hook will warn you at thresholds
+3. At 80% → save all state → `/clear` → continue via hook
 
-### Why?
-- Autocompact destroys work context by summarizing
-- RALPH loop uses `/clear` to reset cleanly between iterations
-- State files preserve what matters - context doesn't need to
+### Why Write to File?
+- Hooks CANNOT access context_window directly
+- By writing to file, hooks CAN monitor and warn you
+- This enables automated threshold warnings
 
 ### If Story Too Large
 1. Break into sub-tasks in session-state.json
@@ -640,18 +647,35 @@ If `.ralph/instructions.md` exists, follow its delegation rules.
 
 ### Context Window Percentage Check
 
-Claude Code exposes context window usage. Check it actively during RALPH loop:
+Claude Code exposes context window usage. **You MUST write it to `.ralph/context-state.json` so hooks can monitor it.**
 
+**AFTER EVERY TOOL USE, update context-state.json:**
+```bash
+cat > .ralph/context-state.json << EOF
+{
+  "usedPercent": [YOUR_CONTEXT_WINDOW_USED_PERCENTAGE],
+  "updatedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+}
+EOF
 ```
-context_window.used_percentage  → Current % of context used
-context_window.current_usage    → Current token count
+
+Example: If your context shows 65%, write:
+```json
+{"usedPercent": 65, "updatedAt": "2026-01-17T19:00:00Z"}
 ```
+
+**The PostToolUse hook reads this file and will warn you at:**
+- 72%: Early warning if agents running
+- 75%: General warning
+- 80%: Must /clear now
+- 90%: Critical - clear immediately
 
 **CRITICAL: If context_window.used_percentage >= 75%, IMMEDIATELY:**
-1. Save state to session-state.json
-2. Update progress.txt with current status
-3. Run `/clear`
-4. SessionStart hook triggers `/ralph-loop --continue`
+1. Update context-state.json with current %
+2. Save state to session-state.json
+3. Update progress.txt with current status
+4. Run `/clear`
+5. SessionStart hook triggers `/ralph-loop --continue`
 
 ### Self-Monitoring Triggers
 
