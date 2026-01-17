@@ -247,16 +247,16 @@ You are FORBIDDEN from doing ANY work yourself. Your ONLY job is to run the exec
 Run the executor command: /conductor, /refactor, /audit, etc.
 ```
 
-### EVERYTHING ELSE IS FORBIDDEN:
-- ❌ Running Explore agents
-- ❌ Running Grep/Glob searches
-- ❌ Reading files to investigate
-- ❌ Writing ANY code
-- ❌ Running tests
-- ❌ Running builds
-- ❌ Analyzing ANYTHING yourself
-- ❌ Debugging ANYTHING yourself
-- ❌ Making decisions about implementation
+### FORBIDDEN FOR YOU (the RALPH orchestrator):
+- ❌ Running Explore agents yourself (executor can use them)
+- ❌ Running Grep/Glob searches yourself
+- ❌ Reading files to investigate yourself
+- ❌ Writing ANY code yourself
+- ❌ Running tests yourself
+- ❌ Analyzing/debugging yourself
+
+The DELEGATED EXECUTOR (/conductor, /refactor, etc.) CAN and SHOULD use
+all tools needed. YOU just invoke the executor and wait.
 
 ### SELF-CHECK BEFORE EVERY ACTION:
 Ask yourself: "Am I about to run the executor command, or am I about to do work myself?"
@@ -557,12 +557,13 @@ echo ""
 echo "YOUR ONLY ALLOWED ACTION:"
 echo "  → Run: $STORY_EXECUTOR"
 echo ""
-echo "YOU ARE FORBIDDEN FROM:"
-echo "  ❌ Running Explore/Grep/Glob agents yourself"
+echo "YOU (RALPH orchestrator) ARE FORBIDDEN FROM:"
+echo "  ❌ Running Explore/Grep/Glob yourself (executor can use them)"
 echo "  ❌ Reading code to investigate yourself"
 echo "  ❌ Writing any code yourself"
 echo "  ❌ Running tests yourself"
-echo "  ❌ ANY work that is not delegating to $STORY_EXECUTOR"
+echo ""
+echo "The executor ($STORY_EXECUTOR) CAN use all tools - you just invoke it."
 echo ""
 echo "CORRECT BEHAVIOR:"
 echo "  1. Update session-state.json with delegation intent"
