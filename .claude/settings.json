@@ -21,6 +21,17 @@
           }
         ]
       }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/ralph-precompact-hook.sh"
+          }
+        ]
+      }
     ]
   }
 }
