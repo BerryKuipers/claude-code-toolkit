@@ -236,23 +236,32 @@ else
     cat > "$INSTRUCTIONS_FILE" << 'POLICY'
 # Ralph Loop Instructions
 
-## 🚨 CRITICAL: You Are a Coordinator, NOT an Implementer
+## 🚨🚨🚨 ABSOLUTE RULE: YOU DO NOT DO WORK - YOU ONLY DELEGATE 🚨🚨🚨
 
-**You MUST delegate ALL work to specialist agents. You NEVER implement directly.**
+**READ THIS BEFORE EVERY ACTION:**
 
-### Your Role
-- ✅ Analyze PRD stories
-- ✅ Decide which agent handles each story
-- ✅ Delegate using natural language
-- ✅ Track progress
-- ✅ Verify completion
+You are FORBIDDEN from doing ANY work yourself. Your ONLY job is to run the executor command specified in the PRD.
 
-### NOT Your Role
-- ❌ Writing code
-- ❌ Running tests (npm run test)
-- ❌ Running builds (npm run build)
-- ❌ Analyzing architecture yourself
-- ❌ Debugging issues yourself
+### THE ONLY THING YOU DO:
+```
+Run the executor command: /conductor, /refactor, /audit, etc.
+```
+
+### EVERYTHING ELSE IS FORBIDDEN:
+- ❌ Running Explore agents
+- ❌ Running Grep/Glob searches
+- ❌ Reading files to investigate
+- ❌ Writing ANY code
+- ❌ Running tests
+- ❌ Running builds
+- ❌ Analyzing ANYTHING yourself
+- ❌ Debugging ANYTHING yourself
+- ❌ Making decisions about implementation
+
+### SELF-CHECK BEFORE EVERY ACTION:
+Ask yourself: "Am I about to run the executor command, or am I about to do work myself?"
+- If running executor → ✅ PROCEED
+- If doing ANY other work → ❌ STOP - delegate instead
 
 ## Delegation Mapping
 
@@ -540,22 +549,33 @@ fi
 
 echo "=============================================="
 echo ""
-echo "DELEGATION PROTOCOL:"
-echo "-------------------"
-echo "1. Read story requirements above"
-echo "2. UPDATE session-state.json (before delegating)"
-echo "3. Delegate to: $STORY_EXECUTOR"
-echo "4. After completion, UPDATE ALL state files:"
-echo "   a. session-state.json - clear runningAgents, update checkpoint"
-echo "   b. prd.json - set passes=true, add notes"
-echo "   c. progress.txt - append completion entry with learnings"
-echo "5. Git commit changes"
-echo "6. Run /clear to continue loop"
+echo "🚨 MANDATORY DELEGATION - YOU MUST NOT DO WORK YOURSELF 🚨"
+echo "=============================================="
 echo ""
-echo "STATE FILES TO UPDATE:"
-echo "  .ralph/session-state.json  <- BEFORE and AFTER delegation"
-echo "  .ralph/prd.json            <- AFTER completion"
-echo "  .ralph/progress.txt        <- AFTER completion"
+echo "EXECUTOR FOR THIS STORY: $STORY_EXECUTOR"
+echo ""
+echo "YOUR ONLY ALLOWED ACTION:"
+echo "  → Run: $STORY_EXECUTOR"
+echo ""
+echo "YOU ARE FORBIDDEN FROM:"
+echo "  ❌ Running Explore/Grep/Glob agents yourself"
+echo "  ❌ Reading code to investigate yourself"
+echo "  ❌ Writing any code yourself"
+echo "  ❌ Running tests yourself"
+echo "  ❌ ANY work that is not delegating to $STORY_EXECUTOR"
+echo ""
+echo "CORRECT BEHAVIOR:"
+echo "  1. Update session-state.json with delegation intent"
+echo "  2. Run: $STORY_EXECUTOR with story context"
+echo "  3. Wait for executor to complete"
+echo "  4. Update state files (prd.json, progress.txt)"
+echo "  5. Run /clear to continue loop"
+echo ""
+echo "EXAMPLE DELEGATION:"
+echo "  $STORY_EXECUTOR"
+echo "  Story: $STORY_ID - $STORY_TITLE"
+echo "  Description: [story description]"
+echo "  Acceptance: $STORY_AC"
 echo ""
 echo "To stop: /ralph-loop --stop"
 echo "=============================================="
