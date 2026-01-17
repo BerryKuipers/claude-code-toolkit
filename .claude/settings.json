@@ -32,6 +32,17 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c \"test -f .claude/hooks/context-monitor-hook.sh && bash .claude/hooks/context-monitor-hook.sh || true\""
+          }
+        ]
+      }
     ]
   }
 }
