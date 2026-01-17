@@ -9,6 +9,15 @@
             "command": ".claude/hooks/session-start.sh"
           }
         ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/ralph-postcompact-hook.sh"
+          }
+        ]
       }
     ],
     "Stop": [
