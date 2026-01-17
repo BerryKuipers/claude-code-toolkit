@@ -386,6 +386,27 @@ Prevents premature exits when:
    touch .ralph/loop-active
    /ralph-loop --continue
    ```
+
+## 📊 Context Window Management (CRITICAL)
+
+**NEVER let autocompact trigger. Always `/clear` before 75% context usage.**
+
+### Why?
+- Autocompact destroys work context by summarizing
+- RALPH loop uses `/clear` to reset cleanly between iterations
+- State files preserve what matters - context doesn't need to
+
+### Rule
+- Stay within first 75% of context window
+- If context feels long → save state → `/clear` → continue
+- Each story should fit in one context window
+- When in doubt, `/clear` early
+
+### If Story Too Large
+1. Break into sub-tasks in session-state.json
+2. Complete what fits in current context
+3. `/clear` and continue with remaining sub-tasks
+4. Only mark `passes: true` when ALL sub-tasks done
 POLICY
     echo "Created minimal policy: $INSTRUCTIONS_FILE"
     echo "Review and customize before running Ralph."
@@ -565,6 +586,46 @@ If `.ralph/instructions.md` exists, follow its delegation rules.
 4. **Circuit breaker**: 3 consecutive no-progress loops = automatic stop
 5. **Exit signals**: `BLOCKED` or `MANUAL_REQUIRED` in notes stops loop
 6. **Verification gates**: TypeScript must compile, tests must pass
+7. **Context window management**: `/clear` before 75% context - NEVER let autocompact trigger
+
+---
+
+## Context Window Management (CRITICAL)
+
+**NEVER let autocompact trigger during RALPH loop. Always `/clear` before hitting context limits.**
+
+### Why No Autocompact?
+
+- Autocompact **summarizes and loses detail** - destroys work context
+- RALPH loop is designed to reset with `/clear` between iterations
+- State files (prd.json, progress.txt, session-state.json) preserve what matters
+- Fresh context per iteration = clean slate with full capacity
+
+### Context Budget Rule
+
+**Stay within first 75% of context window. If approaching limit:**
+
+1. Save current state to session-state.json
+2. Update progress.txt with current work status
+3. Run `/clear` immediately
+4. SessionStart hook triggers `/ralph-loop --continue`
+
+### Self-Monitoring
+
+During RALPH loop execution, monitor your context usage:
+- If you feel context is getting long (many tool calls, large outputs)
+- If you've been working on a single story for extended time
+- If you're about to do a large operation (big file reads, many searches)
+
+**When in doubt, `/clear` and continue. Fresh context is always better than compacted context.**
+
+### Per-Story Context Budget
+
+Each story should ideally complete within a single context window. If a story is too large:
+1. Break it into sub-tasks in session-state.json
+2. Complete what you can
+3. `/clear` and continue with remaining sub-tasks
+4. Only mark story `passes: true` when ALL sub-tasks complete
 
 ---
 
