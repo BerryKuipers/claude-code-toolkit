@@ -391,16 +391,21 @@ Prevents premature exits when:
 
 **NEVER let autocompact trigger. Always `/clear` before 75% context usage.**
 
+### Check Context Percentage
+
+Claude Code exposes `context_window.used_percentage`. Check it actively:
+
+**IF `context_window.used_percentage >= 75%` → IMMEDIATELY `/clear`**
+
+### The 75% Rule
+1. Check context percentage regularly during work
+2. At 75% → save state → `/clear` → continue via hook
+3. Never let it reach autocompact threshold
+
 ### Why?
 - Autocompact destroys work context by summarizing
 - RALPH loop uses `/clear` to reset cleanly between iterations
 - State files preserve what matters - context doesn't need to
-
-### Rule
-- Stay within first 75% of context window
-- If context feels long → save state → `/clear` → continue
-- Each story should fit in one context window
-- When in doubt, `/clear` early
 
 ### If Story Too Large
 1. Break into sub-tasks in session-state.json
@@ -610,12 +615,28 @@ If `.ralph/instructions.md` exists, follow its delegation rules.
 3. Run `/clear` immediately
 4. SessionStart hook triggers `/ralph-loop --continue`
 
-### Self-Monitoring
+### Context Window Percentage Check
 
-During RALPH loop execution, monitor your context usage:
-- If you feel context is getting long (many tool calls, large outputs)
-- If you've been working on a single story for extended time
-- If you're about to do a large operation (big file reads, many searches)
+Claude Code exposes context window usage. Check it actively during RALPH loop:
+
+```
+context_window.used_percentage  → Current % of context used
+context_window.current_usage    → Current token count
+```
+
+**CRITICAL: If context_window.used_percentage >= 75%, IMMEDIATELY:**
+1. Save state to session-state.json
+2. Update progress.txt with current status
+3. Run `/clear`
+4. SessionStart hook triggers `/ralph-loop --continue`
+
+### Self-Monitoring Triggers
+
+Check context and `/clear` when:
+- `context_window.used_percentage >= 75%` ← **Primary trigger**
+- Many tool calls in current iteration (10+)
+- Large file reads or search outputs
+- Working on single story for extended time
 
 **When in doubt, `/clear` and continue. Fresh context is always better than compacted context.**
 
