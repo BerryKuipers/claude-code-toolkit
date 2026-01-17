@@ -332,6 +332,60 @@ More stories with passes=false?
 ```
 
 **The whole point of RALPH loop is autonomous execution. Asking to continue defeats the purpose.**
+
+## 🚦 EXIT_SIGNAL Protocol (Dual-Gate Exit)
+
+**The loop only exits when BOTH conditions are met:**
+1. All stories have `passes: true` in prd.json
+2. You explicitly set `EXIT_SIGNAL: true` in loop-state.json
+
+### When to Set EXIT_SIGNAL
+
+**Only set EXIT_SIGNAL when ALL of these are verified:**
+- ✅ Every story in prd.json has `passes: true`
+- ✅ All verification gates passed (tests, build, lint)
+- ✅ No pending work in session-state.json
+- ✅ Git commit successful for final changes
+
+### How to Set EXIT_SIGNAL
+
+```bash
+jq '.exitSignal = true | .exitReason = "All stories complete and verified"' \
+  .ralph/loop-state.json > .ralph/loop-state.json.tmp \
+  && mv .ralph/loop-state.json.tmp .ralph/loop-state.json
+```
+
+### Why Dual-Gate?
+
+Prevents premature exits when:
+- Stories marked complete but verification still running
+- Agent reports "done" but side effects pending
+- False positives from completion detection
+
+**If all stories pass but EXIT_SIGNAL is not set, the loop continues to verify.**
+
+## ⚡ Circuit Breaker
+
+**The loop automatically stops after 3 consecutive iterations with no progress.**
+
+### What Counts as Progress?
+- Story moved from `passes: false` to `passes: true`
+- Meaningful code changes committed
+
+### If Circuit Breaker Trips
+
+1. Check current story requirements in prd.json
+2. Review error logs in progress.txt
+3. Check session-state.json for stuck agents
+4. Fix the issue manually
+5. Reset and continue:
+   ```bash
+   jq '.noProgressCount = 0 | .circuitBreakerTripped = false' \
+     .ralph/loop-state.json > .ralph/loop-state.json.tmp \
+     && mv .ralph/loop-state.json.tmp .ralph/loop-state.json
+   touch .ralph/loop-active
+   /ralph-loop --continue
+   ```
 POLICY
     echo "Created minimal policy: $INSTRUCTIONS_FILE"
     echo "Review and customize before running Ralph."
@@ -353,17 +407,79 @@ echo "=============================================="
 # Create loop-active flag
 touch "$RALPH_DIR/loop-active"
 
+# Initialize or update loop-state.json
+LOOP_STATE_FILE="$RALPH_DIR/loop-state.json"
+if [[ ! -f "$LOOP_STATE_FILE" ]]; then
+  cat > "$LOOP_STATE_FILE" << EOF
+{
+  "iteration": 0,
+  "lastCompletedCount": 0,
+  "noProgressCount": 0,
+  "exitSignal": false,
+  "exitReason": null,
+  "circuitBreakerTripped": false,
+  "startedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "lastUpdated": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+}
+EOF
+  echo "Initialized loop-state.json"
+fi
+
+# Check circuit breaker before continuing
+CB_TRIPPED=$(jq -r '.circuitBreakerTripped // false' "$LOOP_STATE_FILE" 2>/dev/null || echo "false")
+if [[ "$CB_TRIPPED" == "true" ]]; then
+  echo ""
+  echo "========================================"
+  echo "CIRCUIT BREAKER ACTIVE"
+  echo "========================================"
+  echo "Loop was stopped due to no progress."
+  echo "Fix the issue, then reset:"
+  echo "  jq '.noProgressCount = 0 | .circuitBreakerTripped = false' .ralph/loop-state.json > tmp && mv tmp .ralph/loop-state.json"
+  echo "========================================"
+  exit 1
+fi
+
 # Read PRD and find next incomplete story
 INCOMPLETE=$(jq -r '[.userStories[] | select(.passes == false)][0] // empty' "$PRD_FILE" 2>/dev/null)
 
 if [[ -z "$INCOMPLETE" ]]; then
-  # All stories complete
-  rm -f "$RALPH_DIR/loop-active"
-  echo ""
-  echo "ALL STORIES COMPLETE!"
-  echo "====================="
-  echo "PRD: $PRD_FILE"
-  exit 0
+  # All stories have passes=true - check EXIT_SIGNAL dual-gate
+  EXIT_SIGNAL=$(jq -r '.exitSignal // false' "$LOOP_STATE_FILE" 2>/dev/null || echo "false")
+
+  if [[ "$EXIT_SIGNAL" == "true" ]]; then
+    # DUAL-GATE MET: All pass + EXIT_SIGNAL
+    rm -f "$RALPH_DIR/loop-active"
+    echo ""
+    echo "========================================"
+    echo "RALPH LOOP COMPLETE (DUAL-GATE EXIT)"
+    echo "========================================"
+    echo "✅ All stories: passes=true"
+    echo "✅ EXIT_SIGNAL: true"
+    echo ""
+    echo "PRD: $PRD_FILE"
+    echo "========================================"
+    exit 0
+  else
+    # All stories pass but EXIT_SIGNAL not set
+    echo ""
+    echo "========================================"
+    echo "ALL STORIES PASS - AWAITING EXIT_SIGNAL"
+    echo "========================================"
+    echo "All stories have passes=true, but EXIT_SIGNAL not set."
+    echo ""
+    echo "Before setting EXIT_SIGNAL, verify:"
+    echo "  1. All tests pass"
+    echo "  2. Build succeeds"
+    echo "  3. No pending work in session-state.json"
+    echo "  4. Final changes committed"
+    echo ""
+    echo "If verified, set EXIT_SIGNAL:"
+    echo "  jq '.exitSignal = true | .exitReason = \"Verified complete\"' .ralph/loop-state.json > tmp && mv tmp .ralph/loop-state.json"
+    echo ""
+    echo "Then run: /ralph-loop --continue"
+    echo "========================================"
+    exit 0
+  fi
 fi
 
 STORY_ID=$(echo "$INCOMPLETE" | jq -r '.id')
@@ -445,8 +561,150 @@ If `.ralph/instructions.md` exists, follow its delegation rules.
 
 1. **Loop-active flag**: `.ralph/loop-active` controls auto-resume
 2. **Max iterations**: Default 20 (tracked in progress.txt)
-3. **Exit signals**: `BLOCKED` or `MANUAL_REQUIRED` in notes stops loop
-4. **Verification gates**: TypeScript must compile, tests must pass
+3. **EXIT_SIGNAL dual-gate**: Requires BOTH completion indicators AND explicit EXIT_SIGNAL
+4. **Circuit breaker**: 3 consecutive no-progress loops = automatic stop
+5. **Exit signals**: `BLOCKED` or `MANUAL_REQUIRED` in notes stops loop
+6. **Verification gates**: TypeScript must compile, tests must pass
+
+---
+
+## EXIT_SIGNAL Protocol (Dual-Gate Exit)
+
+**The loop only exits when BOTH conditions are met:**
+1. All stories have `passes: true`
+2. Explicit `EXIT_SIGNAL: true` is set in loop state
+
+### Why Dual-Gate?
+
+Prevents premature exits when:
+- Stories marked complete but verification pending
+- Agent reports "done" but side effects still running
+- False positives from heuristic completion detection
+
+### Setting EXIT_SIGNAL
+
+**Only set EXIT_SIGNAL when ALL of these are true:**
+- Every story in prd.json has `passes: true`
+- All verification gates passed (tests, build, lint)
+- No pending work in session-state.json
+- Git commit successful
+
+```bash
+# Set EXIT_SIGNAL in loop state
+jq '.exitSignal = true | .exitReason = "All stories complete and verified"' \
+  "$RALPH_DIR/loop-state.json" > "$RALPH_DIR/loop-state.json.tmp" \
+  && mv "$RALPH_DIR/loop-state.json.tmp" "$RALPH_DIR/loop-state.json"
+```
+
+### Exit Check Logic
+
+```bash
+# Check dual-gate exit condition
+ALL_PASS=$(jq '[.userStories[] | .passes] | all' "$PRD_FILE")
+EXIT_SIGNAL=$(jq -r '.exitSignal // false' "$RALPH_DIR/loop-state.json" 2>/dev/null || echo "false")
+
+if [[ "$ALL_PASS" == "true" && "$EXIT_SIGNAL" == "true" ]]; then
+  echo "DUAL-GATE EXIT: All stories pass AND EXIT_SIGNAL received"
+  rm -f "$RALPH_DIR/loop-active"
+  exit 0
+elif [[ "$ALL_PASS" == "true" && "$EXIT_SIGNAL" != "true" ]]; then
+  echo "WARNING: All stories pass but EXIT_SIGNAL not set"
+  echo "Verification may be pending - continuing loop"
+fi
+```
+
+---
+
+## Circuit Breaker (No-Progress Detection)
+
+**Automatic stop after 3 consecutive loops with no progress.**
+
+### What Counts as Progress?
+
+- Story moved from `passes: false` to `passes: true`
+- New files committed to git
+- Meaningful changes to codebase (not just state files)
+
+### Circuit Breaker State
+
+Tracked in `.ralph/loop-state.json`:
+
+```json
+{
+  "iteration": 5,
+  "lastProgressIteration": 3,
+  "noProgressCount": 2,
+  "exitSignal": false,
+  "exitReason": null,
+  "circuitBreakerTripped": false
+}
+```
+
+### Circuit Breaker Logic
+
+```bash
+# Read current state
+ITERATION=$(jq -r '.iteration // 0' "$RALPH_DIR/loop-state.json" 2>/dev/null || echo "0")
+NO_PROGRESS_COUNT=$(jq -r '.noProgressCount // 0' "$RALPH_DIR/loop-state.json" 2>/dev/null || echo "0")
+
+# Check if progress was made this iteration
+PREV_DONE=$(jq -r '.lastCompletedCount // 0' "$RALPH_DIR/loop-state.json" 2>/dev/null || echo "0")
+CURR_DONE=$(jq '[.userStories[] | select(.passes == true)] | length' "$PRD_FILE")
+
+if [[ "$CURR_DONE" -gt "$PREV_DONE" ]]; then
+  # Progress made - reset counter
+  NO_PROGRESS_COUNT=0
+  echo "Progress: $PREV_DONE → $CURR_DONE stories complete"
+else
+  # No progress - increment counter
+  NO_PROGRESS_COUNT=$((NO_PROGRESS_COUNT + 1))
+  echo "WARNING: No progress this iteration ($NO_PROGRESS_COUNT consecutive)"
+fi
+
+# Check circuit breaker
+if [[ "$NO_PROGRESS_COUNT" -ge 3 ]]; then
+  echo ""
+  echo "========================================"
+  echo "CIRCUIT BREAKER TRIPPED"
+  echo "========================================"
+  echo "3 consecutive iterations with no progress"
+  echo "Loop is stuck - manual intervention required"
+  echo ""
+  echo "Check:"
+  echo "  1. Current story requirements in prd.json"
+  echo "  2. Error logs in progress.txt"
+  echo "  3. Agent delegation in session-state.json"
+  echo "========================================"
+
+  # Update state
+  jq '.circuitBreakerTripped = true | .exitReason = "Circuit breaker: 3 no-progress iterations"' \
+    "$RALPH_DIR/loop-state.json" > "$RALPH_DIR/loop-state.json.tmp" \
+    && mv "$RALPH_DIR/loop-state.json.tmp" "$RALPH_DIR/loop-state.json"
+
+  rm -f "$RALPH_DIR/loop-active"
+  exit 1
+fi
+
+# Update state for next iteration
+jq --argjson iter "$((ITERATION + 1))" \
+   --argjson npc "$NO_PROGRESS_COUNT" \
+   --argjson done "$CURR_DONE" \
+   '.iteration = $iter | .noProgressCount = $npc | .lastCompletedCount = $done' \
+   "$RALPH_DIR/loop-state.json" > "$RALPH_DIR/loop-state.json.tmp" \
+   && mv "$RALPH_DIR/loop-state.json.tmp" "$RALPH_DIR/loop-state.json"
+```
+
+### Resetting Circuit Breaker
+
+```bash
+# After fixing the issue, reset and continue
+jq '.noProgressCount = 0 | .circuitBreakerTripped = false' \
+  "$RALPH_DIR/loop-state.json" > "$RALPH_DIR/loop-state.json.tmp" \
+  && mv "$RALPH_DIR/loop-state.json.tmp" "$RALPH_DIR/loop-state.json"
+
+touch "$RALPH_DIR/loop-active"
+/ralph-loop --continue
+```
 
 ---
 
@@ -454,11 +712,27 @@ If `.ralph/instructions.md` exists, follow its delegation rules.
 
 | File | Purpose |
 |------|---------|
-| `.ralph/prd.json` | PRD with user stories |
-| `.ralph/progress.txt` | Learnings across iterations |
-| `.ralph/loop-active` | Flag for auto-resume |
+| `.ralph/prd.json` | PRD with user stories (`passes` flag per story) |
+| `.ralph/progress.txt` | Learnings across iterations (append-only) |
+| `.ralph/loop-active` | Flag for auto-resume (presence = loop enabled) |
+| `.ralph/loop-state.json` | Loop state: iteration count, circuit breaker, EXIT_SIGNAL |
+| `.ralph/session-state.json` | Current session state for crash recovery |
 | `.ralph/instructions.md` | Delegation policy |
-| `.ralph/session-state.json` | **NEW** - Current session state for crash recovery |
+
+### loop-state.json Schema
+
+```json
+{
+  "iteration": 1,
+  "lastCompletedCount": 0,
+  "noProgressCount": 0,
+  "exitSignal": false,
+  "exitReason": null,
+  "circuitBreakerTripped": false,
+  "startedAt": "2026-01-17T10:00:00Z",
+  "lastUpdated": "2026-01-17T10:30:00Z"
+}
+```
 
 ---
 
