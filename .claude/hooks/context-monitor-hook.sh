@@ -48,15 +48,39 @@ if [[ -f "$SESSION_STATE" ]] && command -v jq &> /dev/null; then
 fi
 
 # Thresholds
+AGENT_WARN_THRESHOLD=72  # Warn early if agents running
 WARN_THRESHOLD=75
 CLEAR_THRESHOLD=80
 CRITICAL_THRESHOLD=90
+STUCK_TIMEOUT_MINUTES=10  # Warn about processes running longer than this
+
+# Check for stuck/long-running agents
+STUCK_WARNING=""
+if [[ -f "$SESSION_STATE" ]] && command -v jq &> /dev/null; then
+    # Check oldest agent start time
+    OLDEST_START=$(jq -r '.runningAgents[0].startedAt // empty' "$SESSION_STATE" 2>/dev/null)
+    if [[ -n "$OLDEST_START" && "$OLDEST_START" != "null" ]]; then
+        # Calculate minutes running (simplified)
+        START_EPOCH=$(date -d "$OLDEST_START" +%s 2>/dev/null || echo "0")
+        NOW_EPOCH=$(date +%s)
+        if [[ "$START_EPOCH" -gt 0 ]]; then
+            RUNNING_MINS=$(( (NOW_EPOCH - START_EPOCH) / 60 ))
+            if [[ "$RUNNING_MINS" -ge "$STUCK_TIMEOUT_MINUTES" ]]; then
+                STUCK_WARNING="⏱️ Agent running for ${RUNNING_MINS}min (>${STUCK_TIMEOUT_MINUTES}min) - may be stuck!"
+            fi
+        fi
+    fi
+fi
 
 # Logic based on context percentage
 if [[ "$CONTEXT_PERCENT" -ge "$CRITICAL_THRESHOLD" ]]; then
     echo ""
     echo "🚨🚨🚨 CRITICAL: CONTEXT AT ${CONTEXT_PERCENT}% 🚨🚨🚨"
     echo "Autocompact imminent! MUST /clear NOW regardless of running agents."
+    if [[ -n "$STUCK_WARNING" ]]; then
+        echo "$STUCK_WARNING"
+        echo "KILL stuck processes and /clear NOW!"
+    fi
     echo ""
     echo "ACTION REQUIRED: Save state and run /clear IMMEDIATELY"
     echo ""
@@ -65,7 +89,12 @@ elif [[ "$CONTEXT_PERCENT" -ge "$CLEAR_THRESHOLD" ]]; then
     if [[ "$RUNNING_AGENTS" -gt 0 ]]; then
         echo ""
         echo "⚠️ CONTEXT AT ${CONTEXT_PERCENT}% - AGENTS RUNNING ($RUNNING_AGENTS)"
-        echo "Wait for agents to finish, then /clear immediately."
+        if [[ -n "$STUCK_WARNING" ]]; then
+            echo "$STUCK_WARNING"
+            echo "Consider killing stuck process and /clear."
+        else
+            echo "Wait for agents to finish, then /clear immediately."
+        fi
         echo "DO NOT start new work until cleared."
         echo ""
     else
@@ -86,6 +115,18 @@ elif [[ "$CONTEXT_PERCENT" -ge "$CLEAR_THRESHOLD" ]]; then
 elif [[ "$CONTEXT_PERCENT" -ge "$WARN_THRESHOLD" ]]; then
     echo ""
     echo "📊 Context: ${CONTEXT_PERCENT}% (approaching clear threshold at ${CLEAR_THRESHOLD}%)"
+    if [[ -n "$STUCK_WARNING" ]]; then
+        echo "$STUCK_WARNING"
+    fi
+    echo ""
+
+elif [[ "$CONTEXT_PERCENT" -ge "$AGENT_WARN_THRESHOLD" && "$RUNNING_AGENTS" -gt 0 ]]; then
+    echo ""
+    echo "📊 Context: ${CONTEXT_PERCENT}% with $RUNNING_AGENTS agent(s) running"
+    echo "Prepare to /clear soon after agents complete."
+    if [[ -n "$STUCK_WARNING" ]]; then
+        echo "$STUCK_WARNING"
+    fi
     echo ""
 fi
 
