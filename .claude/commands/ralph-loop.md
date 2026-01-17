@@ -353,8 +353,41 @@ More stories with passes=false?
 **Only set EXIT_SIGNAL when ALL of these are verified:**
 - ✅ Every story in prd.json has `passes: true`
 - ✅ All verification gates passed (tests, build, lint)
+- ✅ All todo list items are completed (none pending or in_progress)
+- ✅ Final audit passed (no HIGH severity issues remaining)
 - ✅ No pending work in session-state.json
 - ✅ Git commit successful for final changes
+
+### Pre-EXIT Verification Checklist
+
+Before setting EXIT_SIGNAL, run this verification:
+
+```bash
+# 1. Check all stories pass
+ALL_PASS=$(jq '[.userStories[] | .passes] | all' .ralph/prd.json)
+echo "All stories pass: $ALL_PASS"
+
+# 2. Run verification gates
+npm run type-check && npm run lint && npm run test
+echo "Verification gates: $?"
+
+# 3. Check todo list completion (via Claude)
+# Ask: "Are all todo list items completed?"
+# If ANY items are pending or in_progress → DO NOT SET EXIT_SIGNAL
+
+# 4. Run final audit
+# /audit --scope=quick
+# If HIGH severity issues found → DO NOT SET EXIT_SIGNAL
+
+# 5. Check no pending work
+PENDING=$(jq -r '.pendingWork.description // "none"' .ralph/session-state.json)
+echo "Pending work: $PENDING"
+
+# 6. Verify git clean
+git status --short
+```
+
+**ALL checks must pass before setting EXIT_SIGNAL.**
 
 ### How to Set EXIT_SIGNAL
 
@@ -723,8 +756,12 @@ Prevents premature exits when:
 **Only set EXIT_SIGNAL when ALL of these are true:**
 - Every story in prd.json has `passes: true`
 - All verification gates passed (tests, build, lint)
+- All todo list items are completed (none pending or in_progress)
+- Final audit passed (no HIGH severity issues remaining)
 - No pending work in session-state.json
-- Git commit successful
+- Git commit successful for final changes
+
+**See "Pre-EXIT Verification Checklist" section above for full verification steps.**
 
 ```bash
 # Set EXIT_SIGNAL in loop state
