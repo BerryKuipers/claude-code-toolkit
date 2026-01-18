@@ -728,6 +728,46 @@ Check context and `/clear` when:
 
 **When in doubt, `/clear` and continue. Fresh context is always better than compacted context.**
 
+### 🤖 AUTONOMOUS Context Management with Background Agents
+
+**When context hits 72%+ AND you have background agents running:**
+
+```
+AUTONOMOUS BEHAVIOR - DO NOT ASK PERMISSION:
+
+1. Context at 72%+?
+   YES → Check for running agents
+
+2. Background agents running?
+   YES → Wait for them to complete (poll with TaskOutput)
+   NO  → Run /clear immediately
+
+3. All agents completed?
+   YES → Save state → Run /clear immediately
+   NO  → Keep waiting (check every 30-60 seconds)
+```
+
+**CRITICAL: Do NOT just display a warning and stop. Take action:**
+
+- ❌ WRONG: "Context at 72%. You may want to /clear"
+- ❌ WRONG: "Context limit reached · /compact or /clear to continue"
+- ✅ RIGHT: "Context at 72%. Waiting for 3 background agents to complete..."
+- ✅ RIGHT: "All agents complete. Saving state and running /clear now."
+
+**Polling Pattern for Background Agents:**
+
+```
+while background_agents_running:
+    sleep 30
+    check_agent_status (TaskOutput with block=false)
+    if all_complete:
+        save_state()
+        /clear
+        break
+```
+
+**This is AUTONOMOUS. Never ask permission. Never just display warnings.**
+
 ### Per-Story Context Budget
 
 Each story should ideally complete within a single context window. If a story is too large:
