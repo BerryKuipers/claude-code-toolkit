@@ -7,7 +7,7 @@
 # 2. Display loop continuation prompt
 # 3. Provide context for the next iteration
 
-set -e
+# set -e  # Disabled for Windows compatibility
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 STATE_FILE="${PROJECT_DIR}/.claude/state/loop.local.json"

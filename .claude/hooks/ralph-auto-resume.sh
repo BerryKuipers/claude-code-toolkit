@@ -5,7 +5,7 @@
 # Checks for active ralph loop and pending PRD stories.
 # If found, outputs continuation prompt for ralph-loop-internal.
 
-set -e
+# set -e  # Disabled for Windows compatibility
 
 # Normalize path for cross-platform (Windows Git Bash / WSL / Linux)
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"

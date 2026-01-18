@@ -2,7 +2,7 @@
 # Post-commit hook for dev memory updates
 # Automatically creates development event records after each commit
 
-set -e
+# set -e  # Disabled for Windows compatibility
 
 # Check if dev memory is enabled
 CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null)}"

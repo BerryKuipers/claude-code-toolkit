@@ -10,7 +10,7 @@
 # - 80%: Recommend /clear
 # - 90%: Critical
 
-set -e
+# set -e  # Disabled for Windows compatibility
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 RALPH_DIR="$PROJECT_DIR/.ralph"

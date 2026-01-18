@@ -5,7 +5,7 @@
 # This hook auto-resumes the RALPH loop after /compact or auto-compact.
 # Unlike session-start.sh, we don't need /clear - context was just compacted.
 
-set -e
+# set -e  # Disabled for Windows compatibility
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 RALPH_DIR="$PROJECT_DIR/.ralph"

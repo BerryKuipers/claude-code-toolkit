@@ -8,7 +8,7 @@
 # - Current session state to session-state.json
 # - Marks session as interrupted for proper resumption
 
-set -e
+# set -e  # Disabled for Windows compatibility
 
 # Configuration
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"

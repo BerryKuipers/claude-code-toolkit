@@ -5,7 +5,7 @@
 # GOAL: Avoid ever reaching this point - /clear before 75% context.
 # This is a SAFETY NET if self-monitoring fails.
 
-set -e
+# set -e  # Disabled for Windows compatibility
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 RALPH_DIR="$PROJECT_DIR/.ralph"

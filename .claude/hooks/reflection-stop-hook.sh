@@ -9,7 +9,7 @@
 #
 # CRITICAL: This hook NEVER modifies skills/rules or commits. It only logs.
 
-set -e
+# set -e  # Disabled for Windows compatibility
 
 # Configuration
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"

@@ -12,7 +12,7 @@
 # - CLAUDE_PROJECT_DIR: Project root directory
 # - CLAUDE_SESSION_OUTPUT: Recent assistant output (if available)
 
-set -e
+# set -e  # Disabled for Windows compatibility
 
 # Configuration
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
