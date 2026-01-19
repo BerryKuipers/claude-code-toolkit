@@ -49,11 +49,11 @@ if [[ -f "$SESSION_STATE" ]] && command -v jq &> /dev/null; then
 fi
 
 # Thresholds (configurable via env for testing)
-# Lowered defaults to clear BEFORE agents return and fill remaining context
-AGENT_WARN_THRESHOLD=${CONTEXT_AGENT_WARN:-50}
-WARN_THRESHOLD=${CONTEXT_WARN:-55}
-CLEAR_THRESHOLD=${CONTEXT_CLEAR:-60}
-CRITICAL_THRESHOLD=${CONTEXT_CRITICAL:-70}
+# Key insight: Clear BEFORE launching agents, not after they return
+AGENT_WARN_THRESHOLD=${CONTEXT_AGENT_WARN:-65}
+WARN_THRESHOLD=${CONTEXT_WARN:-70}
+CLEAR_THRESHOLD=${CONTEXT_CLEAR:-75}
+CRITICAL_THRESHOLD=${CONTEXT_CRITICAL:-85}
 
 # Check for stuck/long-running agents
 STUCK_WARNING=""

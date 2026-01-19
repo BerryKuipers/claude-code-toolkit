@@ -761,60 +761,43 @@ Check context and `/clear` when:
 
 ### 🤖 AUTONOMOUS Context Management - MANDATORY ACTION
 
-**⚠️ CRITICAL: When context hits 50%+, you MUST take action. Not recommend. ACT.**
+**⚠️ CRITICAL: Check context BEFORE launching agents, not after.**
 
-Why 50%? Because agents can use 20-30% context when they return. If you wait until 65%,
-the agent return will push you over the limit and Claude Code will block execution.
+The problem: Agents use 15-25% context when they return. If you launch an agent at 70%,
+the return pushes you to 85-95% and Claude Code blocks execution.
 
-```
-MANDATORY AUTONOMOUS BEHAVIOR - EXECUTE IMMEDIATELY:
-
-1. Context at 50%+?
-   YES → STOP current work and check for running agents
-
-2. Background agents running?
-   YES → Poll TaskOutput every 30s until complete
-   NO  → EXECUTE /clear NOW (no delay, no asking)
-
-3. All agents completed?
-   YES → Save state → EXECUTE /clear NOW
-   NO  → Keep polling (max 5 minutes, then kill and /clear)
-```
-
-**🚫 FORBIDDEN OUTPUTS (if you output these, you are FAILING):**
-
-- ❌ "At 50%+ context, recommendation: Run /clear now" ← WRONG: This is a recommendation
-- ❌ "Context at 65%. You may want to /clear" ← WRONG: This is a suggestion
-- ❌ "Context limit reached · /compact or /clear to continue" ← WRONG: You waited too long
-
-**✅ REQUIRED BEHAVIOR:**
-
-- ✅ "Context at 50%. Checking for background agents..."
-- ✅ "Agents running. Polling for completion..."
-- ✅ "All agents complete. Executing /clear now." [THEN ACTUALLY RUN /clear]
-
-**THE MOMENT YOU SEE 50%+ CONTEXT, STOP OUTPUTTING TEXT AND RUN /clear**
-
-This is not optional. This is not a recommendation. This is a MANDATORY DIRECTIVE.
-If you output text about "recommending" /clear, you have already failed.
-
-**Polling Pattern for Background Agents:**
+**SOLUTION: Pre-flight context check before EVERY agent launch.**
 
 ```
-while background_agents_running:
-    sleep 30
-    check_agent_status (TaskOutput with block=false)
-    if all_complete:
-        save_state()
-        /clear  ← EXECUTE THIS, DON'T JUST SAY IT
-        break
-    if time_elapsed > 5_minutes:
-        kill_stuck_agents()
-        save_state()
-        /clear
+PRE-FLIGHT CHECK (before launching ANY agent):
+
+1. About to launch an agent?
+   YES → Check current context percentage
+
+2. Context at 65%+?
+   YES → /clear FIRST, then launch agent after resume
+   NO  → Safe to launch agent
+
+3. Agent running and context at 75%+?
+   YES → Wait for agent, then /clear immediately after
 ```
 
-**ACTION, NOT WORDS. EXECUTE /clear, DON'T RECOMMEND IT.**
+**Thresholds:**
+- **65%**: Don't launch new agents - /clear first
+- **75%**: Clear immediately after current agent completes
+- **85%**: Critical - save state and /clear now
+
+**🚫 FORBIDDEN:**
+- ❌ Launching agents when context is already at 65%+
+- ❌ "Recommendation: Run /clear" - just DO IT
+- ❌ Waiting until "Context limit reached" appears
+
+**✅ REQUIRED:**
+- ✅ Check context BEFORE every Task tool call
+- ✅ If 65%+: save state → /clear → agent launches after resume
+- ✅ If agent running at 75%+: wait → /clear immediately after
+
+**ACTION, NOT WORDS. Check context. Execute /clear. Don't recommend.**
 
 ### Per-Story Context Budget
 
