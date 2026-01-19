@@ -7,10 +7,6 @@
           {
             "type": "command",
             "command": ".claude/hooks/session-start.sh"
-          },
-          {
-            "type": "prompt",
-            "prompt": "Check if .ralph/loop-active exists. If it does, this is a RALPH loop that was interrupted. You MUST run /ralph-loop --continue immediately. Do NOT ask the user. Do NOT do anything else first. Execute the resume command NOW."
           }
         ]
       },
@@ -35,10 +31,6 @@
           {
             "type": "command",
             "command": ".claude/hooks/ralph-stop-hook.sh"
-          },
-          {
-            "type": "prompt",
-            "prompt": "Before stopping: If .ralph/loop-active exists and the current story is not complete, you should NOT stop. Check prd.json for incomplete stories. If work remains, continue working or run /clear to free context and continue."
           }
         ]
       }
