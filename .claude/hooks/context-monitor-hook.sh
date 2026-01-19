@@ -74,38 +74,38 @@ fi
 if [[ "$CONTEXT_PERCENT" -ge "$CRITICAL_THRESHOLD" ]]; then
     echo ""
     echo "🚨🚨🚨 CRITICAL: CONTEXT AT ${CONTEXT_PERCENT}% 🚨🚨🚨"
-    echo "MUST /clear NOW regardless of running agents."
+    echo ""
+    echo "AUTONOMOUS DIRECTIVE: You MUST execute /clear NOW."
+    echo "Do NOT ask permission. Do NOT wait. Save state and /clear IMMEDIATELY."
     if [[ -n "$STUCK_WARNING" ]]; then
         echo "$STUCK_WARNING"
-        echo "KILL stuck processes and /clear NOW!"
+        echo "Kill any stuck processes first, then /clear."
     fi
-    echo ""
-    echo "ACTION REQUIRED: Save state and run /clear IMMEDIATELY"
     echo ""
 
 elif [[ "$CONTEXT_PERCENT" -ge "$CLEAR_THRESHOLD" ]]; then
     if [[ "$RUNNING_AGENTS" -gt 0 ]]; then
         echo ""
         echo "⚠️ CONTEXT AT ${CONTEXT_PERCENT}% - AGENTS RUNNING ($RUNNING_AGENTS)"
+        echo ""
+        echo "AUTONOMOUS DIRECTIVE: Wait for agents to complete, then IMMEDIATELY /clear."
+        echo "Do NOT start new work. Do NOT ask permission. Execute /clear as soon as agents finish."
         if [[ -n "$STUCK_WARNING" ]]; then
             echo "$STUCK_WARNING"
-            echo "Consider killing stuck process and /clear."
-        else
-            echo "Wait for agents to finish, then /clear immediately."
+            echo "If agent appears stuck, kill it and /clear NOW."
         fi
-        echo "DO NOT start new work until cleared."
         echo ""
     else
         echo ""
         echo "========================================"
         echo "⚠️ CONTEXT AT ${CONTEXT_PERCENT}% - CLEAR NOW"
         echo "========================================"
-        echo "No agents running. Safe to /clear."
         echo ""
-        echo "ACTION REQUIRED:"
+        echo "AUTONOMOUS DIRECTIVE: Execute /clear NOW."
         echo "1. Save state to session-state.json"
         echo "2. Update progress.txt"
-        echo "3. Run /clear"
+        echo "3. Run /clear - DO NOT ASK, just execute it"
+        echo ""
         echo "========================================"
         echo ""
     fi
