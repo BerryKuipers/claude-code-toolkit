@@ -48,11 +48,11 @@ if [[ -f "$SESSION_STATE" ]] && command -v jq &> /dev/null; then
     RUNNING_AGENTS=$(jq -r '.runningAgents | length // 0' "$SESSION_STATE" 2>/dev/null || echo "0")
 fi
 
-# Thresholds
-AGENT_WARN_THRESHOLD=72
-WARN_THRESHOLD=75
-CLEAR_THRESHOLD=80
-CRITICAL_THRESHOLD=90
+# Thresholds (configurable via env for testing)
+AGENT_WARN_THRESHOLD=${CONTEXT_AGENT_WARN:-72}
+WARN_THRESHOLD=${CONTEXT_WARN:-75}
+CLEAR_THRESHOLD=${CONTEXT_CLEAR:-80}
+CRITICAL_THRESHOLD=${CONTEXT_CRITICAL:-90}
 
 # Check for stuck/long-running agents
 STUCK_WARNING=""
