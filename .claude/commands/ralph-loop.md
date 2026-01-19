@@ -759,31 +759,44 @@ Check context and `/clear` when:
 
 **When in doubt, `/clear` and continue. Fresh context is always better than compacted context.**
 
-### 🤖 AUTONOMOUS Context Management with Background Agents
+### 🤖 AUTONOMOUS Context Management - MANDATORY ACTION
 
-**When context hits 72%+ AND you have background agents running:**
+**⚠️ CRITICAL: When context hits 50%+, you MUST take action. Not recommend. ACT.**
+
+Why 50%? Because agents can use 20-30% context when they return. If you wait until 65%,
+the agent return will push you over the limit and Claude Code will block execution.
 
 ```
-AUTONOMOUS BEHAVIOR - DO NOT ASK PERMISSION:
+MANDATORY AUTONOMOUS BEHAVIOR - EXECUTE IMMEDIATELY:
 
-1. Context at 72%+?
-   YES → Check for running agents
+1. Context at 50%+?
+   YES → STOP current work and check for running agents
 
 2. Background agents running?
-   YES → Wait for them to complete (poll with TaskOutput)
-   NO  → Run /clear immediately
+   YES → Poll TaskOutput every 30s until complete
+   NO  → EXECUTE /clear NOW (no delay, no asking)
 
 3. All agents completed?
-   YES → Save state → Run /clear immediately
-   NO  → Keep waiting (check every 30-60 seconds)
+   YES → Save state → EXECUTE /clear NOW
+   NO  → Keep polling (max 5 minutes, then kill and /clear)
 ```
 
-**CRITICAL: Do NOT just display a warning and stop. Take action:**
+**🚫 FORBIDDEN OUTPUTS (if you output these, you are FAILING):**
 
-- ❌ WRONG: "Context at 72%. You may want to /clear"
-- ❌ WRONG: "Context limit reached · /compact or /clear to continue"
-- ✅ RIGHT: "Context at 72%. Waiting for 3 background agents to complete..."
-- ✅ RIGHT: "All agents complete. Saving state and running /clear now."
+- ❌ "At 50%+ context, recommendation: Run /clear now" ← WRONG: This is a recommendation
+- ❌ "Context at 65%. You may want to /clear" ← WRONG: This is a suggestion
+- ❌ "Context limit reached · /compact or /clear to continue" ← WRONG: You waited too long
+
+**✅ REQUIRED BEHAVIOR:**
+
+- ✅ "Context at 50%. Checking for background agents..."
+- ✅ "Agents running. Polling for completion..."
+- ✅ "All agents complete. Executing /clear now." [THEN ACTUALLY RUN /clear]
+
+**THE MOMENT YOU SEE 50%+ CONTEXT, STOP OUTPUTTING TEXT AND RUN /clear**
+
+This is not optional. This is not a recommendation. This is a MANDATORY DIRECTIVE.
+If you output text about "recommending" /clear, you have already failed.
 
 **Polling Pattern for Background Agents:**
 
@@ -793,11 +806,15 @@ while background_agents_running:
     check_agent_status (TaskOutput with block=false)
     if all_complete:
         save_state()
-        /clear
+        /clear  ← EXECUTE THIS, DON'T JUST SAY IT
         break
+    if time_elapsed > 5_minutes:
+        kill_stuck_agents()
+        save_state()
+        /clear
 ```
 
-**This is AUTONOMOUS. Never ask permission. Never just display warnings.**
+**ACTION, NOT WORDS. EXECUTE /clear, DON'T RECOMMEND IT.**
 
 ### Per-Story Context Budget
 
