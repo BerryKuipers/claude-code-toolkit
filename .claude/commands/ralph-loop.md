@@ -172,7 +172,7 @@ if [[ "$PRD_ONLY" != "true" && -n "$ISSUE_NUMBER" ]]; then
       "priority": 1,
       "passes": false,
       "notes": "",
-      "executor": "/conductor"
+      "executor": "implementation"
     }
   ],
   "metadata": {
@@ -244,7 +244,7 @@ You are FORBIDDEN from doing ANY work yourself. Your ONLY job is to run the exec
 
 ### THE ONLY THING YOU DO:
 ```
-Run the executor command: /conductor, /refactor, /audit, etc.
+Use the Task tool to invoke the executor agent (implementation, architect, refactor, etc.)
 ```
 
 ### FORBIDDEN FOR YOU (the RALPH orchestrator):
@@ -560,7 +560,7 @@ fi
 STORY_ID=$(echo "$INCOMPLETE" | jq -r '.id')
 STORY_TITLE=$(echo "$INCOMPLETE" | jq -r '.title')
 STORY_DESC=$(echo "$INCOMPLETE" | jq -r '.description')
-STORY_EXECUTOR=$(echo "$INCOMPLETE" | jq -r '.executor // "/conductor"')
+STORY_EXECUTOR=$(echo "$INCOMPLETE" | jq -r '.executor // "implementation"')
 STORY_AC=$(echo "$INCOMPLETE" | jq -r '.acceptanceCriteria | join(", ")')
 
 # Count progress
@@ -594,10 +594,10 @@ echo "=============================================="
 echo ""
 echo "EXECUTOR FOR THIS STORY: $STORY_EXECUTOR"
 echo ""
-echo "🤖 AUTONOMOUS MODE - PASS THIS TO THE EXECUTOR 🤖"
+echo "🤖 AUTONOMOUS MODE - DIRECT AGENT ASSIGNMENT 🤖"
 echo ""
 echo "YOUR ONLY ALLOWED ACTION:"
-echo "  → Run: $STORY_EXECUTOR --autonomous"
+echo "  → Use Task tool with subagent_type='$STORY_EXECUTOR'"
 echo ""
 echo "IMPORTANT: Include 'AUTONOMOUS MODE' in the executor prompt so it:"
 echo "  - Does NOT ask for permission"
@@ -621,12 +621,14 @@ echo "  5. ALWAYS run /clear after EACH story (don't wait for 75%)"
 echo ""
 echo "⚠️ CLEAR AFTER EVERY STORY - hooks cannot monitor context %"
 echo ""
-echo "EXAMPLE DELEGATION:"
-echo "  $STORY_EXECUTOR --autonomous"
-echo "  AUTONOMOUS MODE: Do not ask for permission. Continue until complete."
-echo "  Story: $STORY_ID - $STORY_TITLE"
-echo "  Description: [story description]"
-echo "  Acceptance: $STORY_AC"
+echo "EXAMPLE - Use Task tool:"
+echo "  Task tool call:"
+echo "    subagent_type: '$STORY_EXECUTOR'"
+echo "    description: 'Execute $STORY_ID'"
+echo "    prompt: 'AUTONOMOUS MODE: Do not ask for permission."
+echo "      Story: $STORY_ID - $STORY_TITLE"
+echo "      Acceptance: $STORY_AC"
+echo "      Continue until complete or blocked.'"
 echo ""
 echo "To stop: /ralph-loop --stop"
 echo "=============================================="
@@ -636,17 +638,46 @@ echo "=============================================="
 
 ## Delegation Protocol
 
-The command MUST delegate to existing agents. It does NOT implement directly.
+**PREFER DIRECT AGENT ASSIGNMENT over conductor delegation.**
 
-### Default Delegation Mapping
+The conductor often does work itself despite instructions to delegate. Bypass this by assigning tasks directly to specialized agents in the PRD.
 
-| Story Executor | Command |
-|----------------|---------|
+### Recommended: Direct Agent Assignment
+
+| Executor | Use For | Why Direct? |
+|----------|---------|-------------|
+| `implementation` | Feature implementation, bug fixes | Actually writes code |
+| `architect` | Architecture review, design | Analyzes without implementing |
+| `refactor` | Code refactoring | Safe changes with validation |
+| `audit` | Code review, quality checks | Read-only analysis |
+
+**Example PRD with direct agents:**
+```json
+{
+  "userStories": [
+    { "id": "US-001", "executor": "architect", "title": "Design API structure" },
+    { "id": "US-002", "executor": "implementation", "title": "Implement endpoints" },
+    { "id": "US-003", "executor": "implementation", "title": "Add tests" },
+    { "id": "US-004", "executor": "audit", "title": "Final code review" }
+  ]
+}
+```
+
+### Why Not `/conductor`?
+
+The conductor is supposed to delegate but often does work itself. Direct assignment:
+- Bypasses delegation issues
+- Sends work to the right specialist immediately
+- More predictable behavior
+
+### Legacy: Slash Commands (Avoid)
+
+These require an extra delegation hop:
+| Executor | Slash Command |
+|----------|---------------|
+| `/conductor` | Orchestrates (but often does work itself) |
 | `/architect` | Architecture review |
-| `/conductor` | Implementation |
 | `/audit` | Code review |
-| `/test-all` | Testing |
-| `/refactor` | Refactoring |
 
 ### Reading from instructions.md
 
