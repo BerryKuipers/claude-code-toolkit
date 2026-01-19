@@ -38,9 +38,11 @@ fi
 mkdir -p "$DST_DIR"
 for d in agents commands skills api-skills-source docs shared prompts reviews hooks rules; do
   if [ -d "$SRC_DIR/$d" ]; then
-    rm -rf "$DST_DIR/$d"
-    cp -a "$SRC_DIR/$d" "$DST_DIR/"
-    echo "[sync] synced: $d" | tee -a "$LOG"
+    mkdir -p "$DST_DIR/$d"
+    # Copy toolkit files WITHOUT deleting project-specific files
+    # Only overwrites files that exist in toolkit, preserves project files (10-*, 11-*, etc.)
+    cp -a "$SRC_DIR/$d"/* "$DST_DIR/$d"/ 2>/dev/null || true
+    echo "[sync] merged: $d (preserved project files)" | tee -a "$LOG"
   fi
 done
 
