@@ -3,7 +3,18 @@ set -Eeuo pipefail
 LOG="${TMPDIR:-/tmp}/claude-toolkit-sync.log"
 : > "$LOG"
 
-PROJECT_DIR="${CLAUDE_PROJECT_DIR:-"$(cd "$(dirname "$0")/.." && pwd)"}"
+# Detect project directory - handle being run from either:
+# - ./scripts/sync-claude-toolkit.sh (project root)
+# - ./.claude-toolkit/scripts/sync-claude-toolkit.sh (submodule)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [[ "$SCRIPT_DIR" == *".claude-toolkit/scripts" ]]; then
+  # Running from submodule - go up two levels
+  PROJECT_DIR="${CLAUDE_PROJECT_DIR:-"$(cd "$SCRIPT_DIR/../.." && pwd)"}"
+else
+  # Running from project scripts/ - go up one level
+  PROJECT_DIR="${CLAUDE_PROJECT_DIR:-"$(cd "$SCRIPT_DIR/.." && pwd)"}"
+fi
+
 SUBMOD_PATH="$PROJECT_DIR/.claude-toolkit"
 SUBMOD_URL="https://github.com/BerryKuipers/claude-code-toolkit.git"
 SRC_DIR="$SUBMOD_PATH/.claude"
@@ -49,11 +60,17 @@ done
 # Merge settings.json (toolkit hooks + project-specific settings)
 if [ -f "$SRC_DIR/settings.json" ]; then
   if [ -f "$DST_DIR/settings.json" ] && command -v jq &> /dev/null; then
-    # Merge: toolkit hooks take precedence, but preserve project-specific keys
-    jq -s '.[0] * .[1] | .hooks = (.[0].hooks // {}) * (.[1].hooks // {})' \
-      "$DST_DIR/settings.json" "$SRC_DIR/settings.json" > "$DST_DIR/settings.json.tmp" \
-      && mv "$DST_DIR/settings.json.tmp" "$DST_DIR/settings.json"
-    echo "[sync] merged: settings.json (preserved project settings)" | tee -a "$LOG"
+    # Deep merge: project settings as base, toolkit overwrites
+    # This preserves project-specific keys while updating toolkit hooks
+    if jq -s '.[0] * .[1]' "$DST_DIR/settings.json" "$SRC_DIR/settings.json" > "$DST_DIR/settings.json.tmp" 2>/dev/null; then
+      mv "$DST_DIR/settings.json.tmp" "$DST_DIR/settings.json"
+      echo "[sync] merged: settings.json (preserved project settings)" | tee -a "$LOG"
+    else
+      # jq merge failed - just copy toolkit version
+      rm -f "$DST_DIR/settings.json.tmp"
+      cp "$SRC_DIR/settings.json" "$DST_DIR/"
+      echo "[sync] synced: settings.json (jq merge failed, used toolkit version)" | tee -a "$LOG"
+    fi
   else
     # No existing settings or no jq - just copy
     cp "$SRC_DIR/settings.json" "$DST_DIR/"
