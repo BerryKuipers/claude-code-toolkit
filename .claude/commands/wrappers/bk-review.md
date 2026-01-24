@@ -2,85 +2,105 @@
 
 **Arguments:** [PR_NUMBER | --staged | --diff] [--strict] [--security-focus]
 
-**Description:** Toolkit wrapper around upstream code-reviewer agent. Adds verification gates and house-style enforcement.
+**Description:** Toolkit wrapper that DELEGATES to upstream code-reviewer agent via Task tool.
+
+---
+
+## CRITICAL: This is a DELEGATION command
+
+**DO NOT perform the review yourself. You MUST delegate via Task tool.**
+
+This command exists to spawn a subagent - not to do the work inline.
 
 ---
 
 ## Instructions
 
-You are executing the toolkit code review wrapper. This command:
-1. Gathers changes to review (PR, staged, or diff)
-2. Delegates to upstream `code-reviewer` agent from everything-claude-code plugin
-3. Enforces toolkit output contract
-4. Optionally invokes security-reviewer for --security-focus
-
-### Step 1: Gather Review Context
+### Step 1: Gather Review Context (quick, inline)
 
 Determine what to review:
-- If PR_NUMBER: `gh pr view $PR_NUMBER --json files,body,title`
-- If --staged: `git diff --cached`
-- If --diff: `git diff`
-- Default: staged changes
+```bash
+# If PR_NUMBER provided
+gh pr diff $PR_NUMBER 2>/dev/null || git diff --cached
 
-### Step 2: Delegate to Upstream Reviewer
+# If --staged or default
+git diff --cached
 
-Use the Task tool:
+# If --diff
+git diff HEAD~1
+```
+
+Capture the diff output (max 500 lines for agent prompt).
+
+### Step 2: IMMEDIATELY Spawn Review Agent
+
+**YOU MUST CALL THE TASK TOOL NOW.** Do not continue without spawning the agent.
+
 ```
 Task(
   subagent_type: "everything-claude-code:code-reviewer",
-  prompt: "Review these changes for quality, security, and best practices:\n[CHANGES]"
+  description: "Code review for current changes",
+  prompt: "Review these code changes. Provide findings categorized as Critical/Warning/Suggestion with file:line references.
+
+CHANGES TO REVIEW:
+[PASTE DIFF HERE]
+
+Focus on:
+- Security vulnerabilities
+- Logic errors
+- Missing error handling
+- Type safety issues
+- Test coverage gaps"
 )
 ```
 
-If --security-focus:
+### Step 3: If --security-focus, spawn ADDITIONAL agent
+
 ```
 Task(
   subagent_type: "everything-claude-code:security-reviewer",
-  prompt: "Security review these changes:\n[CHANGES]"
+  description: "Security review for current changes",
+  prompt: "Security-focused review of these changes. Check for OWASP Top 10, injection risks, auth issues.
+
+CHANGES:
+[PASTE DIFF HERE]"
 )
 ```
 
-### Step 3: Enforce Output Contract
+### Step 4: Compile Results
 
-Response MUST include:
+After agent(s) return, format the combined output:
 
 ```markdown
 ## Review Summary
-[Overall assessment: APPROVE / REQUEST_CHANGES / COMMENT]
+**Verdict**: [APPROVE ✅ | REQUEST_CHANGES ❌ | COMMENT ⚠️]
 
-## Findings
+## Critical Issues (Must Fix)
+- [ ] `file:line` - Issue description
 
-### Critical (Must Fix)
-- [ ] [File:Line] [Issue description]
+## Warnings (Should Fix)
+- [ ] `file:line` - Issue description
 
-### Warnings (Should Fix)
-- [ ] [File:Line] [Issue description]
-
-### Suggestions (Nice to Have)
-- [ ] [File:Line] [Suggestion]
+## Suggestions
+- [ ] `file:line` - Suggestion
 
 ## Security Concerns
-- [None | List of concerns]
-
-## Test Coverage
-- [Assessment of test coverage for changes]
+[From security-reviewer if --security-focus]
 
 ## Files Reviewed
-- `path/to/file.ts` - [OK | Issues found]
+- `path/file.ts` - [✅ OK | ❌ Issues]
 ```
-
-### Step 4: House Style Validation
-
-Verify reviewed code follows toolkit rules:
-- No console.log in production code
-- Proper error handling
-- Type safety (no `any` without justification)
-- Consistent naming conventions
 
 ---
 
-## Fallback Behavior
+## Fallback
 
-If upstream plugin unavailable:
-1. Use toolkit's `code-reviewer` agent
-2. Still enforce output contract
+If `everything-claude-code:code-reviewer` unavailable:
+```
+Task(
+  subagent_type: "code-reviewer",
+  prompt: "[same prompt]"
+)
+```
+
+**NEVER do the review inline in the main conversation.**
