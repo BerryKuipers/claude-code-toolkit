@@ -1,5 +1,5 @@
 ---
-description: TypeScript and JavaScript style guidelines and conventions
+description: TypeScript style guidelines - strict typing and anti-noise patterns
 globs:
   - '**/*.ts'
   - '**/*.tsx'
@@ -7,235 +7,75 @@ globs:
   - '**/*.jsx'
   - '!**/node_modules/**'
   - '!**/dist/**'
-  - '!**/build/**'
 alwaysApply: true
-targets: ['*']
 ---
 
-# TypeScript/JavaScript Style Guidelines
+# TypeScript Style Guidelines
 
-Generic style conventions that serve as safe defaults across TypeScript and JavaScript projects.
+## Strict Typing (Enforced)
 
-## Code Style Conventions
-
-### String Literals
-**Prefer single quotes** for strings:
+**Explicit return types on public functions:**
 ```typescript
-// ✅ Good
-const message = 'Hello, world';
-const query = 'SELECT * FROM users WHERE id = $1';
+// ✅ Required
+export function calculateTotal(items: Item[]): number { ... }
 
-// ❌ Avoid (unless necessary for escaping)
-const message = "Hello, world";
+// ❌ Missing return type
+export function calculateTotal(items: Item[]) { ... }
 ```
 
-Use double quotes only when:
-- String contains single quotes: `"It's a beautiful day"`
-- Project style explicitly differs (match existing code)
+**Inference OK for locals:** `const count = 42;` - no annotation needed.
 
-### Async/Await
-**Prefer async/await** over raw promise chains:
+## Naming Conventions
+
+| Type | Convention | Example |
+|------|------------|---------|
+| Classes, Interfaces, Types | PascalCase | `UserService`, `User` |
+| Functions, variables | camelCase | `fetchUser`, `userId` |
+| Constants | UPPER_SNAKE_CASE | `MAX_RETRY_COUNT` |
+
+## Error Handling
+
+**Throw explicitly, don't swallow errors:**
 ```typescript
-// ✅ Good
-async function fetchUser(id: string) {
-  const user = await userRepository.findById(id);
-  const profile = await profileService.getProfile(user.profileId);
-  return { user, profile };
-}
+// ✅ Explicit
+if (!user) throw new NotFoundError(`User ${id} not found`);
 
-// ❌ Avoid
-function fetchUser(id: string) {
-  return userRepository.findById(id)
-    .then(user => profileService.getProfile(user.profileId))
-    .then(profile => ({ user, profile }));
-}
+// ❌ Silent failure
+catch { return null; }
 ```
 
-### File Organization
-**Keep files focused** - one main export per file where reasonable:
+## Anti-Patterns to Avoid
+
+**Over-engineering:**
 ```typescript
-// ✅ Good - user.service.ts
-export class UserService {
-  // All user service methods
-}
+// ✅ Simple
+return users.filter(u => u.isActive);
 
-// ✅ Good - user.types.ts
-export interface User { }
-export interface UserProfile { }
-export type UserId = string;
-
-// ❌ Avoid - kitchen-sink.ts
-export class UserService { }
-export class ProductService { }
-export class OrderService { }
+// ❌ Over-engineered
+const filterPredicate = (user: User): boolean => { const isActive: boolean = user.isActive; return isActive; };
+const result: User[] = users.filter(filterPredicate);
+return result;
 ```
-
-**Exceptions:**
-- Type definition files can export multiple related types
-- Utility/helper files can export multiple related functions
-- Barrel files (index.ts) for re-exports
-
-### Imports
-Organize imports in logical groups:
-```typescript
-// 1. External dependencies
-import { Router } from 'express';
-import { z } from 'zod';
-
-// 2. Internal absolute imports
-import { UserService } from '@/services/user.service';
-import { authMiddleware } from '@/middleware/auth';
-
-// 3. Relative imports
-import { validateUserInput } from './validators';
-import type { CreateUserDto } from './types';
-```
-
-### Type Annotations
-**Use explicit return types** for public functions:
-```typescript
-// ✅ Good
-export function calculateTotal(items: Item[]): number {
-  return items.reduce((sum, item) => sum + item.price, 0);
-}
-
-// ❌ Avoid (implicit return type)
-export function calculateTotal(items: Item[]) {
-  return items.reduce((sum, item) => sum + item.price, 0);
-}
-```
-
-**Let TypeScript infer** for simple cases:
-```typescript
-// ✅ Good (inference is clear)
-const count = 42;
-const name = 'Alice';
-const items = ['apple', 'banana'];
-```
-
-### Naming Conventions
-```typescript
-// Classes, Interfaces, Types: PascalCase
-class UserService { }
-interface User { }
-type UserId = string;
-
-// Functions, variables: camelCase
-function fetchUser() { }
-const userId = '123';
-
-// Constants: UPPER_SNAKE_CASE (for true constants)
-const MAX_RETRY_COUNT = 3;
-const API_BASE_URL = process.env.API_URL;
-
-// Private fields: prefix with underscore (optional)
-class Service {
-  private _cache: Map<string, any>;
-}
-```
-
-### Comments
-**Avoid unnecessary comments:**
-```typescript
-// ❌ Noisy
-// Get the user by ID
-const user = await userRepository.findById(id);
-
-// ✅ Good (self-documenting)
-const user = await userRepository.findById(id);
-```
-
-**Use comments for:**
-- Complex algorithms that aren't self-evident
-- Non-obvious business rules
-- Workarounds for bugs or limitations
-- Public API documentation (JSDoc)
-
-```typescript
-/**
- * Calculates prorated refund amount based on subscription usage.
- *
- * Uses daily proration: (days_remaining / total_days) * subscription_price
- * Minimum refund is $0, even if user exceeded quota.
- */
-export function calculateRefund(subscription: Subscription): number {
-  // implementation
-}
-```
-
-## Project-Specific Overrides
-
-**These are baseline defaults.** Projects may override:
-- Indentation (2 spaces, 4 spaces, tabs)
-- Semicolons (required, omitted)
-- Import organization (via ESLint/Prettier)
-- Naming conventions for specific domains
 
 ## Guidelines for Claude
 
-### Match Existing Style
-When working in an established codebase:
-1. **First, observe the existing code style**
-2. If it differs from these guidelines, **match the project's style**
+### Match Existing Style (Critical)
+1. **Observe existing code style first**
+2. If project style differs from these rules, **match the project**
 3. Don't "fix" style unless explicitly asked
-4. Use these guidelines only as defaults for new projects
 
-### Avoid Noisy Changes
+### Avoid Noisy Changes (Critical)
 When editing code:
-- Don't add comments to every line
+- Don't add comments to code you didn't write
 - Don't add logging unless requested
 - Don't reformat unrelated code
-- Don't add type annotations to code you didn't change
+- Don't add type annotations to unchanged code
+- Don't add docstrings unless asked
 
-### Keep It Simple
-```typescript
-// ✅ Good (simple, direct)
-function findActiveUsers(users: User[]): User[] {
-  return users.filter(u => u.isActive);
-}
+### Code Style (Defaults - defer to project)
+- Prefer single quotes (unless project uses double)
+- Prefer async/await over promise chains
+- One main export per file (types files excepted)
+- Imports: external → internal → relative
 
-// ❌ Over-engineered
-function findActiveUsers(users: User[]): User[] {
-  // Filter users by active status
-  const filterPredicate = (user: User): boolean => {
-    // Check if user is active
-    const isActive: boolean = user.isActive;
-    return isActive;
-  };
-
-  // Apply filter and return results
-  const result: User[] = users.filter(filterPredicate);
-  return result;
-}
-```
-
-### Error Handling
-Prefer explicit error handling:
-```typescript
-// ✅ Good
-async function fetchUser(id: string): Promise<User> {
-  const user = await userRepository.findById(id);
-  if (!user) {
-    throw new NotFoundError(`User ${id} not found`);
-  }
-  return user;
-}
-
-// ❌ Avoid silent failures
-async function fetchUser(id: string): Promise<User | null> {
-  try {
-    return await userRepository.findById(id);
-  } catch {
-    return null;
-  }
-}
-```
-
-### Framework-Specific Patterns
-Adapt these rules to your framework:
-- **React:** Functional components, hooks naming (`use*`)
-- **NestJS:** Dependency injection, decorators
-- **Express:** Middleware patterns, error handlers
-- **Next.js:** Server/client component conventions
-
-When in doubt, **consistency within the project** trumps these generic guidelines.
+**Project consistency > these guidelines.**

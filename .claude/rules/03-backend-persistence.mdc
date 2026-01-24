@@ -2,83 +2,50 @@
 description: Persistence and repository conventions for backend data access
 globs:
   - '**/repositories/**/*.ts'
-  - '**/repositories/**/*.js'
   - '**/infra/db/**/*.ts'
-  - '**/infra/db/**/*.js'
   - '**/infrastructure/database/**/*.ts'
-  - '**/infrastructure/database/**/*.js'
   - '**/data-access/**/*.ts'
-  - '**/data-access/**/*.js'
   - '!**/node_modules/**'
   - '!**/test/**'
-  - '!**/tests/**'
-targets: ['*']
 ---
 
 # Backend Persistence Layer Guidelines
 
-Rules for repositories, data access objects (DAOs), and database infrastructure.
-
 ## The Role of Repositories
 
-Repositories **encapsulate all data access logic** and serve as the boundary between your application and the database.
+Repositories **encapsulate all data access** as the boundary between application and database:
 
-### Responsibilities
-
-1. **Wrap database/ORM clients**
-   - All database queries go through repositories
-   - Provide clean, domain-focused methods
-   - Hide database implementation details
-
-2. **Map between persistence and domain models**
-   - Convert DB rows/documents to domain entities
-   - Convert domain entities to persistence schemas
-   - Handle serialization/deserialization
-
-3. **Provide data access methods**
-   - CRUD operations: find, create, update, delete
-   - Domain-specific queries: `findActiveUsers()`, `getOrdersByDate()`
-   - Transactional operations
+1. **Wrap database/ORM clients** - All queries go through repositories
+2. **Map between persistence and domain** - Convert DB rows ↔ domain entities
+3. **Provide domain-focused methods** - `findActiveUsers()`, not raw SQL in services
 
 ## Critical Rules
 
 ### Rule 1: Only Repositories Import DB/ORM Clients
 
-**ALLOWED only in repository/infra layers:**
 ```typescript
-// ✅ repositories/user.repository.ts
+// ✅ ALLOWED - repositories/user.repository.ts
 import { prisma } from '@/infrastructure/database/client';
 import { Pool } from 'pg';
-import { getRepository } from 'typeorm';
-import { MongoClient } from 'mongodb';
-```
 
-**FORBIDDEN everywhere else:**
-```typescript
-// ❌ services/user.service.ts - NO!
-import { prisma } from '@/infrastructure/database/client';
+// ❌ FORBIDDEN - services/user.service.ts
+import { prisma } from '@/infrastructure/database/client';  // NO!
 
-// ❌ routes/users.ts - NO!
-import { db } from '@/lib/db';
-
-// ❌ domain/user.ts - NO!
-import { getConnection } from 'typeorm';
+// ❌ FORBIDDEN - routes/users.ts
+import { db } from '@/lib/db';  // NO!
 ```
 
 ### Rule 2: Services Depend on Repository Interfaces
 
-**Use interfaces/types to decouple services from implementations:**
 ```typescript
-// ✅ Good - repository interface
+// Interface defines contract
 export interface UserRepository {
   findById(id: string): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
   create(data: CreateUserData): Promise<User>;
-  update(id: string, data: Partial<User>): Promise<User>;
-  delete(id: string): Promise<void>;
 }
 
-// Service depends on interface, not concrete implementation
+// Service depends on interface, not implementation
 export class UserService {
   constructor(private userRepository: UserRepository) {}
 
@@ -92,54 +59,27 @@ export class UserService {
 
 ### Rule 3: Don't Leak ORM Entities
 
-**Map to domain models at the repository boundary:**
 ```typescript
 // ❌ Bad - leaking Prisma entity
-export class UserRepository {
-  async findById(id: string): Promise<PrismaUser> {
-    return prisma.user.findUnique({ where: { id } });
-  }
+async findById(id: string): Promise<PrismaUser> {
+  return prisma.user.findUnique({ where: { id } });
 }
 
 // ✅ Good - return domain model
-export class UserRepository {
-  async findById(id: string): Promise<User | null> {
-    const dbUser = await prisma.user.findUnique({ where: { id } });
-    if (!dbUser) return null;
-    return this.toDomain(dbUser);
-  }
-
-  private toDomain(dbUser: PrismaUser): User {
-    return {
-      id: dbUser.id,
-      email: dbUser.email,
-      name: dbUser.name,
-      createdAt: dbUser.created_at, // Map snake_case to camelCase
-    };
-  }
+async findById(id: string): Promise<User | null> {
+  const dbUser = await prisma.user.findUnique({ where: { id } });
+  return dbUser ? this.toDomain(dbUser) : null;
 }
 ```
 
-## Recommended Patterns
+## Core Pattern: Domain Mapping
 
-### Pattern 1: Repository with Clean Interface
+**Always implement toDomain/toPersistence:**
+
 ```typescript
 export class UserRepository {
-  constructor(private db: Database) {}
-
   async findById(id: string): Promise<User | null> {
-    const row = await this.db.query(
-      'SELECT * FROM users WHERE id = $1',
-      [id]
-    );
-    return row ? this.toDomain(row) : null;
-  }
-
-  async findByEmail(email: string): Promise<User | null> {
-    const row = await this.db.query(
-      'SELECT * FROM users WHERE email = $1',
-      [email]
-    );
+    const row = await this.db.query('SELECT * FROM users WHERE id = $1', [id]);
     return row ? this.toDomain(row) : null;
   }
 
@@ -151,16 +91,16 @@ export class UserRepository {
     return this.toDomain(row);
   }
 
-  private toDomain(row: any): User {
+  private toDomain(row: DbUser): User {
     return {
       id: row.id,
       email: row.email,
       name: row.name,
-      createdAt: new Date(row.created_at),
+      createdAt: new Date(row.created_at),  // snake_case → camelCase
     };
   }
 
-  private toPersistence(user: User): any {
+  private toPersistence(user: User): DbUser {
     return {
       id: user.id,
       email: user.email,
@@ -171,205 +111,87 @@ export class UserRepository {
 }
 ```
 
-### Pattern 2: Composable Repository Methods
+## Transaction Support
+
 ```typescript
-// ✅ Good - small, composable methods
-export class OrderRepository {
-  async findById(id: string): Promise<Order | null> { }
-
-  async findByUserId(userId: string): Promise<Order[]> { }
-
-  async findPendingOrders(): Promise<Order[]> { }
-
-  async findByDateRange(start: Date, end: Date): Promise<Order[]> { }
-}
-
-// ❌ Avoid - one giant method with flags
-export class OrderRepository {
-  async find(options: {
-    id?: string;
-    userId?: string;
-    status?: string;
-    startDate?: Date;
-    endDate?: Date;
-    includeItems?: boolean;
-    includeUser?: boolean;
-  }): Promise<Order[]> {
-    // 100 lines of conditional query building
-  }
+async createWithItems(orderData: CreateOrderData, items: OrderItem[]): Promise<Order> {
+  return this.db.transaction(async (trx) => {
+    const order = await trx.query(
+      'INSERT INTO orders (user_id, total) VALUES ($1, $2) RETURNING *',
+      [orderData.userId, orderData.total]
+    );
+    await Promise.all(items.map(item =>
+      trx.query('INSERT INTO order_items (...) VALUES (...)', [...])
+    ));
+    return this.toDomain(order);
+  });
 }
 ```
 
-### Pattern 3: Transaction Support
-```typescript
-export class OrderRepository {
-  constructor(private db: Database) {}
-
-  async createWithItems(
-    orderData: CreateOrderData,
-    items: OrderItem[]
-  ): Promise<Order> {
-    return this.db.transaction(async (trx) => {
-      const order = await trx.query(
-        'INSERT INTO orders (user_id, total) VALUES ($1, $2) RETURNING *',
-        [orderData.userId, orderData.total]
-      );
-
-      await Promise.all(
-        items.map(item =>
-          trx.query(
-            'INSERT INTO order_items (order_id, product_id, quantity) VALUES ($1, $2, $3)',
-            [order.id, item.productId, item.quantity]
-          )
-        )
-      );
-
-      return this.toDomain(order);
-    });
-  }
-}
-```
-
-### Pattern 4: Query Builders (Acceptable)
-```typescript
-// ✅ Good - query builder encapsulated in repository
-export class ProductRepository {
-  constructor(private db: Knex) {}
-
-  async findInStock(): Promise<Product[]> {
-    const rows = await this.db('products')
-      .where('stock', '>', 0)
-      .orderBy('name', 'asc');
-
-    return rows.map(this.toDomain);
-  }
-
-  async searchByName(query: string): Promise<Product[]> {
-    const rows = await this.db('products')
-      .where('name', 'ilike', `%${query}%`)
-      .limit(20);
-
-    return rows.map(this.toDomain);
-  }
-}
-```
-
-## Guidelines for Claude
-
-### When Creating New Repositories
-
-1. **Create clear interfaces first**:
-   ```typescript
-   export interface UserRepository {
-     findById(id: string): Promise<User | null>;
-     // ... other methods
-   }
-   ```
-
-2. **Implement mapping functions**:
-   - `toDomain(dbRow)` - DB → Domain
-   - `toPersistence(entity)` - Domain → DB
-
-3. **Keep methods focused**:
-   - Each method does one thing
-   - Compose complex queries from simpler ones
-
-4. **Handle nullability explicitly**:
-   - Return `null` for not found, not `undefined`
-   - Document whether methods throw or return null
-
-### When Editing Existing Repositories
-
-**If you see DB logic outside repositories:**
-1. **Identify the violation**: "This service is querying the database directly"
-2. **Suggest a repository method**: "Let's add `userRepository.findByEmail()`"
-3. **Show the refactor**:
-   ```typescript
-   // Before (in service)
-   const user = await prisma.user.findUnique({ where: { email } });
-
-   // After
-   const user = await this.userRepository.findByEmail(email);
-   ```
-
-**If you see ORM entities leaking:**
-1. **Add mapping layer**: Introduce `toDomain()` method
-2. **Update return types**: Change from `Promise<PrismaUser>` to `Promise<User>`
-
-### Common Repository Patterns by ORM
+## ORM-Specific Patterns
 
 **Prisma:**
 ```typescript
-export class UserRepository {
-  async findById(id: string): Promise<User | null> {
-    const user = await prisma.user.findUnique({
-      where: { id },
-      include: { profile: true },
-    });
-    return user ? this.toDomain(user) : null;
-  }
+async findById(id: string): Promise<User | null> {
+  const user = await prisma.user.findUnique({
+    where: { id },
+    include: { profile: true },
+  });
+  return user ? this.toDomain(user) : null;
 }
 ```
 
 **TypeORM:**
 ```typescript
-export class UserRepository {
-  private repository = getRepository(UserEntity);
+private repository = getRepository(UserEntity);
 
-  async findById(id: string): Promise<User | null> {
-    const entity = await this.repository.findOne({
-      where: { id },
-      relations: ['profile'],
-    });
-    return entity ? this.toDomain(entity) : null;
-  }
+async findById(id: string): Promise<User | null> {
+  const entity = await this.repository.findOne({
+    where: { id },
+    relations: ['profile'],
+  });
+  return entity ? this.toDomain(entity) : null;
 }
 ```
 
 **Knex/Raw SQL:**
 ```typescript
-export class UserRepository {
-  constructor(private db: Knex) {}
-
-  async findById(id: string): Promise<User | null> {
-    const [row] = await this.db('users')
-      .where({ id })
-      .leftJoin('profiles', 'users.id', 'profiles.user_id');
-
-    return row ? this.toDomain(row) : null;
-  }
+async findById(id: string): Promise<User | null> {
+  const [row] = await this.db('users')
+    .where({ id })
+    .leftJoin('profiles', 'users.id', 'profiles.user_id');
+  return row ? this.toDomain(row) : null;
 }
 ```
 
-### Favor Small Repositories
+## Guidelines for Claude
 
-Instead of one giant repository, consider domain-focused ones:
+### When Creating Repositories
+1. Define interface first with domain types
+2. Implement toDomain/toPersistence mapping
+3. Keep methods focused - one query per method
+4. Return `null` for not found (not undefined)
+
+### When You See Violations
+
+**DB logic outside repositories:**
 ```typescript
-// ✅ Good - focused repositories
-class UserRepository { }
-class UserProfileRepository { }
-class UserPreferencesRepository { }
+// Before (in service) - VIOLATION
+const user = await prisma.user.findUnique({ where: { email } });
 
-// ❌ Avoid - god repository
-class UserRepository {
-  // 50+ methods for users, profiles, preferences, sessions, etc.
-}
+// After - proper layering
+const user = await this.userRepository.findByEmail(email);
 ```
 
-### Red Flags to Watch For
+**ORM entities leaking:** Add toDomain() mapping layer.
 
-When you see these patterns, suggest refactoring:
+### Red Flags
 - Services importing database clients directly
 - Raw SQL in service or controller files
-- ORM entities used as function parameters in services
+- ORM entities as function parameters in services
 - No mapping between DB schema and domain models
-- One repository with 50+ methods
+- One repository with 50+ methods (split by domain)
 
-### Acceptable Trade-offs
-
-For simple apps or prototypes:
-- Using ORM entities directly (if schema = domain model)
-- Services calling ORM without repository layer
-- Skipping mapping for simple CRUD
-
-**But always mention**: "For a larger app, we'd want to introduce a repository layer here."
+### Acceptable Trade-offs (Small Apps)
+For prototypes: ORM entities directly, services calling ORM without repository layer.
+**But note:** "For a larger app, we'd introduce a repository layer here."
