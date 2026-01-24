@@ -1,0 +1,60 @@
+---
+description: Persistent Tasks - Cross-session execution memory
+globs:
+  - '**/*'
+alwaysApply: true
+---
+
+# Persistent Tasks System
+
+Tasks are your **authoritative short-term execution memory** that persists across sessions.
+
+## Required Behavior
+
+### Before Starting Work
+```
+TaskList()  # Check current tasks first
+```
+- Treat task list as source of truth, not chat history
+- Assume tasks from previous sessions are still valid
+
+### During Work
+- Mark tasks `in_progress` when starting
+- Add new tasks when work emerges (don't rely on memory)
+- Keep tasks atomic and executable
+
+### After Completing Work
+```
+TaskUpdate(taskId: "X", status: "completed")
+```
+- Never silently drop tasks
+- Mark complete only when truly done
+
+## Multi-Session Awareness
+
+- `CLAUDE_CODE_TASK_LIST_ID` scopes tasks to project
+- Multiple sessions/agents may share the same task list
+- Always re-check task list before acting on assumptions
+
+## Hygiene Rules
+
+- ❌ Don't duplicate tasks
+- ❌ Don't rewrite tasks unless meaning changes
+- ❌ Don't complete tasks speculatively
+- ✅ Keep task list small and relevant
+- ✅ Use concrete, actionable descriptions
+
+## For Orchestration Agents
+
+When spawning parallel agents:
+```typescript
+// Create tasks for tracking
+TaskCreate({ subject: "Phase 1: Fix X", description: "..." })
+TaskCreate({ subject: "Phase 2: Build Y", description: "..." })
+
+// Mark in_progress before delegating
+TaskUpdate({ taskId: "1", status: "in_progress" })
+Task({ subagent_type: "implementation", prompt: "..." })
+```
+
+Agents should update task status upon completion.

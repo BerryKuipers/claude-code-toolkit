@@ -12,9 +12,15 @@
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 RALPH_DIR="$PROJECT_DIR/.ralph"
+PROJECT_NAME=$(basename "$PROJECT_DIR")
+
+# Set persistent task list ID for cross-session task continuity
+# Tasks persist across context compactions and sessions when this is set
+export CLAUDE_CODE_TASK_LIST_ID="${PROJECT_NAME}"
 
 # Always output Success first (required for hook)
 echo "Success"
+echo "Task list: ${CLAUDE_CODE_TASK_LIST_ID}"
 
 # Check GitHub CLI (optional, don't fail if not found)
 if command -v gh &> /dev/null; then
