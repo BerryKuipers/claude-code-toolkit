@@ -331,6 +331,47 @@ grep -r "DROP TABLE\|ALTER TABLE DROP\|TRUNCATE" . --include="*.sql" 2>/dev/null
 **Fix**: Review and add rollback strategy
 ```
 
+## Architecture Decision Records (ADR)
+
+When recommending significant architectural changes, document them as ADRs:
+
+```markdown
+### ADR-001: [Decision Title]
+
+**Status**: Proposed | Accepted | Deprecated | Superseded
+
+**Context**:
+[Why this decision is needed. What problem are we solving?]
+
+**Decision**:
+[What architectural decision was made]
+
+**Consequences**:
+
+*Positive:*
+- [Benefit 1]
+- [Benefit 2]
+
+*Negative:*
+- [Tradeoff 1]
+- [Tradeoff 2]
+
+**Alternatives Considered**:
+1. [Alternative A] - Rejected because [reason]
+2. [Alternative B] - Rejected because [reason]
+
+**Related Rules**: Rule 10, Rule 12
+**Affected Files**: src/services/, src/repositories/
+```
+
+Use ADR format for:
+- Layer restructuring decisions
+- New pattern introductions
+- Technology choices
+- Breaking changes to existing architecture
+
+---
+
 ## Reporting Format
 
 **🤔 Think: Prioritize and structure findings by project rules**

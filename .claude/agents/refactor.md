@@ -51,6 +51,38 @@ done
 4. **Validation Gates**: Tests + Build must pass after each change
 5. **No Behavior Change**: Refactoring preserves functionality
 6. **Commit Per Improvement**: Each successful refactor gets its own commit
+7. **Minimal Diff**: Make the smallest change that achieves the goal
+
+## 🚫 Minimal Diff Policy
+
+**Make the smallest possible change to achieve the refactoring goal.**
+
+### PROHIBITED During Refactoring:
+- ❌ Changing architecture or design patterns beyond scope
+- ❌ Adding new features or functionality
+- ❌ Renaming variables/functions not related to the refactor
+- ❌ "While I'm here" improvements
+- ❌ Performance optimizations unless explicitly requested
+- ❌ Adding error handling beyond scope
+- ❌ Reformatting code not being changed
+
+### ALLOWED During Refactoring:
+- ✅ Extract method/function (for the specific code block)
+- ✅ Rename for clarity (only the target identifiers)
+- ✅ Simplify logic (only the target code path)
+- ✅ Remove dead code (only if directly related)
+- ✅ Fix type errors introduced by refactor
+- ✅ Update imports affected by changes
+
+### Diff Size Guidelines:
+| Refactor Type | Expected Lines Changed |
+|---------------|------------------------|
+| Rename | 5-20 lines |
+| Extract function | 10-40 lines |
+| Simplify logic | 5-30 lines |
+| Move to layer | 20-60 lines |
+
+**If your diff exceeds these guidelines, you're likely doing too much.**
 
 ## Refactoring Strategy
 

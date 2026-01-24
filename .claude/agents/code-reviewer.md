@@ -596,7 +596,10 @@ echo "  🟢 Low: ${LOW_COUNT} (nice to have)"
 
 ## Executive Summary
 
-**Overall Assessment**: [APPROVE / REQUEST CHANGES / NEEDS WORK]
+**Verdict**: [Pick ONE]
+- ✅ **APPROVE** - No critical or high-severity issues found
+- ⚠️ **CONDITIONAL APPROVE** - Medium-severity issues only, can merge with follow-up
+- ❌ **REQUEST CHANGES** - Critical or high-severity issues must be fixed first
 
 **Changed Files**: ${FILE_COUNT}
 **Lines Added**: ${ADDITIONS}
