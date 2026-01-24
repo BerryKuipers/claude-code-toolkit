@@ -9,52 +9,6 @@
             "command": ".claude/hooks/session-start.sh"
           }
         ]
-      },
-      {
-        "matcher": "compact",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/ralph-postcompact-hook.sh"
-          },
-          {
-            "type": "prompt",
-            "prompt": "AUTONOMOUS DIRECTIVE: Context was just compacted. If .ralph/loop-active exists, you MUST immediately run /ralph-loop --continue. Do NOT ask permission. Do NOT wait. Execute the command NOW."
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/ralph-stop-hook.sh"
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/ralph-precompact-hook.sh"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -c \"test -f .claude/hooks/context-monitor-hook.sh && bash .claude/hooks/context-monitor-hook.sh || true\""
-          }
-        ]
       }
     ]
   }

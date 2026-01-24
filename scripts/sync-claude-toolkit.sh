@@ -47,7 +47,7 @@ if [ ! -d "$SRC_DIR" ]; then
 fi
 
 mkdir -p "$DST_DIR"
-for d in agents commands skills api-skills-source docs shared prompts reviews hooks rules; do
+for d in agents commands skills api-skills-source docs shared prompts reviews hooks rules overlays; do
   if [ -d "$SRC_DIR/$d" ]; then
     mkdir -p "$DST_DIR/$d"
     # Copy toolkit files WITHOUT deleting project-specific files

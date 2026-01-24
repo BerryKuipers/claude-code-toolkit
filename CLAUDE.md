@@ -74,6 +74,41 @@ See [Gemini Delegation Guide](./docs/GEMINI_DELEGATION.md) for details.
 - `/test-all` - Comprehensive testing
 - `/help` - Command documentation
 
+### Wrapper Commands (bk-* prefix)
+
+These wrappers integrate with the `everything-claude-code` plugin baseline, adding verification gates and output contracts:
+
+```bash
+/bk-plan "implement feature X"    # Planning with verification gates
+/bk-review --staged               # Code review with output contract
+/bk-implement "task description"  # Implementation with pre/post gates
+/bk-architect --scope=backend     # Architecture review with layer validation
+/bk-security --create-issues      # Security audit with issue creation
+/bk-fix --type=build              # Build error resolution
+/bk-doc --scope=api               # Documentation updates
+```
+
+See [Plugin Integration Guide](./docs/PLUGIN_INTEGRATION_GUIDE.md) for the layering model.
+
+## Project Overlays
+
+Project-specific configurations live in `.claude/overlays/<project>/`:
+
+```
+.claude/overlays/
+├── wescobar/
+│   ├── config.yml    # Allowed agents, MCP servers, thresholds
+│   └── README.md
+└── cophusher/
+    ├── config.yml
+    └── README.md
+```
+
+Naming convention:
+- `bk-*` - Toolkit wrappers (policy layer)
+- `wsc-*` - WescoBar project-specific
+- `cph-*` - CoPhusher project-specific
+
 ## Using This Toolkit in Your Projects
 
 ### Option 1: As a Git Submodule (Recommended)
@@ -206,3 +241,4 @@ When adding new rules to this toolkit:
 - [Claude Code Documentation](https://docs.anthropic.com/claude/docs)
 - [CLAUDE.md Best Practices](https://github.com/steipete/agent-rules)
 - [Toolkit Modernization Guide](./docs/TOOLKIT_MODERNIZATION_2025.md)
+- [Plugin Integration Guide](./docs/PLUGIN_INTEGRATION_GUIDE.md) - Layering with everything-claude-code

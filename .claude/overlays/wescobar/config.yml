@@ -1,0 +1,52 @@
+# WescoBar Project Overlay Configuration
+project: wescobar
+prefix: wsc
+
+# Baseline agents from everything-claude-code that are allowed
+allowed_agents:
+  - planner
+  - architect
+  - code-reviewer
+  - security-reviewer
+  - e2e-runner
+  - tdd-guide
+  - build-error-resolver
+
+# Agents to disable (will warn if invoked)
+disabled_agents:
+  - refactor-cleaner  # Project has custom refactor rules
+
+# MCP servers enabled for this project
+enabled_mcp_servers:
+  - supabase
+  - vercel
+  # - github  # Already available via gh CLI
+
+# MCP servers explicitly disabled
+disabled_mcp_servers:
+  - railway  # Not used in this project
+
+# Quality thresholds (override toolkit defaults)
+thresholds:
+  test_coverage_min: 70
+  max_file_size_lines: 500
+  max_function_complexity: 15
+
+# Verification gates
+verification_gates:
+  pre_implement:
+    - validate-typescript
+    - validate-lint
+  post_implement:
+    - validate-build
+    - run-tests
+    - validate-coverage
+
+# Custom rules
+rules:
+  # Supabase-specific
+  - "Always use RLS policies for table access"
+  - "Never expose service_role key in client code"
+  # Project conventions
+  - "Use app/ directory structure (Next.js App Router)"
+  - "Components in src/components/, hooks in src/hooks/"

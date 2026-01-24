@@ -1,0 +1,28 @@
+# CoPhusher Project Overlay Configuration
+project: cophusher
+prefix: cph
+
+# Baseline agents from everything-claude-code that are allowed
+allowed_agents:
+  - planner
+  - architect
+  - code-reviewer
+  - security-reviewer
+  - tdd-guide
+
+# MCP servers enabled for this project
+enabled_mcp_servers:
+  - github
+
+# Quality thresholds
+thresholds:
+  test_coverage_min: 60
+  max_file_size_lines: 400
+
+# Verification gates
+verification_gates:
+  pre_implement:
+    - validate-typescript
+  post_implement:
+    - validate-build
+    - run-tests
