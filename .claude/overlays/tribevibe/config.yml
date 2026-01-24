@@ -1,0 +1,56 @@
+# TribeVibe Project Overlay Configuration
+project: tribevibe
+prefix: tv
+
+# Baseline agents from everything-claude-code that are allowed
+allowed_agents:
+  - planner
+  - architect
+  - code-reviewer
+  - security-reviewer
+  - e2e-runner
+  - tdd-guide
+  - build-error-resolver
+  - doc-updater
+
+# Additional toolkit agents enabled
+toolkit_agents:
+  - infrastructure   # VPS access via MCP
+  - database         # Database operations
+  - researcher       # Technical research
+
+# MCP servers enabled for this project
+enabled_mcp_servers:
+  - project-vps      # SSH access to TribeVibe VPS
+  - github           # GitHub operations
+
+# Quality thresholds
+thresholds:
+  test_coverage_min: 70
+  max_file_size_lines: 500
+  max_function_complexity: 15
+
+# Verification gates
+verification_gates:
+  pre_implement:
+    - validate-typescript
+    - validate-lint
+  post_implement:
+    - validate-build
+    - run-tests
+
+# Project-specific rules
+rules:
+  - "Use PostgreSQL for all database operations"
+  - "Backend uses Express with layered architecture"
+  - "Frontend is Next.js with App Router"
+  - "Infrastructure access via MCP server (project-vps)"
+  - "No direct database calls from routes - use services"
+
+# Dormant project note
+dormant_since: "2024-11"
+reactivation_checklist:
+  - "Run npm install to update dependencies"
+  - "Check for security vulnerabilities: npm audit"
+  - "Verify database migrations are current"
+  - "Test VPS connectivity via infrastructure agent"
