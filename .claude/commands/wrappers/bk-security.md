@@ -2,82 +2,87 @@
 
 **Arguments:** [--scope=all|api|auth|deps] [--create-issues]
 
-**Description:** Toolkit wrapper around upstream security-reviewer agent. Adds OWASP checklist and severity enforcement.
+**Description:** Toolkit wrapper that DELEGATES security review via Task tool.
+
+---
+
+## CRITICAL: This is a DELEGATION command
+
+**DO NOT perform the security review yourself. You MUST delegate via Task tool.**
+
+This command spawns a security agent - keeping your context clean.
 
 ---
 
 ## Instructions
 
-You are executing the toolkit security review wrapper.
+### Step 1: Quick Dependency Check (inline)
 
-### Step 1: Scope Determination
+```bash
+npm audit --json 2>/dev/null | head -50 || echo "No npm audit"
+```
 
-Based on --scope:
-- `all`: Full security audit
-- `api`: Focus on API endpoints, input validation
-- `auth`: Authentication/authorization flows
-- `deps`: Dependency vulnerabilities only
+### Step 2: IMMEDIATELY Spawn Security Agent
 
-### Step 2: Delegate to Upstream Security Reviewer
+**YOU MUST CALL THE TASK TOOL NOW.**
 
 ```
 Task(
   subagent_type: "everything-claude-code:security-reviewer",
-  prompt: "Security audit with scope: [SCOPE]\n\nCheck for:\n- OWASP Top 10\n- Secrets in code\n- Injection vulnerabilities\n- Auth/authz issues"
+  description: "Security audit",
+  prompt: "Security audit with scope: [SCOPE]
+
+Check for:
+- OWASP Top 10 vulnerabilities
+- Hardcoded secrets/credentials
+- SQL/NoSQL injection risks
+- XSS vulnerabilities
+- Authentication/authorization flaws
+- Insecure direct object references
+- Missing input validation"
 )
 ```
 
-### Step 3: Run Dependency Audit
-
-```bash
-npm audit --json 2>/dev/null
-# or
-pnpm audit --json 2>/dev/null
-```
-
-### Step 4: Enforce Output Contract
+### Step 3: Format Output
 
 ```markdown
 ## Security Audit Report
 
-### Executive Summary
-[Overall security posture: CRITICAL | HIGH | MEDIUM | LOW]
+### Summary
+**Posture**: [CRITICAL ❌ | HIGH ⚠️ | MEDIUM | LOW ✅]
 
-### Critical Findings (P0 - Immediate Action)
-| Finding | Location | OWASP Category | Remediation |
-|---------|----------|----------------|-------------|
-| [Issue] | file:line | [A01-A10] | [Fix] |
+### Critical Findings (P0)
+| Finding | Location | OWASP | Fix |
+|---------|----------|-------|-----|
 
 ### High Severity (P1)
-[Table format]
-
-### Medium Severity (P2)
-[Table format]
-
-### Low Severity (P3)
-[Table format]
+[Table]
 
 ### Dependency Vulnerabilities
 | Package | Severity | CVE | Fix Version |
 |---------|----------|-----|-------------|
 
 ### Secrets Scan
-- [PASS/FAIL] No hardcoded secrets found
-- [Files checked]
+- [PASS ✅ / FAIL ❌] Hardcoded secrets
 
 ### Recommendations
-1. [Priority action items]
+1. [Priority actions]
 ```
 
-### Step 5: Create Issues (if --create-issues)
+### Step 4: Create Issues (if --create-issues)
 
-For each Critical/High finding:
+For Critical/High findings:
 ```bash
-gh issue create --title "[SECURITY] [Finding title]" --body "[Details]" --label "security,priority:high"
+gh issue create --title "[SECURITY] [Finding]" --label "security"
 ```
 
 ---
 
 ## Fallback
 
-If upstream unavailable, use toolkit's `security-pentest` agent.
+If upstream unavailable:
+```
+Task(subagent_type: "security-pentest", prompt: "[same]")
+```
+
+**NEVER perform security review inline.**

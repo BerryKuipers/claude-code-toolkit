@@ -2,43 +2,48 @@
 
 **Arguments:** [--scope=api|readme|all] [--update-only]
 
-**Description:** Toolkit wrapper around upstream doc-updater. Enforces documentation standards.
+**Description:** Toolkit wrapper that DELEGATES documentation updates via Task tool.
+
+---
+
+## CRITICAL: This is a DELEGATION command
+
+**DO NOT write documentation yourself. You MUST delegate via Task tool.**
+
+This command spawns a doc-updater agent - keeping your context for review.
 
 ---
 
 ## Instructions
 
-### Step 1: Assess Documentation State
+### Step 1: Assess Current State (quick, inline)
 
 ```bash
-# Find documentation files
-find . -name "*.md" -not -path "./node_modules/*" | head -20
-
-# Check for API docs
-ls -la docs/ 2>/dev/null || echo "No docs/ directory"
-
-# Check README freshness
-stat -c %y README.md 2>/dev/null
+find . -name "*.md" -not -path "./node_modules/*" | wc -l
+ls docs/ 2>/dev/null || echo "No docs/"
 ```
 
-### Step 2: Delegate to Upstream Doc Updater
+### Step 2: IMMEDIATELY Spawn Doc Agent
+
+**YOU MUST CALL THE TASK TOOL NOW.**
 
 ```
 Task(
   subagent_type: "everything-claude-code:doc-updater",
-  prompt: "Update documentation with scope: [SCOPE]\n\n--update-only means only modify existing docs, don't create new ones."
+  description: "Update documentation",
+  prompt: "Update documentation with scope: [SCOPE]
+
+Requirements:
+- Clear titles and purpose
+- Usage examples for all APIs
+- Keep existing structure
+- Update 'last updated' dates
+
+[--update-only]: Only modify existing docs, don't create new files"
 )
 ```
 
-### Step 3: Enforce Documentation Standards
-
-All documentation must include:
-- Clear title and purpose
-- Usage examples
-- API reference (if applicable)
-- Last updated date
-
-### Step 4: Enforce Output Contract
+### Step 3: Format Output
 
 ```markdown
 ## Documentation Update Summary
@@ -46,18 +51,17 @@ All documentation must include:
 ### Files Updated
 | File | Type | Changes |
 |------|------|---------|
-| README.md | Overview | Updated installation section |
 
-### Files Created (if not --update-only)
+### Files Created
 | File | Purpose |
 |------|---------|
 
 ### Coverage
-- API endpoints documented: X/Y
-- Components documented: X/Y
-- Examples provided: [Yes/No]
+- API endpoints: X/Y documented
+- Components: X/Y documented
+- Examples: [Yes/No]
 
-### Recommendations
+### Gaps
 - [Missing documentation areas]
 ```
 
@@ -65,4 +69,6 @@ All documentation must include:
 
 ## Fallback
 
-If upstream unavailable, use Read/Write tools to update docs directly.
+If upstream unavailable, use general-purpose agent for doc updates.
+
+**NEVER write documentation inline in main conversation.**

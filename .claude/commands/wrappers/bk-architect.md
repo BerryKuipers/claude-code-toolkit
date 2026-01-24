@@ -2,60 +2,79 @@
 
 **Arguments:** [--scope=whole|backend|frontend|db] [--strict]
 
-**Description:** Toolkit wrapper around upstream architect agent. Enforces layer rules and output contract.
+**Description:** Toolkit wrapper that DELEGATES architecture review via Task tool.
+
+---
+
+## CRITICAL: This is a DELEGATION command
+
+**DO NOT perform the review yourself. You MUST delegate via Task tool.**
+
+This command spawns an architecture agent - preserving your context.
 
 ---
 
 ## Instructions
 
-### Step 1: Load Project Rules
+### Step 1: Load Project Rules (quick reference)
 
-Read and apply:
-- `.claude/rules/00-global-architecture.mdc`
-- `.claude/rules/02-backend-http-layer.mdc`
-- `.claude/rules/03-backend-persistence.mdc`
-- `.claude/rules/04-frontend-react-architecture.mdc`
+Note rules to pass to agent:
+- Layer boundaries (00-global-architecture.mdc)
+- Backend patterns (02-backend-http-layer.mdc)
+- Persistence rules (03-backend-persistence.mdc)
 
-### Step 2: Delegate to Upstream Architect
+### Step 2: IMMEDIATELY Spawn Architect Agent
+
+**YOU MUST CALL THE TASK TOOL NOW.**
 
 ```
 Task(
   subagent_type: "everything-claude-code:architect",
-  prompt: "Architectural review with scope: [SCOPE]\n\nValidate:\n- Layer boundaries\n- Dependency direction\n- SOLID principles\n- Domain isolation"
+  description: "Architecture review",
+  prompt: "Architectural review with scope: [SCOPE]
+
+Validate:
+- Layer boundaries (HTTP → Service → Repository)
+- Dependency direction (outer → inner only)
+- SOLID principles
+- Domain isolation
+
+Check for:
+- Controllers calling repositories directly (violation)
+- Business logic in HTTP layer (violation)
+- Circular dependencies
+- God classes/modules"
 )
 ```
 
-### Step 3: Enforce Output Contract
+### Step 3: Format Output
+
+After agent returns, ensure report includes:
 
 ```markdown
 ## Architecture Review Report
 
 ### Summary
-[Overall architectural health: HEALTHY | NEEDS_ATTENTION | CRITICAL]
+**Health**: [HEALTHY ✅ | NEEDS_ATTENTION ⚠️ | CRITICAL ❌]
 
 ### Layer Violations
-| File | Expected Layer | Actual Usage | Severity |
-|------|----------------|--------------|----------|
-
-### Dependency Direction Issues
-| Source | Target | Problem | Fix |
-|--------|--------|---------|-----|
+| File | Expected | Actual | Severity |
+|------|----------|--------|----------|
 
 ### SOLID Violations
-- [Principle]: [Violation] in [File]
+- [Principle]: [Issue] in [File]
 
 ### Recommendations
-1. [Prioritized improvements]
-
-### Diagram (if applicable)
-```mermaid
-graph TD
-  [Architecture diagram]
-```
+1. [Priority fixes]
 ```
 
 ---
 
 ## Fallback
 
-If upstream unavailable, use toolkit's `architect` agent.
+If upstream unavailable:
+```
+Task(subagent_type: "architect", prompt: "[same]")
+```
+
+**NEVER perform architecture review inline.**
