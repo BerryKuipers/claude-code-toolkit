@@ -1,0 +1,17 @@
+{
+  "name": "berry-toolkit",
+  "owner": {
+    "name": "Berry"
+  },
+  "metadata": {
+    "description": "Private toolkit marketplace for Berry's projects. Provides shared architectural rules, quality gates, workflows, and agent orchestration.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "claude-code-toolkit",
+      "source": "./",
+      "description": "Reusable architectural rules, skills, agents, and workflows for Claude Code."
+    }
+  ]
+}

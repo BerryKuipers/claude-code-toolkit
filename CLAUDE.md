@@ -137,6 +137,65 @@ cp claude-code-toolkit/.claude/rules/00-global-architecture.mdc .claude/rules/
 cp claude-code-toolkit/.claude/rules/01-typescript-style.mdc .claude/rules/
 ```
 
+### Option 4: As a Plugin (Claude Code Plugin System)
+
+The toolkit ships as a Claude Code plugin with a marketplace manifest. Consuming repos can register it:
+
+```bash
+# 1. Add toolkit as submodule (if not already)
+git submodule add <toolkit-repo-url> .claude-toolkit
+
+# 2. Register the marketplace in your project settings
+#    Add to your .claude/settings.json:
+```
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "berry-toolkit": {
+      "source": {
+        "source": "directory",
+        "path": ".claude-toolkit"
+      }
+    }
+  }
+}
+```
+
+```bash
+# 3. Or use the helper script:
+powershell .claude-toolkit/scripts/claude/install-plugin.ps1
+
+# 4. In Claude Code, install the plugin:
+#    /plugin marketplace add ./.claude-toolkit
+#    /plugin install claude-code-toolkit@berry-toolkit
+
+# 5. Or load directly for testing:
+claude --plugin-dir ./.claude-toolkit
+```
+
+When loaded as a plugin, all skills are namespaced: `/claude-code-toolkit:scaffold`, `/claude-code-toolkit:quality-gate`, etc.
+
+### Agent Teams (Experimental)
+
+The toolkit enables the Agent Teams beta by default via `settings.json`:
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  }
+}
+```
+
+To enable in a consuming repo without committing:
+```bash
+# Writes to .claude/settings.local.json (gitignored)
+powershell .claude-toolkit/scripts/claude/enable-teams.ps1
+```
+
+Agent Teams let you coordinate multiple Claude Code instances. Tell Claude to "create an agent team" with roles like researcher, implementer, reviewer. See [Agent Teams docs](https://code.claude.com/docs/en/agent-teams).
+
 ## Overriding or Extending Rules
 
 Projects can extend these toolkit rules with project-specific guidance:

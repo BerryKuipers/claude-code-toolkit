@@ -1,0 +1,16 @@
+{
+  "name": "claude-code-toolkit",
+  "description": "Reusable architectural rules, skills, agents, and workflows for Claude Code. Provides quality gates, git workflows, security audits, infrastructure automation, and agent orchestration patterns.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Berry"
+  },
+  "keywords": [
+    "claude-code",
+    "toolkit",
+    "architecture",
+    "quality-gates",
+    "workflows",
+    "agents"
+  ]
+}
