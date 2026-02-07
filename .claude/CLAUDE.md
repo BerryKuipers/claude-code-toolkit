@@ -1,194 +1,68 @@
-# Claude Code Toolkit - Internal Documentation
+# Claude Code Toolkit
 
-This toolkit provides **reusable Claude Code configuration** for multiple projects.
+Reusable Claude Code configuration synced to projects via `.claude-toolkit` submodule.
 
-## Structure
+## Bug Fix Protocol
 
-```
-.claude/
-├── CLAUDE.md              # This file - toolkit internal docs
-├── rules/                 # Generic architectural rules
-│   ├── 00-global-architecture.mdc
-│   ├── 01-typescript-style.mdc
-│   ├── 02-backend-http-layer.mdc
-│   ├── 03-backend-persistence.mdc
-│   └── 04-frontend-react-architecture.mdc
-├── agents/                # Specialized agent definitions
-├── commands/              # Slash commands
-├── skills/                # Domain-specific skills
-├── hooks/                 # Pre/post tool execution hooks
-├── config.yml             # Central configuration
-└── settings.json          # SessionStart hooks and environment
-```
+When fixing bugs, follow this order strictly:
+1. **Read** the bug description carefully. Restate it in your own words.
+2. **Investigate**: Read relevant code, trace data flow, identify root cause.
+3. **State** your root cause hypothesis clearly. Wait for confirmation before coding.
+4. **Implement** the minimal fix for the confirmed root cause only.
+5. **Verify**: Run typecheck and test. Check the fix addresses the EXACT symptom.
+6. Do NOT fix unrelated issues unless asked.
+7. Do NOT apply fixes to both preview AND production unless explicitly requested.
 
-## Rules Directory
+## TypeScript Quality Gate
 
-The `rules/` folder contains **generic, reusable architectural guidelines** designed for:
-- TypeScript/JavaScript projects (Node.js backends, React frontends)
-- Layered/clean architecture patterns
-- Framework-agnostic principles
+Always run `tsc --noEmit` or the project's typecheck command after making changes. Fix ALL TypeScript errors before reporting work as complete. Watch for: removed variables leaving dangling references, import path changes, and composite project references.
 
-### Rule File Format
+## Agent Verification Rules
 
-Files use `.mdc` (Markdown with Configuration) format:
-```yaml
----
-description: Short description of rule purpose
-globs:
-  - '**/*.ts'
-  - '!**/node_modules/**'
-alwaysApply: true
-targets: ['*']
----
+When using parallel agents (Task tool), verify each agent's output actually resolves the issue before reporting success. Do not trust agent self-reports - check the actual code changes and run relevant checks. If an agent crashes, complete its work manually immediately.
 
-# Rule Content in Markdown
-```
+## Agent Teams
 
-**Note:** Claude Code reads only the markdown content; Cursor reads both YAML and markdown.
-
-### Current Rules
-
-1. **00-global-architecture.mdc** - Layered architecture, dependency direction, separation of concerns
-2. **01-typescript-style.mdc** - TypeScript/JavaScript style conventions
-3. **02-backend-http-layer.mdc** - HTTP routes/controllers as thin adapters, no direct DB access
-4. **03-backend-persistence.mdc** - Repository patterns, data access boundaries
-5. **04-frontend-react-architecture.mdc** - React component organization, data fetching, state management
-
-## Using This Toolkit in Projects
-
-### Integration Approaches
-
-**Git Submodule (recommended):**
-```bash
-cd your-project
-git submodule add https://github.com/YourOrg/claude-code-toolkit .claude-toolkit
-ln -s .claude-toolkit/.claude .claude
-```
-
-**Direct Copy:**
-```bash
-cp -r /path/to/claude-code-toolkit/.claude ./your-project/
-```
-
-**Selective Rules:**
-```bash
-mkdir -p your-project/.claude/rules
-cp claude-code-toolkit/.claude/rules/00-*.mdc your-project/.claude/rules/
-```
-
-### Rule Composition Strategy
-
-Projects using this toolkit can layer rules:
+This toolkit enables Agent Teams via `settings.json`. Use teams for complex multi-step work:
 
 ```
-Project Structure:
-├── .claude-toolkit/          # This toolkit (submodule)
-│   ├── CLAUDE.md            # Toolkit-level rules
-│   └── .claude/
-│       └── rules/           # Generic rules
-│
-├── CLAUDE.md                # Project-specific rules (override toolkit)
-├── .claude/
-│   └── rules/               # Optional: project-specific .mdc files
-│
-└── src/
-    └── billing/
-        └── CLAUDE.md        # Module-specific rules
+# Tell Claude to create a team with specialized roles:
+"Create a team with a researcher, implementer, and reviewer to work on this feature"
 ```
 
-**Discovery order** (Claude Code merges in this sequence):
-1. User-level: `~/.claude/CLAUDE.md`
-2. Toolkit: `.claude-toolkit/CLAUDE.md`
-3. Project: `/CLAUDE.md` ← **Most authoritative**
-4. Module: `/src/billing/CLAUDE.md`
+Custom agents from `.claude/agents/` can be used as team members. Core agents available:
+- **orchestrator** - Central routing and task coordination
+- **conductor** - Full workflow orchestration (issue to PR)
+- **implementation** - Feature implementation with architecture rules
+- **build-error-resolver** - Fix build/type errors with minimal changes
+- **code-reviewer** - PR and code quality review
+- **architect** - Architecture review and validation
+- **refactor** - Safe refactoring with test verification
+- **researcher** - Research and grounding before implementation
 
-Projects can **override** toolkit rules by specifying conflicting guidance in their own `CLAUDE.md`.
+Use `/retrieve` to pull additional specialized agents (database, security, e2e, browser, design, etc.) on demand.
 
-## Maintaining Generic Rules
+## CSS/Layout Caution
 
-### Guidelines
+Sticky positioning, z-index stacking, scroll behavior, and gradient overlays are known pain points. Always check surrounding positioning context before changing any position or z-index value. A fix to one (e.g., adding `relative`) can break another (e.g., a `fixed` element).
 
-**Keep rules agnostic:**
-- ❌ Don't hardcode project names, specific paths, or business domains
-- ✅ Use generic patterns: `routes/`, `controllers/`, `repositories/`
-- ✅ Provide examples for multiple frameworks (Express, NestJS, Next.js)
+## Sync Tiers
 
-**Keep rules concise:**
-- Target < 100 lines per rule file
-- Rules are loaded in every interaction - token efficiency matters
-- Focus on principles, not exhaustive documentation
+The sync script (`sync-claude-toolkit.sh`) supports tiers:
+- **core** (default): Essential agents, commands, skills, quality hooks
+- **workflow**: + autonomous loops, gemini, mega-workflows
+- **infra**: + infrastructure, DNS, VPS, deploy
+- **debug**: + meta-validators, architecture tests
+- **specialized**: + DB, security, e2e, browser, design
+- **all**: Everything
 
-**Structure by concern:**
-- One rule file per architectural layer or topic
-- Number prefixes for loading order (00-, 01-)
-- Descriptive names: `backend-http-layer.mdc`, not `backend.mdc`
+Use `/retrieve <tier>` in-session to pull additional components.
 
-### Adding New Rules
+## Rules
 
-1. Create `.claude/rules/XX-descriptive-name.mdc`
-2. Add YAML frontmatter with `description`, `globs`, `alwaysApply`
-3. Write concise markdown content with examples
-4. Test with both Claude Code and Cursor
-5. Update `CLAUDE.md` in project root to reference new rule
-
-### Editing Existing Rules
-
-When updating rules:
-- Preserve generic, reusable nature
-- Update examples to cover more frameworks if needed
-- Keep file size < 100 lines
-- Test changes don't break project-specific overrides
-
-## Cross-Tool Compatibility
-
-These rules work with:
-- **Claude Code**: Reads markdown, ignores YAML frontmatter
-- **Cursor**: Reads both YAML frontmatter and markdown
-- **GitHub Copilot**: Treats as standard markdown documentation
-- **Other AI assistants**: Standard markdown
-
-This dual format ensures maximum compatibility without file duplication.
-
-## Integration with Existing Toolkit Features
-
-This rules system complements existing toolkit features:
-
-- **Agents** (`agents/`): Specialized agents can reference rules when making architectural decisions
-- **Commands** (`commands/`): Slash commands can enforce rules (e.g., `/audit` checks compliance)
-- **Hooks** (`hooks/`): Pre-tool-use hooks can validate against architectural rules
-- **Config** (`config.yml`): Central config can enable/disable rule enforcement
-
-Example integration:
-```yaml
-# config.yml
-validation:
-  architecture_rules:
-    enabled: true
-    enforce_on_commit: true
-    rule_files:
-      - .claude/rules/02-backend-http-layer.mdc
-      - .claude/rules/03-backend-persistence.mdc
-```
-
-## FAQ
-
-### Why .mdc instead of .md?
-The `.mdc` extension signals "Markdown with Configuration" and indicates YAML frontmatter presence. This helps tools distinguish between plain documentation and rule files.
-
-### Do projects need all rule files?
-No. Projects can selectively copy only the rules relevant to their stack (e.g., only frontend rules for a React-only project).
-
-### Can projects modify toolkit rules?
-Projects should NOT modify toolkit rules directly. Instead, create project-specific CLAUDE.md files that override or extend toolkit guidance.
-
-### How do I test rule changes?
-1. Make changes to `.mdc` file
-2. In a test project using the toolkit, ask Claude to create code that would violate the rule
-3. Verify Claude follows the updated guidance
-4. Test with both Claude Code and Cursor if possible
-
-## See Also
-
-- [Root CLAUDE.md](../CLAUDE.md) - User-facing documentation
-- [Toolkit Modernization Guide](../docs/TOOLKIT_MODERNIZATION_2025.md)
-- [Code Quality Enforcement](../docs/CODE_QUALITY_ENFORCEMENT.md)
+Architecture rules in `rules/` apply to all projects:
+1. `00-global-architecture.mdc` - Layered architecture, dependency direction
+2. `01-typescript-style.mdc` - TypeScript/JavaScript conventions
+3. `02-backend-http-layer.mdc` - HTTP routes as thin adapters
+4. `03-backend-persistence.mdc` - Repository patterns, data access
+5. `04-frontend-react-architecture.mdc` - React component organization

@@ -1,303 +1,108 @@
-# Claude Code Toolkit - Generic Architecture Rules
+# Claude Code Toolkit
 
-This repository contains **reusable, agnostic architectural rules** for Claude Code and other AI coding assistants.
+Reusable, agnostic architectural rules and agentic workflow tooling for Claude Code.
 
-## Purpose
+## Quick Start
 
-The `.claude/rules/` folder provides generic coding guidelines designed for:
-- Node.js/TypeScript backend services
-- React/TypeScript frontend applications
-- Full-stack projects using layered architecture
-
-These rules are **framework-agnostic** and can be used across multiple projects via git submodules or direct inclusion.
-
-## Rule Files
-
-### Core Architecture
-- **[00-global-architecture.mdc](.claude/rules/00-global-architecture.mdc)**: Layered architecture principles, dependency direction, separation of concerns
-- **[01-typescript-style.mdc](.claude/rules/01-typescript-style.mdc)**: TypeScript/JavaScript coding conventions and style guidelines
-
-### Backend Rules
-- **[02-backend-http-layer.mdc](.claude/rules/02-backend-http-layer.mdc)**: HTTP routes/controllers must be thin adapters; no direct DB access
-- **[03-backend-persistence.mdc](.claude/rules/03-backend-persistence.mdc)**: Repository patterns, data access boundaries, ORM encapsulation
-
-### Frontend Rules
-- **[04-frontend-react-architecture.mdc](.claude/rules/04-frontend-react-architecture.mdc)**: React component organization, data fetching, state management
-
-## Key Commands
-
-The toolkit includes powerful orchestration commands:
-
-### `/loop` - Autonomous Task Orchestration
-Transform short tasks into fully autonomous workflows:
 ```bash
-/loop fix the failing tests            # Auto-detect and fix test failures
-/loop implement user dark mode         # Full feature workflow
-/loop refactor the payment service     # Code improvement loop
-/loop audit for security issues        # Security audit with auto-fix
+# Add as submodule
+git submodule add https://github.com/BerryKuipers/claude-code-toolkit .claude-toolkit
+
+# Sync core components (default: lightweight, essential only)
+bash .claude-toolkit/scripts/sync-claude-toolkit.sh
+
+# Sync with additional tier
+bash .claude-toolkit/scripts/sync-claude-toolkit.sh --tier workflow
+
+# Sync everything (legacy behavior)
+bash .claude-toolkit/scripts/sync-claude-toolkit.sh --all
+
+# List available tiers
+bash .claude-toolkit/scripts/sync-claude-toolkit.sh --list
 ```
 
-The loop:
-- Expands tasks into comprehensive plans
-- Selects appropriate agents (conductor, audit, refactor, etc.)
-- Enforces verification gates (tests, lint, build)
-- Continues automatically until done or max iterations
+## Sync Tiers
 
-See [Loop Orchestration Guide](./docs/LOOP_ORCHESTRATION.md) for details.
+The sync script only copies **core** components by default, keeping consuming projects lean:
 
-### `/conductor` - Full Workflow Orchestration
-Complete feature development from issue to PR:
-```bash
-/conductor                    # Auto-select issue, full workflow
-/conductor issue=123          # Specific issue
-/conductor quality-gate       # Validation only
-```
+| Tier | What's included |
+|------|----------------|
+| **core** (default) | 8 agents, 21 commands, 11 skill dirs, quality hooks, rules |
+| **workflow** | + loops, mega-workflows, gemini delegation, harness |
+| **infra** | + DNS, VPS, deploy, capture-pages |
+| **debug** | + meta-validators, architecture tests, debug tools |
+| **specialized** | + DB, security, e2e, browser, design, QA agents |
+| **all** | Everything in the toolkit |
 
-### `/audit` - Code Quality Audit
-```bash
-/audit                        # Full audit
-/audit --scope=security       # Security focus
-```
+Use `/retrieve <tier>` in-session to pull additional components on demand.
 
-### `/delegate-gemini` - Credit-Saving Delegation (Optional)
-Optionally offload high-volume, low-risk work to Gemini:
-```bash
-/delegate-gemini add JSDoc to src/utils/  # Propose delegation
-/delegate-gemini --verify-only             # Verify Gemini's results
-```
+## Core Commands
 
-See [Gemini Delegation Guide](./docs/GEMINI_DELEGATION.md) for details.
+| Command | Purpose |
+|---------|---------|
+| `/conductor` | Full workflow orchestration (issue to PR) |
+| `/audit` | Code quality audit |
+| `/architect` | Architecture review |
+| `/refactor` | Safe refactoring |
+| `/review-pr` | PR code review |
+| `/deploy` | Deployment |
+| `/test-all` | Comprehensive testing |
+| `/help` | Command documentation |
+| `/retrieve` | Pull extended toolkit components on demand |
 
-### Other Commands
-- `/start-workflow` - Full development cycle
-- `/refactor` - Code improvement
-- `/test-all` - Comprehensive testing
-- `/help` - Command documentation
-
-### Wrapper Commands (bk-* prefix)
-
-These wrappers integrate with the `everything-claude-code` plugin baseline, adding verification gates and output contracts:
+### Wrapper Commands (bk-*)
 
 ```bash
 /bk-plan "implement feature X"    # Planning with verification gates
 /bk-review --staged               # Code review with output contract
 /bk-implement "task description"  # Implementation with pre/post gates
-/bk-architect --scope=backend     # Architecture review with layer validation
-/bk-security --create-issues      # Security audit with issue creation
+/bk-architect --scope=backend     # Architecture review
+/bk-security --create-issues      # Security audit
 /bk-fix --type=build              # Build error resolution
 /bk-doc --scope=api               # Documentation updates
 ```
 
-See [Plugin Integration Guide](./docs/PLUGIN_INTEGRATION_GUIDE.md) for the layering model.
+## Agent Teams
+
+Agent Teams are enabled by default. Use teams for complex multi-step work:
+
+```
+"Create a team with a researcher, implementer, and reviewer"
+```
+
+Core agents (always synced):
+- **orchestrator**, **conductor**, **implementation**, **build-error-resolver**
+- **code-reviewer**, **architect**, **refactor**, **researcher**
+
+Extended agents (via `/retrieve specialized`):
+- **database**, **security-pentest**, **e2e-test-maintainer**, **browser-testing**
+- **design**, **qa-triage**, **infrastructure**, **page-capture**
+
+## Architecture Rules
+
+Rules in `.claude/rules/` apply to all consuming projects:
+- `00-global-architecture.mdc` - Layered architecture, dependency direction
+- `01-typescript-style.mdc` - TypeScript/JavaScript conventions
+- `02-backend-http-layer.mdc` - HTTP routes as thin adapters
+- `03-backend-persistence.mdc` - Repository patterns, data access
+- `04-frontend-react-architecture.mdc` - React component organization
 
 ## Project Overlays
 
-Project-specific configurations live in `.claude/overlays/<project>/`:
-
+Project-specific configs in `.claude/overlays/<project>/`:
 ```
 .claude/overlays/
-├── wescobar/
-│   ├── config.yml    # Allowed agents, MCP servers, thresholds
-│   └── README.md
-└── cophusher/
-    ├── config.yml
-    └── README.md
+├── wescobar/config.yml
+├── cophusher/config.yml
+├── flowerguy/config.yml
+├── tuenscout/config.yml
+└── tribevibe/config.yml
 ```
 
-Naming convention:
-- `bk-*` - Toolkit wrappers (policy layer)
-- `wsc-*` - WescoBar project-specific
-- `cph-*` - CoPhusher project-specific
+## Overriding Rules
 
-## Using This Toolkit in Your Projects
-
-### Option 1: As a Git Submodule (Recommended)
-
-```bash
-# Add toolkit as submodule
-git submodule add https://github.com/YourOrg/claude-code-toolkit .claude-toolkit
-
-# Symlink or reference the rules
-ln -s .claude-toolkit/.claude .claude
-```
-
-### Option 2: Direct Copy
-
-```bash
-# Copy the .claude folder to your project
-cp -r /path/to/claude-code-toolkit/.claude ./
-```
-
-### Option 3: Selective Rules
-
-Copy only the rules you need:
-```bash
-mkdir -p .claude/rules
-cp claude-code-toolkit/.claude/rules/00-global-architecture.mdc .claude/rules/
-cp claude-code-toolkit/.claude/rules/01-typescript-style.mdc .claude/rules/
-```
-
-### Option 4: As a Plugin (Claude Code Plugin System)
-
-The toolkit ships as a Claude Code plugin with a marketplace manifest. Consuming repos can register it:
-
-```bash
-# 1. Add toolkit as submodule (if not already)
-git submodule add <toolkit-repo-url> .claude-toolkit
-
-# 2. Register the marketplace in your project settings
-#    Add to your .claude/settings.json:
-```
-
-```json
-{
-  "extraKnownMarketplaces": {
-    "berry-toolkit": {
-      "source": {
-        "source": "directory",
-        "path": ".claude-toolkit"
-      }
-    }
-  }
-}
-```
-
-```bash
-# 3. Or use the helper script:
-powershell .claude-toolkit/scripts/claude/install-plugin.ps1
-
-# 4. In Claude Code, install the plugin:
-#    /plugin marketplace add ./.claude-toolkit
-#    /plugin install claude-code-toolkit@berry-toolkit
-
-# 5. Or load directly for testing:
-claude --plugin-dir ./.claude-toolkit
-```
-
-When loaded as a plugin, all skills are namespaced: `/claude-code-toolkit:scaffold`, `/claude-code-toolkit:quality-gate`, etc.
-
-### Agent Teams (Experimental)
-
-The toolkit enables the Agent Teams beta by default via `settings.json`:
-
-```json
-{
-  "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
-  }
-}
-```
-
-To enable in a consuming repo without committing:
-```bash
-# Writes to .claude/settings.local.json (gitignored)
-powershell .claude-toolkit/scripts/claude/enable-teams.ps1
-```
-
-Agent Teams let you coordinate multiple Claude Code instances. Tell Claude to "create an agent team" with roles like researcher, implementer, reviewer. See [Agent Teams docs](https://code.claude.com/docs/en/agent-teams).
-
-## Overriding or Extending Rules
-
-Projects can extend these toolkit rules with project-specific guidance:
-
-### For Claude Code
-
-Create a `CLAUDE.md` in your project root:
-```markdown
-# Project-Specific Rules
-
-## This Project Uses
-
-This is a multi-tenant SaaS billing platform using:
-- Backend: NestJS + Prisma + PostgreSQL
-- Frontend: Next.js 14 (App Router) + React Query
-- Deployment: Docker + Kubernetes
-
-## Toolkit Rules Apply
-
-All rules from `.claude-toolkit/.claude/rules/` apply globally.
-
-## Project-Specific Overrides
-
-### Database
-- ALWAYS use `prisma.tenant.findMany()` with tenantId filter
-- NEVER skip tenant isolation checks
-
-### Authentication
-- All routes require JWT middleware except /health
-- Admin routes require role check: `requireRole('admin')`
-
-### Critical Paths
-- `/src/billing/**` - Payment processing (no modifications without review)
-- `/src/tenant/**` - Tenant isolation (security-critical)
-```
-
-### For Cursor
-
-Create `.cursor/rules/99-project-overrides.mdc`:
-```yaml
----
-description: Project-specific overrides for this application
-globs:
-  - 'src/**/*'
-alwaysApply: true
----
-
-# Project Overrides
-
-## Specific to This Project
-...
-```
-
-## Rule Composition
-
-Claude Code discovers and merges CLAUDE.md files in this order:
-1. `~/.claude/CLAUDE.md` (user-level, if exists)
-2. `/project/.claude-toolkit/CLAUDE.md` (this toolkit)
-3. `/project/CLAUDE.md` (project-specific, most authoritative)
-4. `/project/src/module/CLAUDE.md` (module-specific)
-
-Later files override or extend earlier ones.
-
-## Guidelines for Maintaining This Toolkit
-
-### Keep Rules Generic
-- ❌ Don't reference specific project names or paths
-- ❌ Don't assume specific frameworks (Express, NestJS, etc.)
-- ✅ Use generic folder patterns: `routes/`, `controllers/`, `repositories/`
-- ✅ Provide examples for multiple frameworks where applicable
-
-### Keep Rules Concise
-- Each rule file should be **< 100 lines** where possible
-- Focus on principles, not exhaustive details
-- Rules are loaded in every Claude Code interaction - token efficiency matters
-
-### Structure Rules by Concern
-- One rule file per architectural layer or concern
-- Use numbered prefixes (00-, 01-) to indicate loading order
-- Use descriptive names: `backend-http-layer`, not `http-stuff`
-
-## Cross-Tool Compatibility
-
-These `.mdc` files work with:
-- **Claude Code**: Reads markdown content (ignores YAML frontmatter)
-- **Cursor**: Reads YAML frontmatter + markdown content
-- **Other AI assistants**: Read as standard markdown
-
-This dual format ensures maximum compatibility without duplication.
-
-## Contributing
-
-When adding new rules to this toolkit:
-1. Ensure they're generic and reusable across projects
-2. Provide examples for multiple frameworks (Express, NestJS, Next.js, etc.)
-3. Keep files concise (< 100 lines)
-4. Test with both Claude Code and Cursor
-5. Document with clear examples of good/bad patterns
-
-## Further Reading
-
-- [Claude Code Documentation](https://docs.anthropic.com/claude/docs)
-- [CLAUDE.md Best Practices](https://github.com/steipete/agent-rules)
-- [Toolkit Modernization Guide](./docs/TOOLKIT_MODERNIZATION_2025.md)
-- [Plugin Integration Guide](./docs/PLUGIN_INTEGRATION_GUIDE.md) - Layering with everything-claude-code
+Create a `CLAUDE.md` in your project root to override or extend toolkit rules. Claude Code merges in order:
+1. `~/.claude/CLAUDE.md` (user-level)
+2. `.claude-toolkit/CLAUDE.md` (this toolkit)
+3. `CLAUDE.md` (project root - most authoritative)
+4. `src/module/CLAUDE.md` (module-specific)
