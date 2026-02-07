@@ -115,6 +115,19 @@
         "scopes": ["read:jams"],
         "redirectUri": "http://localhost:45454/oauth/callback"
       }
+    },
+    {
+      "id": "portainer",
+      "transport": "stdio",
+      "command": "wsl.exe",
+      "args": [
+        "-e",
+        "bash",
+        "-c",
+        "/home/berry/.local/bin/portainer-mcp -server http://10.0.0.23:9000 -token '${vault:secret/mcp_servers/portainer#api_token}'"
+      ],
+      "env": {},
+      "startMode": "lazy"
     }
   ]
 }
