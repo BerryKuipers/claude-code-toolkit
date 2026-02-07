@@ -286,7 +286,7 @@ sync_files() {
   for f in "${files[@]}"; do
     if [ -f "$src/$f" ]; then
       cp -a "$src/$f" "$dst/$f"
-      ((count++))
+      count=$((count + 1))
     fi
   done
   echo "[sync] $src_subdir: $count files" | tee -a "$LOG"
@@ -457,7 +457,7 @@ if [ "$CLEANUP_ENABLED" -eq 1 ]; then
       if [ -f "$src/$base" ]; then
         if ! in_array "$base" "${allowed[@]}"; then
           rm -f "$dst_file"
-          ((removed++))
+          removed=$((removed + 1))
         fi
       fi
       # Files NOT in toolkit source are project-specific -> keep
@@ -495,7 +495,7 @@ if [ "$CLEANUP_ENABLED" -eq 1 ]; then
         _base=$(basename "$dst_file")
         if [ -f "$SRC_DIR/commands/$_base" ]; then
           rm -f "$dst_file"
-          ((_underscore_removed++))
+          _underscore_removed=$((_underscore_removed + 1))
         fi
       done
       if [ "$_underscore_removed" -gt 0 ]; then
