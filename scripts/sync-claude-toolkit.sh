@@ -512,15 +512,23 @@ if [ "$CLEANUP_ENABLED" -eq 1 ]; then
 
       if [ -d "$_dst_skill_dir" ]; then
         if ! in_array "$_rel_path" "${ALLOWED_SKILL_DIRS[@]}"; then
-          # Don't remove parent if a child is allowed (e.g. keep quality/ if quality/validate-build is allowed)
-          _is_parent=0
+          # Check if this dir is a parent OR child of an allowed dir
+          # Parent: quality/ is parent of quality/validate-build -> keep
+          # Child: quality/quality-gate is child of quality -> keep
+          _is_related=0
           for _allowed_dir in "${ALLOWED_SKILL_DIRS[@]}"; do
+            # Is this a parent of an allowed dir?
             if [[ "$_allowed_dir" == "$_rel_path"/* ]]; then
-              _is_parent=1
+              _is_related=1
+              break
+            fi
+            # Is this a child of an allowed dir?
+            if [[ "$_rel_path" == "$_allowed_dir"/* ]]; then
+              _is_related=1
               break
             fi
           done
-          if [ "$_is_parent" -eq 0 ]; then
+          if [ "$_is_related" -eq 0 ]; then
             rm -rf "$_dst_skill_dir"
             echo "[cleanup] skills/$_rel_path: removed (not in tier)" | tee -a "$LOG"
           fi
