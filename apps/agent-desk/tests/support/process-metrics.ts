@@ -87,22 +87,52 @@ $ErrorActionPreference = 'Stop'
   return results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
 }
 
-export async function sampleProcessTree(rootPid: number): Promise<TreeReading> {
-  const all = await processList();
-  const ids = new Set([rootPid]);
+function processStart(reading: ProcessReading, platform: NodeJS.Platform): bigint {
+  if (platform === 'linux' && /^\d+$/.test(reading.started)) return BigInt(reading.started);
+  if (platform === 'win32') {
+    const parts = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,7}))?(Z|[+-]\d{2}:\d{2})$/.exec(
+      reading.started,
+    );
+    if (parts) {
+      const localClock = Date.parse(`${parts[1]}Z`);
+      const utc = Date.parse(`${parts[1]}${parts[3]}`);
+      if (
+        Number.isFinite(utc) &&
+        Number.isFinite(localClock) &&
+        new Date(localClock).toISOString().slice(0, 19) === parts[1]
+      )
+        return BigInt(utc) * 10_000n + BigInt((parts[2] ?? '').padEnd(7, '0'));
+    }
+  }
+  throw new Error(`The creation time of process ${reading.pid} could not be verified.`);
+}
+
+export function selectProcessTree(
+  rootPid: number,
+  all: ProcessReading[],
+  platform: NodeJS.Platform = process.platform,
+): ProcessReading[] {
+  const root = all.find((reading) => reading.pid === rootPid);
+  if (!root) throw new Error('The application exited before its process tree could be measured.');
+  const starts = new Map([[rootPid, processStart(root, platform)]]);
   let changed = true;
   while (changed) {
     changed = false;
-    for (const process of all) {
-      if (ids.has(process.parentPid) && !ids.has(process.pid)) {
-        ids.add(process.pid);
+    for (const reading of all) {
+      const parentStart = starts.get(reading.parentPid);
+      if (parentStart === undefined || starts.has(reading.pid)) continue;
+      const childStart = processStart(reading, platform);
+      if (childStart >= parentStart) {
+        starts.set(reading.pid, childStart);
         changed = true;
       }
     }
   }
-  const processes = all.filter((process) => ids.has(process.pid));
-  if (!processes.some((process) => process.pid === rootPid))
-    throw new Error('The application exited before its process tree could be measured.');
+  return all.filter((reading) => starts.has(reading.pid));
+}
+
+export async function sampleProcessTree(rootPid: number): Promise<TreeReading> {
+  const processes = selectProcessTree(rootPid, await processList());
   if (process.platform === 'linux') {
     await Promise.all(
       processes.map(async (process) => {
