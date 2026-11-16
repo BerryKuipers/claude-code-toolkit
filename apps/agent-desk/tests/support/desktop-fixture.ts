@@ -11,6 +11,7 @@ export interface LocalFixture {
   project: string;
   claude: string;
   invocations: string;
+  readiness: string;
   gatewayUrl: string;
   env: Record<string, string>;
   requests: Array<{ method: string; url: string }>;
@@ -30,6 +31,9 @@ if (args[0] === 'app-server') {
   input.on('line', line => {
     const request = JSON.parse(line);
     if (request.id === undefined) return;
+    if (request.method === 'thread/list') {
+      fs.appendFileSync(process.env.AGENT_DESK_FIXTURE_READINESS, JSON.stringify({ method: request.method, pid: process.pid, requestedAt: new Date().toISOString() }) + '\n');
+    }
     const result = request.method === 'initialize'
       ? { userAgent: 'agent-desk-fixture' }
       : { data: [], nextCursor: null };
@@ -82,6 +86,7 @@ export async function createDesktopFixture(): Promise<LocalFixture> {
   const geminiParent = path.join(temporary, 'agent-config', 'google');
   const executable = path.join(temporary, 'fixture-agent.cjs');
   const invocations = path.join(temporary, 'invocations.jsonl');
+  const readiness = path.join(temporary, 'readiness.jsonl');
   const requests: LocalFixture['requests'] = [];
   let serverListening = false;
   const server = createServer((request, response) => {
@@ -132,6 +137,7 @@ export async function createDesktopFixture(): Promise<LocalFixture> {
     await writeFile(executable, fakeAgent);
     await chmod(executable, 0o755);
     await writeFile(invocations, '');
+    await writeFile(readiness, '');
     await writeFile(
       path.join(claude, 'settings.json'),
       JSON.stringify(
@@ -229,6 +235,7 @@ export async function createDesktopFixture(): Promise<LocalFixture> {
       AGENT_DESK_HOME: home,
       AGENT_DESK_DATA_DIR: data,
       AGENT_DESK_FIXTURE_INVOCATIONS: invocations,
+      AGENT_DESK_FIXTURE_READINESS: readiness,
       CLAUDE_CONFIG_DIR: claude,
       CODEX_HOME: codex,
       GEMINI_CLI_HOME: geminiParent,
@@ -239,6 +246,7 @@ export async function createDesktopFixture(): Promise<LocalFixture> {
       project,
       claude,
       invocations,
+      readiness,
       gatewayUrl,
       requests,
       env,

@@ -56,6 +56,51 @@ async function directoryBytes(directory) {
   return bytes;
 }
 
+async function waitForStartup(runtime, child, fixture, alive, startedAt) {
+  const timeoutMs = 90000;
+  const deadline = startedAt + timeoutMs;
+  let marker;
+  let processes = [];
+  while (performance.now() < deadline) {
+    alive();
+    marker = (await readFile(fixture.readiness, 'utf8'))
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => JSON.parse(line))
+      .find((entry) => entry.method === 'thread/list');
+    processes = (await sampleProcessTree(child.pid)).processes;
+    const rootName = processes.find((entry) => entry.pid === child.pid)?.name.toLowerCase();
+    const browserProcesses = processes.filter((entry) =>
+      runtime === 'electron'
+        ? entry.name.toLowerCase() === rootName
+        : process.platform === 'win32'
+          ? entry.name.toLowerCase() === 'msedgewebview2.exe'
+          : /^WebKitWebProc/.test(entry.name),
+    );
+    if (marker && browserProcesses.length >= (runtime === 'electron' ? 2 : 1)) {
+      return {
+        startupReadinessMs: Math.round(performance.now() - startedAt),
+        readiness: {
+          condition:
+            runtime === 'electron'
+              ? 'Fixture app-server thread/list request and at least two Electron executable processes.'
+              : process.platform === 'win32'
+                ? 'Fixture app-server thread/list request and a descendant msedgewebview2.exe process.'
+                : 'Fixture app-server thread/list request and a descendant WebKitWebProcess (WebKitWebProc comm prefix).',
+          marker,
+          observedAt: new Date().toISOString(),
+          browserProcesses: browserProcesses.map(({ pid, name }) => ({ pid, name })),
+          timeoutMs,
+        },
+      };
+    }
+    await delay(Math.min(1000, Math.max(0, deadline - performance.now())));
+  }
+  throw new Error(
+    `${runtime} startup readiness was not reached within ${timeoutMs} ms. Fixture thread/list observed: ${Boolean(marker)}. Process tree: ${JSON.stringify(processes.map(({ pid, name }) => ({ pid, name })))}.`,
+  );
+}
+
 async function measure(runtime, executable, packageRoot) {
   const binary = path.resolve(executable);
   const binaryInfo = await stat(binary);
@@ -67,6 +112,7 @@ async function measure(runtime, executable, packageRoot) {
       runtime === 'electron' && process.platform === 'linux'
         ? ['--no-sandbox', '--disable-dev-shm-usage']
         : [];
+    const startedAt = performance.now();
     child = spawn(binary, args, {
       env: fixture.env,
       cwd: path.dirname(binary),
@@ -86,7 +132,11 @@ async function measure(runtime, executable, packageRoot) {
       if (child.exitCode !== null || child.signalCode !== null)
         throw new Error(`${runtime} exited before the measurement completed: ${output}`);
     };
-    console.log(`Warming ${runtime} with the isolated session fixture for ${warmupMs} ms.`);
+    console.log(`Waiting for ${runtime} renderer session indexing and its browser processes.`);
+    const readiness = await waitForStartup(runtime, child, fixture, alive, startedAt);
+    console.log(
+      `${runtime} startup readiness observed after ${readiness.startupReadinessMs} ms; warming for ${warmupMs} ms.`,
+    );
     const warmDeadline = Date.now() + warmupMs;
     while (Date.now() < warmDeadline) {
       alive();
@@ -111,6 +161,7 @@ async function measure(runtime, executable, packageRoot) {
       executable: binary,
       executableBytes: binaryInfo.size,
       packagedDirectoryBytes: packageRoot ? await directoryBytes(path.resolve(packageRoot)) : null,
+      ...readiness,
       warmupMs,
       summary,
       readings,
@@ -161,7 +212,7 @@ const report = {
     automaticHistoryRefreshSeconds: 0,
     interactiveAgents: 0,
     readiness:
-      'Fixed warmup after starting a release executable whose GUI is verified separately by the native desktop suite.',
+      'Wait up to 90 seconds for the fixture app-server thread/list request from renderer session indexing and the runtime browser processes; only then begin the configured warmup and idle measurement.',
   },
   metricNotes: [
     'Includes the application and observed descendant processes, including WebView and discovery helpers. Excludes the measurement process and test drivers.',

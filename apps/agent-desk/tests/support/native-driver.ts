@@ -1,14 +1,17 @@
-import { spawn, type ChildProcess } from 'node:child_process';
-import { access } from 'node:fs/promises';
+import { execFile, spawn, type ChildProcess } from 'node:child_process';
+import { access, mkdtemp } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { promisify } from 'node:util';
 import { remote } from 'webdriverio';
 import type { LocalFixture } from './desktop-fixture';
 
 export type Driver = Awaited<ReturnType<typeof remote>>;
 export type UiElement = Awaited<ReturnType<Driver['$']>>;
 export type UiScope = Driver | UiElement;
+
+const execute = promisify(execFile);
 
 async function unusedPort(): Promise<number> {
   const server = createServer();
@@ -25,7 +28,7 @@ async function unusedPort(): Promise<number> {
 }
 
 export async function terminateDriver(child: ChildProcess): Promise<void> {
-  if (!child.pid) return;
+  if (!child.pid || child.exitCode !== null || child.signalCode !== null) return;
   if (process.platform === 'win32') {
     await new Promise<void>((resolve) => {
       const task = spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
@@ -38,6 +41,97 @@ export async function terminateDriver(child: ChildProcess): Promise<void> {
     } catch {
       child.kill('SIGTERM');
     }
+  }
+}
+
+async function windowsProcessState(child: ChildProcess): Promise<string> {
+  const state = `pid=${child.pid ?? 'not started'} exit=${child.exitCode} signal=${child.signalCode}`;
+  if (!child.pid) return state;
+  try {
+    const { stdout } = await execute(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        [
+          '$all = @(Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, Name)',
+          '$owned = [System.Collections.Generic.HashSet[uint32]]::new()',
+          '[void]$owned.Add([uint32]$env:AGENT_DESK_DIAGNOSTIC_PID)',
+          'do { $changed = $false; foreach ($entry in $all) { if ($owned.Contains($entry.ParentProcessId) -and $owned.Add($entry.ProcessId)) { $changed = $true } } } while ($changed)',
+          'ConvertTo-Json -Compress -InputObject @($all | Where-Object { $owned.Contains($_.ProcessId) })',
+        ].join('; '),
+      ],
+      {
+        env: { ...process.env, AGENT_DESK_DIAGNOSTIC_PID: String(child.pid) },
+        windowsHide: true,
+        timeout: 5000,
+        maxBuffer: 65536,
+      },
+    );
+    return `${state}\nOwned processes: ${stdout.trim()}`;
+  } catch {
+    return state;
+  }
+}
+
+async function launchWindowsWebview(
+  binary: string,
+  fixture: LocalFixture,
+  capture: (data: Buffer) => void,
+): Promise<{ process: ChildProcess; debuggerAddress: string }> {
+  const port = await unusedPort();
+  const debuggerAddress = `127.0.0.1:${port}`;
+  const profile = await mkdtemp(path.join(fixture.data, 'webview-driver-'));
+  const child = spawn(binary, [], {
+    env: {
+      ...fixture.env,
+      TAURI_AUTOMATION: 'true',
+      TAURI_WEBVIEW_AUTOMATION: 'true',
+      WEBVIEW2_USER_DATA_FOLDER: profile,
+      WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port} --remote-debugging-address=127.0.0.1`,
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let startupError: Error | undefined;
+  child.stdout?.on('data', capture);
+  child.stderr?.on('data', capture);
+  child.once('error', (error) => {
+    startupError = error;
+  });
+  capture(
+    Buffer.from(`Windows app started with an isolated WebView2 profile; pid=${child.pid}.\n`),
+  );
+  try {
+    const deadline = Date.now() + 30000;
+    while (Date.now() < deadline) {
+      if (startupError) throw startupError;
+      if (child.exitCode !== null || child.signalCode !== null)
+        throw new Error('The Windows app exited before its WebView2 became ready.');
+      const version = await fetch(`http://${debuggerAddress}/json/version`, {
+        signal: AbortSignal.timeout(1000),
+      })
+        .then(async (response) =>
+          response.ok
+            ? ((await response.json()) as { Browser?: string; webSocketDebuggerUrl?: string })
+            : undefined,
+        )
+        .catch(() => undefined);
+      if (version?.webSocketDebuggerUrl) {
+        capture(
+          Buffer.from(`Windows WebView2 is ready: ${version.Browser ?? 'version unavailable'}.\n`),
+        );
+        return { process: child, debuggerAddress };
+      }
+      await delay(200);
+    }
+    throw new Error(
+      'The Windows app did not expose its loopback WebView2 endpoint within 30 seconds.',
+    );
+  } catch (cause) {
+    const state = await windowsProcessState(child);
+    await terminateDriver(child);
+    throw new Error(`${cause instanceof Error ? cause.message : String(cause)}\n${state}`);
   }
 }
 
@@ -77,6 +171,7 @@ export async function launchNativeDriver(fixture: LocalFixture): Promise<{
     startupError = error;
   });
   let browser: Driver | undefined;
+  let windowsApp: ChildProcess | undefined;
   try {
     const deadline = Date.now() + 30000;
     let ready = false;
@@ -97,11 +192,20 @@ export async function launchNativeDriver(fixture: LocalFixture): Promise<{
     }
     if (!ready) throw new Error(`tauri-driver did not start: ${output}`);
     const capabilities: WebdriverIO.Capabilities & {
-      'tauri:options': { application: string };
+      'tauri:options'?: { application: string };
+      'ms:edgeChromium'?: boolean;
     } = {
-      'tauri:options': { application: binary },
       'wdio:enforceWebDriverClassic': true,
     };
+    if (process.platform === 'win32') {
+      const webview = await launchWindowsWebview(binary, fixture, capture);
+      windowsApp = webview.process;
+      capabilities.browserName = 'webview2';
+      capabilities['ms:edgeChromium'] = true;
+      capabilities['ms:edgeOptions'] = { debuggerAddress: webview.debuggerAddress };
+    } else {
+      capabilities['tauri:options'] = { application: binary };
+    }
     browser = await remote({
       hostname: '127.0.0.1',
       port,
@@ -117,11 +221,14 @@ export async function launchNativeDriver(fixture: LocalFixture): Promise<{
       output: () => output,
       close: async () => {
         await browser?.deleteSession().catch(() => undefined);
+        if (windowsApp) await terminateDriver(windowsApp);
         await terminateDriver(child);
       },
     };
   } catch (cause) {
+    if (windowsApp) capture(Buffer.from(`${await windowsProcessState(windowsApp)}\n`));
     await browser?.deleteSession().catch(() => undefined);
+    if (windowsApp) await terminateDriver(windowsApp);
     await terminateDriver(child);
     throw new Error(`${cause instanceof Error ? cause.message : String(cause)}\n${output}`);
   }
