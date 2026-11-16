@@ -96,7 +96,7 @@ npm run dist:linux
 npm run dist:mac
 ```
 
-The GitHub workflow checks Windows and Linux and produces installers/archives plus desktop test evidence. After packaging, it launches the actual packaged application and checks session resume and native terminal input/output again, including the bundled native module. Windows builds are unsigned. macOS packaging is provided for local builds on a Mac; it is not covered by this workflow.
+The GitHub workflow checks Windows and Ubuntu 24.04 and produces installers/archives plus desktop test evidence. After packaging, it launches the actual packaged application and checks session resume and native terminal input/output again through the Rust PTY implementation. Windows builds are unsigned. macOS packaging is provided for local builds on a Mac; it is not covered by this workflow.
 
 For a browser-only visual preview, start Vite and explicitly add `?demo=1`. This view is labeled as sample data and refuses live mutations. Opening the renderer without the native Tauri bridge or that explicit flag shows a desktop-required screen.
 

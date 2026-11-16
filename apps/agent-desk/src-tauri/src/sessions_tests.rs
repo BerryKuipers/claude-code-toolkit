@@ -1,7 +1,7 @@
 use super::*;
 use crate::types::HistoryRoot;
 use serde_json::json;
-use std::io::Write;
+use std::io::{Seek, SeekFrom, Write};
 use tempfile::TempDir;
 
 const TIMESTAMP: &str = "2026-11-16T09:00:00.000Z";
@@ -472,7 +472,12 @@ fn prefers_native_identity_over_newer_export() {
     fixture.root("claude", "exports");
     let index = fixture.index();
     assert_eq!(index.sessions.len(), 1);
-    assert_eq!(index.sessions[0].source_path.as_deref(), native.to_str());
+    assert_eq!(
+        Path::new(index.sessions[0].source_path.as_deref().unwrap())
+            .canonicalize()
+            .unwrap(),
+        native.canonicalize().unwrap()
+    );
     assert!(index.sessions[0].resumable);
     assert_eq!(
         fixture.transcript(&index.sessions[0].id).messages[0].content,
@@ -681,8 +686,9 @@ fn bounded_read_rejects_large_legacy_json_and_marks_partial_jsonl() {
         "session-large.jsonl",
         &[fixture.claude("large", "First message")],
     );
-    let mut file = File::options().append(true).open(&jsonl).unwrap();
+    let mut file = File::options().write(true).open(&jsonl).unwrap();
     file.set_len((MAX_FILE_BYTES + 1024) as u64).unwrap();
+    file.seek(SeekFrom::End(0)).unwrap();
     writeln!(file, "\n{}", fixture.claude("large", "Last message")).unwrap();
     let read = read_records(&jsonl).unwrap();
     assert!(read.truncated);

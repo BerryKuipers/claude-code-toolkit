@@ -197,6 +197,22 @@ export async function clickButton(
   await (await button(browser, name, scope)).click();
 }
 
+export async function fillMultiline(
+  browser: Driver,
+  element: UiElement,
+  value: string,
+): Promise<void> {
+  const [first, ...lines] = value.split('\n');
+  await element.setValue(first);
+  for (const line of lines) {
+    await browser.keys('Enter');
+    if (line) await element.addValue(line);
+  }
+  const entered = await element.getValue();
+  if (entered !== value)
+    throw new Error('Native textarea input did not preserve the supplied text.');
+}
+
 export async function enterTerminal(browser: Driver, command: string): Promise<void> {
   await browser.execute(() => {
     const host = [...document.querySelectorAll<HTMLElement>('.terminal-surface')].find(

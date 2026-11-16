@@ -12,6 +12,7 @@ import {
   clickButton,
   enterTerminal,
   field,
+  fillMultiline,
   launchNativeDriver,
   visible,
   visibleText,
@@ -133,8 +134,9 @@ test('finds and resumes a local session through the real PTY, preserving it acro
   const search = await field(browser, 'Search sessions');
   await search.setValue('not-a-fixture');
   await expect
-    .poll(() => visibleText(browser, 'h2=No matching sessions'))
+    .poll(() => visibleText(browser, '.session-list .list-empty strong'))
     .toBe('No matching sessions');
+  expect(await visibleText(browser, '.library-footer > span:first-child')).toBe('0 sessions');
   await search.setValue('Desktop resume fixture');
   await (await field(browser, 'Filter sessions by agent')).selectByAttribute('value', 'claude');
   await clickButton(browser, /Desktop resume fixture/);
@@ -144,7 +146,7 @@ test('finds and resumes a local session through the real PTY, preserving it acro
   await clickButton(browser, 'Resume session');
   const live = await visible(browser, '[aria-label="Live agent workspace"]');
   const terminalText = async (): Promise<string> =>
-    await live.$('.xterm-accessibility-tree').getText();
+    String((await live.$('.xterm-accessibility-tree').getProperty('textContent')) ?? '');
   await expect.poll(terminalText).toContain('FAKE_AGENT_READY');
   const original = (await terminals(browser))[0];
   expect(original.status).toBe('running');
@@ -184,9 +186,11 @@ test('creates and edits a skill, then disables and restores its original file', 
   await (
     await field(browser, 'Description', create)
   ).setValue('A fixture skill for desktop integration checks.');
-  await (
-    await field(browser, 'Instructions · Markdown', create)
-  ).setValue('# Fixture instructions\n\nKeep this skill local.');
+  await fillMultiline(
+    browser,
+    await field(browser, 'Instructions · Markdown', create),
+    '# Fixture instructions\n\nKeep this skill local.',
+  );
   await clickButton(browser, 'Create skill', create);
   await create.waitForDisplayed({ reverse: true });
   await visible(browser, 'h2=desktop-smoke-skill');
@@ -195,7 +199,7 @@ test('creates and edits a skill, then disables and restores its original file', 
   await clickButton(browser, 'Edit');
   const editor = await field(browser, 'Skill Markdown source');
   const edited = (await editor.getValue()) + '\n\nVerified desktop editing survives a reload.\n';
-  await editor.setValue(edited);
+  await fillMultiline(browser, editor, edited);
   await clickButton(browser, 'Save');
   await expect.poll(() => readFile(file, 'utf8')).toBe(edited);
   await clickButton(browser, 'Disable skill');
@@ -219,7 +223,7 @@ test('validates and saves native settings with a backup and retains unknown fiel
   await visible(browser, '.error-box[role="alert"]');
   expect(await readFile(path.join(claude, 'settings.json'), 'utf8')).toBe(original);
   const updated = JSON.stringify({ ...JSON.parse(original), effortLevel: 'high' }, null, 2);
-  await source.setValue(updated);
+  await fillMultiline(browser, source, updated);
   await clickButton(browser, 'Save file');
   await expect.poll(() => readFile(path.join(claude, 'settings.json'), 'utf8')).toBe(updated);
   expect(JSON.parse(updated).fixtureUnrecognizedSetting.keep).toBe(true);
@@ -262,7 +266,17 @@ test('saves a connection, tests a local endpoint and chooses a model from its re
   const edit = await dialog(browser, 'Edit connection');
   expect(await (await field(browser, 'Model ID', edit)).getValue()).toBe('fixture/coder');
   await clickButton(browser, 'Save connection', edit);
-  await expect.poll(async () => (await profileCard(browser)).getText()).toContain('fixture/coder');
+  await edit.waitForDisplayed({ reverse: true });
+  await expect
+    .poll(async () => {
+      const model = await visible(
+        browser,
+        '.connection-model > span:nth-child(2)',
+        await profileCard(browser),
+      );
+      return await model.getProperty('innerText');
+    })
+    .toBe('fixture/coder');
   const profileFile = await readFile(path.join(data, 'profiles.json'), 'utf8');
   const profiles = JSON.parse(profileFile) as ProviderProfile[];
   expect(profiles.find((profile) => profile.name === 'Desktop mock gateway')).toMatchObject({

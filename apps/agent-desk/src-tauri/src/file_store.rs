@@ -2,7 +2,9 @@ use crate::types::DeskResult;
 use serde::de::DeserializeOwned;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-use std::fs::{self, File, OpenOptions, Permissions};
+#[cfg(unix)]
+use std::fs::File;
+use std::fs::{self, OpenOptions, Permissions};
 use std::io::{Read, Write};
 use std::path::{Component, Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock, Weak};
@@ -244,7 +246,11 @@ pub fn canonical_within(
         }
         Err(error) => return Err(format!("Cannot resolve the selected file: {error}")),
     };
-    if !roots.iter().any(|root| inside(root, &canonical)) {
+    if !roots
+        .iter()
+        .filter_map(|root| fs::canonicalize(root).ok())
+        .any(|root| inside(&root, &canonical))
+    {
         return Err("This path points outside its approved directory.".into());
     }
     Ok(canonical)
@@ -472,7 +478,11 @@ mod tests {
             })
             .collect();
         let results: Vec<_> = jobs.into_iter().map(|job| job.join().unwrap()).collect();
-        assert_eq!(results.iter().filter(|result| result.is_ok()).count(), 1);
+        assert_eq!(
+            results.iter().filter(|result| result.is_ok()).count(),
+            1,
+            "Write results: {results:?}"
+        );
         let backups: Vec<_> = fs::read_dir(directory.path().join("backups"))
             .unwrap()
             .collect();
@@ -488,18 +498,101 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let file = directory.path().join("new.json");
         fs::write(&file, "").unwrap();
+        let error = write_revision(
+            &file,
+            "replacement",
+            "missing",
+            &[directory.path().into()],
+            &directory.path().join("backups"),
+        )
+        .unwrap_err();
         assert!(
-            write_revision(
-                &file,
-                "replacement",
-                "missing",
-                &[directory.path().into()],
-                &directory.path().join("backups")
-            )
-            .unwrap_err()
-            .contains("changed outside")
+            error.contains("changed outside"),
+            "Unexpected write error: {error}"
         );
         assert_eq!(fs::read_to_string(file).unwrap(), "");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn approved_root_aliases_resolve_before_containment_but_child_links_cannot_escape() {
+        use std::os::unix::fs::symlink;
+        let directory = tempfile::tempdir().unwrap();
+        let original = directory.path().join("original");
+        let alias = directory.path().join("alias");
+        let outside = directory.path().join("outside");
+        fs::create_dir(&original).unwrap();
+        fs::create_dir(&outside).unwrap();
+        symlink(&original, &alias).unwrap();
+        let file = alias.join("settings.json");
+        fs::write(&file, "original").unwrap();
+        assert_eq!(
+            canonical_within(&file, std::slice::from_ref(&alias), false).unwrap(),
+            fs::canonicalize(&file).unwrap()
+        );
+        write_revision(
+            &file,
+            "changed",
+            &revision(Some("original")),
+            std::slice::from_ref(&alias),
+            &directory.path().join("backups"),
+        )
+        .unwrap();
+        assert_eq!(
+            fs::read_to_string(original.join("settings.json")).unwrap(),
+            "changed"
+        );
+        let new_file = alias.join("new.json");
+        assert_eq!(
+            canonical_within(&new_file, std::slice::from_ref(&alias), true).unwrap(),
+            fs::canonicalize(&original).unwrap().join("new.json")
+        );
+        write_revision(
+            &new_file,
+            "created",
+            "missing",
+            std::slice::from_ref(&alias),
+            &directory.path().join("backups"),
+        )
+        .unwrap();
+        assert_eq!(
+            fs::read_to_string(original.join("new.json")).unwrap(),
+            "created"
+        );
+        symlink(&outside, original.join("escape")).unwrap();
+        fs::write(outside.join("keep.json"), "untouched").unwrap();
+        assert!(
+            canonical_within(
+                &alias.join("escape/keep.json"),
+                std::slice::from_ref(&alias),
+                false
+            )
+            .unwrap_err()
+            .contains("outside")
+        );
+        assert!(
+            write_revision(
+                &alias.join("escape/keep.json"),
+                "replacement",
+                &revision(Some("untouched")),
+                std::slice::from_ref(&alias),
+                &directory.path().join("backups")
+            )
+            .is_err()
+        );
+        assert!(
+            canonical_within(
+                &alias.join("escape/new.json"),
+                std::slice::from_ref(&alias),
+                true
+            )
+            .is_err()
+        );
+        assert_eq!(
+            fs::read_to_string(outside.join("keep.json")).unwrap(),
+            "untouched"
+        );
+        assert!(!outside.join("new.json").exists());
     }
 
     #[cfg(unix)]
