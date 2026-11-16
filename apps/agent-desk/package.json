@@ -1,104 +1,51 @@
 {
   "name": "agent-desk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "One desktop workspace for your coding agents, sessions, models and skills.",
   "private": true,
   "type": "module",
-  "main": "dist/main/index.cjs",
   "author": "Berry Kuipers",
   "license": "MIT",
   "scripts": {
-    "dev": "node scripts/dev.mjs",
-    "build": "tsc --noEmit && vite build && node scripts/build-main.mjs",
-    "build:renderer": "vite build",
+    "dev": "tauri dev",
+    "dev:renderer": "vite",
+    "build": "tauri build --no-bundle",
+    "build:renderer": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "start": "electron .",
-    "dist": "npm run build && electron-builder",
-    "dist:linux": "npm run build && electron-builder --linux AppImage tar.gz",
-    "dist:win": "npm run build && electron-builder --win nsis zip",
-    "dist:mac": "npm run build && electron-builder --mac dmg zip",
-    "postinstall": "node node_modules/electron/install.js && electron-builder install-app-deps && node scripts/prepare-native.mjs",
+    "test": "npm run test:core && vitest run",
+    "test:core": "cargo test --manifest-path src-tauri/Cargo.toml --locked --no-default-features",
     "test:desktop": "playwright test",
-    "format": "prettier --write src tests scripts *.ts *.json",
-    "test:pty": "node scripts/check-pty.mjs"
+    "start": "tauri dev",
+    "dist": "tauri build",
+    "dist:linux": "tauri build --bundles deb,appimage",
+    "dist:win": "tauri build --bundles nsis",
+    "dist:mac": "tauri build --bundles dmg",
+    "format": "prettier --write src tests scripts *.ts *.json && cargo fmt --manifest-path src-tauri/Cargo.toml",
+    "test:resources": "node scripts/measure-resources.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.107.1",
+    "@tauri-apps/api": "^2.12.3",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/xterm": "^5.5.0",
     "lucide-react": "^0.468.0",
-    "node-pty": "1.2.0-beta.18",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
-    "smol-toml": "^1.6.0",
-    "yaml": "^2.8.1",
-    "zod": "^4.1.12"
+    "smol-toml": "^1.6.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",
+    "@tauri-apps/cli": "^2.12.4",
     "@types/node": "^24.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.1.0",
-    "@xterm/headless": "5.5.0",
-    "electron": "^45.3.3",
-    "electron-builder": "^26.0.12",
-    "esbuild": "^0.25.0",
     "prettier": "^3.10.1",
     "typescript": "^5.9.3",
     "vite": "^7.2.2",
-    "vitest": "^4.0.9"
-  },
-  "build": {
-    "appId": "dev.berry.agentdesk",
-    "productName": "Agent Desk",
-    "directories": {
-      "output": "release",
-      "buildResources": "resources"
-    },
-    "files": [
-      "dist/main/**/*",
-      "dist/renderer/**/*",
-      "package.json",
-      "resources/icon.png"
-    ],
-    "asarUnpack": [
-      "node_modules/node-pty/**/*"
-    ],
-    "linux": {
-      "target": [
-        "AppImage",
-        "tar.gz"
-      ],
-      "category": "Development",
-      "icon": "resources/icon.png"
-    },
-    "win": {
-      "target": [
-        "nsis",
-        "zip"
-      ],
-      "signAndEditExecutable": false,
-      "icon": "resources/icon.ico"
-    },
-    "mac": {
-      "target": [
-        "dmg",
-        "zip"
-      ],
-      "category": "public.app-category.developer-tools",
-      "icon": "resources/icon.png"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
-    },
-    "publish": null,
-    "artifactName": "Agent-Desk-${version}-${os}-${arch}.${ext}",
-    "afterExtract": "scripts/prepare-native.mjs"
+    "vitest": "^4.0.9",
+    "webdriverio": "^10.2.0"
   }
 }

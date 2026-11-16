@@ -7,5 +7,5 @@ export default defineConfig({
   root: resolve(import.meta.dirname, 'src/renderer'),
   base: './',
   build: { outDir: resolve(import.meta.dirname, 'dist/renderer'), emptyOutDir: true },
-  server: { host: '127.0.0.1', port: 5178, strictPort: true },
+  server: { host: '127.0.0.1', port: 1420, strictPort: true },
 });

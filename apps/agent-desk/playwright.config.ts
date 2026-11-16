@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
 const resultsDirectory =
-  process.env.AGENT_DESK_PACKAGED === '1' ? 'test-results/packaged' : 'test-results';
+  process.env.AGENT_DESK_PACKAGED === '1' ? 'test-results/packaged' : 'test-results/native';
 
 export default defineConfig({
   testDir: 'tests',
@@ -12,5 +12,4 @@ export default defineConfig({
   fullyParallel: false,
   reporter: [['list'], ['html', { open: 'never', outputFolder: `${resultsDirectory}/report` }]],
   outputDir: `${resultsDirectory}/desktop`,
-  use: { trace: 'retain-on-failure' },
 });

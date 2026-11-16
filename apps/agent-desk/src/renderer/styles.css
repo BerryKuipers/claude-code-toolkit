@@ -219,6 +219,25 @@ select {
   font-size: 11px;
   flex-shrink: 0;
 }
+.workspace-warning {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: var(--accent-soft);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.6;
+  flex-shrink: 0;
+}
+.workspace-warning > div {
+  flex: 1;
+}
+.workspace-warning > svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
 .demo-banner > span:last-child {
   opacity: 0.65;
   margin-left: 8px;

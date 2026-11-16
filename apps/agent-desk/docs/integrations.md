@@ -1,10 +1,10 @@
 # Agent integrations
 
-Windows PTY startup, output draining and cleanup use the pinned integration described in [Windows terminal lifecycle](windows-terminal.md).
+Native PTY startup, output draining and cleanup use the Rust integration described in [native runtime](native-runtime.md).
 
 Verified against official documentation and source on 16 November 2026. Agent Desk runs the installed native agents in a pseudoterminal. Their own tools, authentication, permission prompts, MCP connections, slash commands and skills remain available. Agent Desk indexes existing local history and prepares launches; it does not convert one vendor's agent session into another vendor's session.
 
-The terminal dependency is pinned to `node-pty 1.2.0-beta.18`. The stable 1.1.0 release can block the Windows event loop while connecting its output pipe. The pinned release includes the upstream deferred-connection, worker-timeout and spawn-cleanup fixes. Both platforms run the native lifecycle check and a packaged-application PTY test. Sources: [Windows spawn deadlock](https://github.com/microsoft/node-pty/issues/763), [upstream fixes and releases](https://github.com/microsoft/node-pty/releases).
+The terminal backend uses Rust `portable-pty`, locked by Cargo, with native Unix PTYs and Windows ConPTY. A terminal reports exit only after both process exit and output drain; native lifecycle and packaged-application tests run on both platforms. The previous Electron/node-pty patch belongs to version 0.1 and is no longer part of the installed app. Source: [portable-pty API and implementation](https://docs.rs/portable-pty/latest/portable_pty/).
 
 ## Supported session sources
 
@@ -28,7 +28,7 @@ Sources: [CLI reference](https://code.claude.com/docs/en/cli-reference), [.claud
 
 ### Codex
 
-Agent Desk owns a local `codex app-server --listen stdio://` child process. It initializes the protocol, pages `thread/list` across active and archived history, and sets `modelProviders: []` to include every configured provider. It reads selected conversations with `thread/read` and `thread/turns/list` using full items. Indexing and reading do not call `thread/resume` or `turn/start` and do not make model inference requests.
+Agent Desk owns a local `codex app-server --listen stdio://` child process for each index or transcript batch. The child is closed when the batch completes; only cached index metadata remains between operations. It initializes the protocol, pages `thread/list` across active and archived history, and sets `modelProviders: []` to include every configured provider. It reads selected conversations with `thread/read` and `thread/turns/list` using full items. Indexing and reading do not call `thread/resume` or `turn/start` and do not make model inference requests.
 
 Current paginated history can be absent from legacy rollout files. If app-server is unavailable, the interface reports that limitation and uses readable local rollouts. Older server versions that lack paginated turn reads use `thread/read` with `includeTurns: true`, with a visible compatibility notice. `CODEX_HOME` is respected. Archived sessions remain readable; restore them in the native agent before resuming.
 

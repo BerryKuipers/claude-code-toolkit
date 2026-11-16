@@ -180,7 +180,7 @@ function TerminalSurface({
     const target = host.current!;
     const config = latestSettings.current;
     const xterm = new XTerm({
-      cursorBlink: true,
+      cursorBlink: false,
       disableStdin: terminal.status === 'exited',
       fontFamily: "'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
       fontSize: config.fontSize,
@@ -219,6 +219,7 @@ function TerminalSurface({
     const showExit = (exitCode?: number): void => {
       running = false;
       xterm.options.disableStdin = true;
+      xterm.options.cursorBlink = false;
       if (exitShown) return;
       exitShown = true;
       xterm.write(
@@ -318,6 +319,27 @@ function TerminalSurface({
       return () => cancelAnimationFrame(timer);
     }
   }, [active, settings.fontSize, settings.terminalScrollback]);
+  useEffect(() => {
+    const terminalInstance = instance.current;
+    if (!terminalInstance) return;
+    terminalInstance.options.cursorBlink = false;
+    if (!active || terminal.status !== 'running') return;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = (): void => {
+      terminalInstance.options.cursorBlink =
+        document.visibilityState === 'visible' &&
+        !reducedMotion.matches &&
+        !terminalInstance.options.disableStdin;
+    };
+    update();
+    document.addEventListener('visibilitychange', update);
+    reducedMotion.addEventListener('change', update);
+    return () => {
+      document.removeEventListener('visibilitychange', update);
+      reducedMotion.removeEventListener('change', update);
+      terminalInstance.options.cursorBlink = false;
+    };
+  }, [active, terminal.status]);
   return (
     <div className="terminal-surface" style={{ display: active ? 'flex' : 'none' }}>
       {error !== undefined && <ErrorBox error={error} />}

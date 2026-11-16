@@ -1,0 +1,6 @@
+{
+  "identifier": "main-window",
+  "description": "Local Agent Desk window and lifecycle events",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}
