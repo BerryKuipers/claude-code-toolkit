@@ -88,6 +88,8 @@ npm run test:desktop
 
 On Linux CI, run the desktop tests with `xvfb-run -a npm run test:desktop`. Tests use isolated homes, synthetic transcripts, fake CLI executables and a loopback model endpoint; they do not use personal conversations, credentials or paid model requests. The Rust test suite runs the actual native PTY, including input, Unicode output, resizing, natural exit and early termination. Native GUI tests use tauri-driver and the platform WebDriver.
 
+On Windows, run local desktop tests from a non-administrator terminal. [WebView2 ignores environment debugging overrides in elevated host processes](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/security#for-an-elevated-host-app-use-appropriate-override-flags). The harness launches the real application with its fixture-local WebView2 profile and attaches EdgeDriver through an ephemeral loopback debugging port. On elevated GitHub-hosted Windows runners only, it temporarily sets the documented app-scoped `HKLM\SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments` value for `agent-desk.exe`, preserving and restoring its prior value and type after each test. It does not change machine policy during local runs or enable debugging in the shipped application.
+
 Package for the current target system:
 
 ```bash

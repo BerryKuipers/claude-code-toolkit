@@ -1,5 +1,5 @@
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
-import { access, mkdtemp } from 'node:fs/promises';
+import { access } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -12,6 +12,108 @@ export type UiElement = Awaited<ReturnType<Driver['$']>>;
 export type UiScope = Driver | UiElement;
 
 const execute = promisify(execFile);
+
+async function windowsDebugPolicy(
+  binary: string,
+  browserArguments: string,
+  capture: (data: Buffer) => void,
+): Promise<() => Promise<void>> {
+  const powershell = async (script: string, environment: Record<string, string> = {}) =>
+    await execute('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+      env: { ...process.env, ...environment },
+      windowsHide: true,
+      timeout: 10000,
+      maxBuffer: 65536,
+    });
+  const identity = await powershell(
+    '([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)',
+  );
+  if (identity.stdout.trim().toLowerCase() !== 'true') return async () => undefined;
+  if (process.env.GITHUB_ACTIONS !== 'true' || process.env.RUNNER_ENVIRONMENT !== 'github-hosted')
+    throw new Error(
+      'WebView2 ignores environment debugging overrides in elevated processes. Run local desktop tests from a non-administrator terminal. Temporary machine policy is configured only on GitHub-hosted Windows runners.',
+    );
+
+  const environment = { AGENT_DESK_POLICY_NAME: path.basename(binary) };
+  const prefix = [
+    "$ErrorActionPreference = 'Stop'",
+    '$root = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, [Microsoft.Win32.RegistryView]::Registry64)',
+    "$policyPath = 'SOFTWARE\\Policies\\Microsoft\\Edge\\WebView2\\AdditionalBrowserArguments'",
+    '$name = $env:AGENT_DESK_POLICY_NAME',
+  ].join('; ');
+  const previous = await powershell(
+    `${prefix};
+    $key = $root.OpenSubKey($policyPath, $false)
+    try {
+      $snapshot = [pscustomobject]@{ keyExisted = ($null -ne $key); existed = $false; kind = $null; value = $null }
+      if ($key -and $key.GetValueNames() -contains $name) {
+        $snapshot.existed = $true
+        $snapshot.kind = $key.GetValueKind($name).ToString()
+        $snapshot.value = $key.GetValue($name, $null, [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
+      }
+      [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([System.Management.Automation.PSSerializer]::Serialize($snapshot)))
+    } finally {
+      if ($key) { $key.Dispose() }
+      $root.Dispose()
+    }`,
+    environment,
+  );
+  const snapshot = previous.stdout.trim();
+  if (!snapshot) throw new Error('Could not preserve the existing WebView2 debugging policy.');
+  let restored = false;
+  const restore = async (): Promise<void> => {
+    if (restored) return;
+    await powershell(
+      `${prefix};
+      $snapshot = [System.Management.Automation.PSSerializer]::Deserialize([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($env:AGENT_DESK_POLICY_SNAPSHOT)))
+      $key = $root.OpenSubKey($policyPath, $true)
+      try {
+        if ($snapshot.existed) {
+          if (-not $key) { $key = $root.CreateSubKey($policyPath) }
+          $value = $snapshot.value
+          switch ($snapshot.kind) {
+            'Binary' { $value = [byte[]]$value }
+            'None' { $value = [byte[]]$value }
+            'DWord' { $value = [int]$value }
+            'QWord' { $value = [long]$value }
+            'MultiString' { $value = [string[]]$value }
+            'String' { $value = [string]$value }
+            'ExpandString' { $value = [string]$value }
+            default { throw 'Unsupported original WebView2 policy value type.' }
+          }
+          $key.SetValue($name, $value, [Microsoft.Win32.RegistryValueKind][Enum]::Parse([Microsoft.Win32.RegistryValueKind], $snapshot.kind))
+        } elseif ($key) {
+          $key.DeleteValue($name, $false)
+        }
+        $removeEmptyKey = -not $snapshot.keyExisted -and $key -and $key.ValueCount -eq 0 -and $key.SubKeyCount -eq 0
+        if ($key) { $key.Dispose(); $key = $null }
+        if ($removeEmptyKey) { $root.DeleteSubKey($policyPath, $false) }
+      } finally {
+        if ($key) { $key.Dispose() }
+        $root.Dispose()
+      }`,
+      { ...environment, AGENT_DESK_POLICY_SNAPSHOT: snapshot },
+    );
+    restored = true;
+    capture(Buffer.from('Restored the prior app-scoped WebView2 debugging policy.\n'));
+  };
+  try {
+    await powershell(
+      `${prefix};
+      $key = $root.CreateSubKey($policyPath)
+      try { $key.SetValue($name, $env:AGENT_DESK_POLICY_ARGUMENTS, [Microsoft.Win32.RegistryValueKind]::String) }
+      finally { $key.Dispose(); $root.Dispose() }`,
+      { ...environment, AGENT_DESK_POLICY_ARGUMENTS: browserArguments },
+    );
+  } catch (cause) {
+    await restore();
+    throw cause;
+  }
+  capture(
+    Buffer.from('Configured temporary app-scoped HKLM WebView2 debugging on the elevated hosted runner.\n'),
+  );
+  return restore;
+}
 
 async function unusedPort(): Promise<number> {
   const server = createServer();
@@ -30,11 +132,16 @@ async function unusedPort(): Promise<number> {
 export async function terminateDriver(child: ChildProcess): Promise<void> {
   if (!child.pid || child.exitCode !== null || child.signalCode !== null) return;
   if (process.platform === 'win32') {
-    await new Promise<void>((resolve) => {
-      const task = spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
-      task.once('error', () => resolve());
-      task.once('exit', () => resolve());
-    });
+    try {
+      await execute('taskkill', ['/pid', String(child.pid), '/T', '/F'], {
+        windowsHide: true,
+        timeout: 5000,
+        maxBuffer: 4096,
+      });
+    } catch (cause) {
+      if (child.exitCode === null && child.signalCode === null)
+        throw new Error(`Could not terminate native test process ${child.pid}.`, { cause });
+    }
   } else {
     try {
       process.kill(-child.pid, 'SIGTERM');
@@ -55,11 +162,13 @@ async function windowsProcessState(child: ChildProcess): Promise<string> {
         '-NonInteractive',
         '-Command',
         [
-          '$all = @(Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, Name)',
+          '$all = @(Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, Name, CommandLine)',
           '$owned = [System.Collections.Generic.HashSet[uint32]]::new()',
           '[void]$owned.Add([uint32]$env:AGENT_DESK_DIAGNOSTIC_PID)',
           'do { $changed = $false; foreach ($entry in $all) { if ($owned.Contains($entry.ParentProcessId) -and $owned.Add($entry.ProcessId)) { $changed = $true } } } while ($changed)',
-          'ConvertTo-Json -Compress -InputObject @($all | Where-Object { $owned.Contains($_.ProcessId) })',
+          "$processes = @($all | Where-Object { $owned.Contains($_.ProcessId) } | ForEach-Object { [pscustomobject]@{ ProcessId = $_.ProcessId; ParentProcessId = $_.ParentProcessId; Name = $_.Name; DebugPort = [regex]::Match([string]$_.CommandLine, '--remote-debugging-port=(\\d+)').Groups[1].Value; DebugPipe = ([string]$_.CommandLine -match '(?:^|\\s)--remote-debugging-pipe(?:\\s|$)') } })",
+          '$listeners = @(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $owned.Contains($_.OwningProcess) } | Select-Object LocalAddress, LocalPort, OwningProcess)',
+          'ConvertTo-Json -Compress -Depth 4 -InputObject @{ processes = $processes; listeners = $listeners }',
         ].join('; '),
       ],
       {
@@ -69,7 +178,7 @@ async function windowsProcessState(child: ChildProcess): Promise<string> {
         maxBuffer: 65536,
       },
     );
-    return `${state}\nOwned processes: ${stdout.trim()}`;
+    return `${state}\nOwned process transport: ${stdout.trim()}`;
   } catch {
     return state;
   }
@@ -79,31 +188,34 @@ async function launchWindowsWebview(
   binary: string,
   fixture: LocalFixture,
   capture: (data: Buffer) => void,
-): Promise<{ process: ChildProcess; debuggerAddress: string }> {
+): Promise<{ process: ChildProcess; debuggerAddress: string; restorePolicy(): Promise<void> }> {
   const port = await unusedPort();
   const debuggerAddress = `127.0.0.1:${port}`;
-  const profile = await mkdtemp(path.join(fixture.data, 'webview-driver-'));
-  const child = spawn(binary, [], {
-    env: {
-      ...fixture.env,
-      TAURI_AUTOMATION: 'true',
-      TAURI_WEBVIEW_AUTOMATION: 'true',
-      WEBVIEW2_USER_DATA_FOLDER: profile,
-      WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port} --remote-debugging-address=127.0.0.1`,
-    },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-  let startupError: Error | undefined;
-  child.stdout?.on('data', capture);
-  child.stderr?.on('data', capture);
-  child.once('error', (error) => {
-    startupError = error;
-  });
-  capture(
-    Buffer.from(`Windows app started with an isolated WebView2 profile; pid=${child.pid}.\n`),
-  );
+  const browserArguments = `--remote-debugging-port=${port} --remote-debugging-address=127.0.0.1`;
+  const restorePolicy = await windowsDebugPolicy(binary, browserArguments, capture);
+  let child: ChildProcess | undefined;
   try {
+    child = spawn(binary, [], {
+      env: {
+        ...fixture.env,
+        TAURI_AUTOMATION: 'true',
+        TAURI_WEBVIEW_AUTOMATION: 'true',
+        WEBVIEW2_USER_DATA_FOLDER: path.join(fixture.data, 'webview'),
+        WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: browserArguments,
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let startupError: Error | undefined;
+    child.stdout?.on('data', capture);
+    child.stderr?.on('data', capture);
+    child.once('error', (error) => {
+      startupError = error;
+    });
+    capture(
+      Buffer.from(`Windows app started with its isolated fixture WebView2 profile; pid=${child.pid}.\n`),
+    );
     const deadline = Date.now() + 30000;
+    let endpointStatus = 'No response';
     while (Date.now() < deadline) {
       if (startupError) throw startupError;
       if (child.exitCode !== null || child.signalCode !== null)
@@ -111,26 +223,34 @@ async function launchWindowsWebview(
       const version = await fetch(`http://${debuggerAddress}/json/version`, {
         signal: AbortSignal.timeout(1000),
       })
-        .then(async (response) =>
-          response.ok
+        .then(async (response) => {
+          endpointStatus = `HTTP ${response.status}`;
+          return response.ok
             ? ((await response.json()) as { Browser?: string; webSocketDebuggerUrl?: string })
-            : undefined,
-        )
-        .catch(() => undefined);
+            : undefined;
+        })
+        .catch((cause: { name?: string; cause?: { code?: string } }) => {
+          endpointStatus = cause.cause?.code ?? cause.name ?? 'Transport error';
+          return undefined;
+        });
       if (version?.webSocketDebuggerUrl) {
         capture(
           Buffer.from(`Windows WebView2 is ready: ${version.Browser ?? 'version unavailable'}.\n`),
         );
-        return { process: child, debuggerAddress };
+        return { process: child, debuggerAddress, restorePolicy };
       }
       await delay(200);
     }
     throw new Error(
-      'The Windows app did not expose its loopback WebView2 endpoint within 30 seconds.',
+      `The Windows app did not expose its loopback WebView2 endpoint within 30 seconds (${endpointStatus}).`,
     );
   } catch (cause) {
-    const state = await windowsProcessState(child);
-    await terminateDriver(child);
+    const state = child ? await windowsProcessState(child) : 'Windows app was not started.';
+    try {
+      if (child) await terminateDriver(child);
+    } finally {
+      await restorePolicy();
+    }
     throw new Error(`${cause instanceof Error ? cause.message : String(cause)}\n${state}`);
   }
 }
@@ -172,6 +292,22 @@ export async function launchNativeDriver(fixture: LocalFixture): Promise<{
   });
   let browser: Driver | undefined;
   let windowsApp: ChildProcess | undefined;
+  let restoreWindowsPolicy: (() => Promise<void>) | undefined;
+  const close = async (): Promise<void> => {
+    try {
+      await browser?.deleteSession().catch(() => undefined);
+    } finally {
+      try {
+        if (windowsApp) await terminateDriver(windowsApp);
+      } finally {
+        try {
+          await terminateDriver(child);
+        } finally {
+          await restoreWindowsPolicy?.();
+        }
+      }
+    }
+  };
   try {
     const deadline = Date.now() + 30000;
     let ready = false;
@@ -200,6 +336,7 @@ export async function launchNativeDriver(fixture: LocalFixture): Promise<{
     if (process.platform === 'win32') {
       const webview = await launchWindowsWebview(binary, fixture, capture);
       windowsApp = webview.process;
+      restoreWindowsPolicy = webview.restorePolicy;
       capabilities.browserName = 'webview2';
       capabilities['ms:edgeChromium'] = true;
       capabilities['ms:edgeOptions'] = { debuggerAddress: webview.debuggerAddress };
@@ -219,17 +356,11 @@ export async function launchNativeDriver(fixture: LocalFixture): Promise<{
     return {
       browser,
       output: () => output,
-      close: async () => {
-        await browser?.deleteSession().catch(() => undefined);
-        if (windowsApp) await terminateDriver(windowsApp);
-        await terminateDriver(child);
-      },
+      close,
     };
   } catch (cause) {
     if (windowsApp) capture(Buffer.from(`${await windowsProcessState(windowsApp)}\n`));
-    await browser?.deleteSession().catch(() => undefined);
-    if (windowsApp) await terminateDriver(windowsApp);
-    await terminateDriver(child);
+    await close();
     throw new Error(`${cause instanceof Error ? cause.message : String(cause)}\n${output}`);
   }
 }

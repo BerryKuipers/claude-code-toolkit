@@ -57,37 +57,43 @@ const test = base.extend<{ desktop: NativeFixture }>({
         'renderer JavaScript errors',
       ).toEqual([]);
     } finally {
-      if (session) {
-        const screenshot = testInfo.outputPath('desktop.png');
-        await session.browser
-          .saveScreenshot(screenshot)
-          .then(() =>
-            testInfo.attach('Native desktop', { path: screenshot, contentType: 'image/png' }),
-          )
-          .catch(() => undefined);
-        if (testInfo.status !== testInfo.expectedStatus) {
-          const source = testInfo.outputPath('page-source.html');
+      try {
+        if (session) {
+          const screenshot = testInfo.outputPath('desktop.png');
           await session.browser
-            .getPageSource()
-            .then((html) => writeFile(source, html))
+            .saveScreenshot(screenshot)
             .then(() =>
-              testInfo.attach('WebView source', { path: source, contentType: 'text/html' }),
+              testInfo.attach('Native desktop', { path: screenshot, contentType: 'image/png' }),
             )
             .catch(() => undefined);
+          if (testInfo.status !== testInfo.expectedStatus) {
+            const source = testInfo.outputPath('page-source.html');
+            await session.browser
+              .getPageSource()
+              .then((html) => writeFile(source, html))
+              .then(() =>
+                testInfo.attach('WebView source', { path: source, contentType: 'text/html' }),
+              )
+              .catch(() => undefined);
+          }
+          await session.browser
+            .execute(async () => {
+              for (const terminal of await window.desk.terminals())
+                await window.desk.terminalClose(terminal.id);
+            })
+            .catch(() => undefined);
+          try {
+            await session.close();
+          } finally {
+            await testInfo.attach('Native driver output', {
+              body: session.output(),
+              contentType: 'text/plain',
+            });
+          }
         }
-        await testInfo.attach('Native driver output', {
-          body: session.output(),
-          contentType: 'text/plain',
-        });
-        await session.browser
-          .execute(async () => {
-            for (const terminal of await window.desk.terminals())
-              await window.desk.terminalClose(terminal.id);
-          })
-          .catch(() => undefined);
-        await session.close();
+      } finally {
+        await fixture.cleanup();
       }
-      await fixture.cleanup();
     }
   },
 });
