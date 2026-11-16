@@ -199,6 +199,7 @@ export interface Bootstrap {
   platform: string;
   home: string;
   secureStorageAvailable: boolean;
+  warnings?: string[];
 }
 
 export interface DeskApi {

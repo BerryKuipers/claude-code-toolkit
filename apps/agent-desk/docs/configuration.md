@@ -1,6 +1,6 @@
 # Connections, configuration and skills
 
-Agent Desk keeps its own settings and launch profiles in Electron's application data directory. Agent authentication, original settings and transcripts remain with their native tools. The app does not copy a Claude home directory into Git or replace the user's settings with a template.
+Agent Desk keeps its own settings and launch profiles in the existing platform configuration directory named `agent-desk` (`%APPDATA%/agent-desk` on Windows, `~/Library/Application Support/agent-desk` on macOS, and `$XDG_CONFIG_HOME/agent-desk` or `~/.config/agent-desk` on Linux). Agent authentication, original settings and transcripts remain with their native tools. The app does not copy a Claude home directory into Git or replace the user's settings with a template.
 
 ## Connections
 

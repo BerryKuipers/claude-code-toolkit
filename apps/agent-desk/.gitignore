@@ -5,3 +5,6 @@ coverage/
 .test-home/
 test-results/
 *.tsbuildinfo
+src-tauri/target/
+src-tauri/gen/
+performance-baseline/

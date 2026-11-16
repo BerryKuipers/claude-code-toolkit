@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AppSettings, ProviderProfile } from '../shared/types';
 import { createDemoApi } from './demo';
+import { createTauriApi, IS_TAURI } from './tauri';
 
 export const IS_DEMO = new URLSearchParams(window.location.search).get('demo') === '1';
-export const desk = IS_DEMO ? createDemoApi() : window.desk;
+export const desk = IS_DEMO ? createDemoApi() : IS_TAURI ? createTauriApi() : window.desk;
+if (IS_TAURI && !IS_DEMO) window.desk = desk;
 export const useBootstrap = () =>
   useQuery({ queryKey: ['bootstrap'], queryFn: () => desk.bootstrap(), staleTime: 30000 });
 export function useSessions(seconds = 30, scanOnStart = true) {

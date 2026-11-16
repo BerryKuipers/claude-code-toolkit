@@ -12,6 +12,8 @@ import {
   Settings2,
   SlidersHorizontal,
   TerminalSquare,
+  Info,
+  X,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Bootstrap, LaunchRequest, TerminalInfo } from '../shared/types';
@@ -25,6 +27,7 @@ import { Skills } from './features/Skills';
 import { Settings } from './features/Settings';
 import { Terminals } from './features/Terminals';
 import { NewSession } from './features/NewSession';
+import { DesktopLifecycle } from './DesktopLifecycle';
 
 type View = 'sessions' | 'models' | 'skills' | 'settings' | 'workspace';
 const NAVIGATION = [
@@ -71,6 +74,10 @@ function Workspace({ bootstrap }: { bootstrap: Bootstrap }): ReactElement {
   const [newSession, setNewSession] = useState(false);
   const [selectedTerminal, setSelectedTerminal] = useState<string>();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [dismissedWarnings, setDismissedWarnings] = useState<string[]>([]);
+  const workspaceWarnings = (bootstrap.warnings ?? []).filter(
+    (warning) => !dismissedWarnings.includes(warning),
+  );
   const sessions = useSessions(0, bootstrap.settings.scanOnStart);
   const terminals = useTerminals();
   const query = useQueryClient();
@@ -184,6 +191,23 @@ function Workspace({ bootstrap }: { bootstrap: Bootstrap }): ReactElement {
           <span className="demo-pill">DEMO WORKSPACE</span>Sample data for a look around. Your
           files, keys, and tools are untouched.
           <span>Open the desktop app for live connections.</span>
+        </div>
+      )}
+      {workspaceWarnings.length > 0 && (
+        <div className="workspace-warning" role="status">
+          <Info size={18} />
+          <div>
+            {workspaceWarnings.map((warning) => (
+              <p key={warning}>{warning}</p>
+            ))}
+          </div>
+          <button
+            className="icon-button"
+            aria-label="Dismiss workspace notices"
+            onClick={() => setDismissedWarnings((current) => [...current, ...workspaceWarnings])}
+          >
+            <X size={16} />
+          </button>
         </div>
       )}
       <div className="app-body">
@@ -379,6 +403,7 @@ function Workspace({ bootstrap }: { bootstrap: Bootstrap }): ReactElement {
           onLaunch={launch}
         />
       )}
+      <DesktopLifecycle terminals={terminalList} />
     </div>
   );
 }
@@ -403,7 +428,7 @@ function DesktopRequired(): ReactElement {
         terminals. This browser view cannot access them.
       </EmptyState>
       <p className="desktop-note">
-        For development, start the Electron app with <code>npm run dev</code>.
+        For development, start the native app with <code>npm run dev</code>.
       </p>
     </div>
   );
