@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en" data-review-id="artifact-review-demo" data-revision="1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Review the walking route</title>
+<style>
+  :root { font: 16px/1.5 system-ui, sans-serif; color: #173040; background: #eef2f4; }
+  body { max-width: 1050px; margin: auto; padding: 24px; }
+  h1, h2, p { margin: 0 0 12px; } h1 { font-size: clamp(1.6rem, 4vw, 2.5rem); }
+  main { display: grid; grid-template-columns: 3fr 2fr; gap: 20px; }
+  section, aside, footer { background: white; border-radius: 12px; padding: 20px; margin-top: 18px; }
+  svg { width: 100%; height: auto; background: #f6f3e9; border-radius: 8px; }
+  label { display: block; margin: 12px 0 6px; font-weight: 600; }
+  textarea, select, button { font: inherit; border: 1px solid #a6b5be; border-radius: 6px; padding: 8px; }
+  textarea, select { width: 100%; box-sizing: border-box; } textarea { min-height: 90px; }
+  button { background: #e6f1f3; color: #173040; cursor: pointer; margin: 6px 6px 6px 0; }
+  :focus-visible { outline: 3px solid #b35400; outline-offset: 3px; }
+  small, .muted { color: #526674; } #message { min-height: 1.5em; }
+  @media(max-width: 700px) { main { grid-template-columns: 1fr; } body { padding: 14px; } }
+</style>
+<header><p class="muted">LOCAL REVIEW · DEMONSTRATION · REVISION 1</p><h1>Review the walking route</h1><p>A fictional diagram for testing review controls. No real addresses or route claims.</p></header>
+<main>
+  <section aria-labelledby="route-title"><h2 id="route-title">Route preview</h2>
+    <svg viewBox="0 0 600 330" role="img" aria-label="Fictional walking route from the station via the bridge to a park">
+      <path d="M0 145 H600 V205 H0 Z" fill="#a5d3e3"/><path d="M85 80 H285 V260 H510" fill="none" stroke="#167478" stroke-width="12" stroke-linejoin="round"/>
+      <path d="M265 130 H305 V220 H265 Z" fill="#be9475"/><path d="M285 125 V225" stroke="#fff" stroke-width="5" stroke-dasharray="8 6"/>
+      <g fill="#173040" font-family="system-ui" font-size="19"><text x="50" y="50">Station</text><text x="320" y="175">Bridge</text><text x="450" y="300">Park</text></g>
+      <circle cx="85" cy="80" r="13" fill="#b35400"/><circle cx="510" cy="260" r="13" fill="#b35400"/>
+    </svg>
+    <label for="route-note">Route annotation</label><textarea id="route-note" data-feedback placeholder="Which section needs a change?"></textarea>
+  </section>
+  <aside aria-labelledby="status-title"><h2 id="status-title">Status and evidence</h2><p><strong>Ready to review:</strong> schematic and feedback controls.</p><p><strong>Unverified:</strong> real-world access and dimensions. This example contains no survey data.</p><p><small>Snapshot: 2026-11-16 · example revision 1</small></p>
+    <label for="decision">Review decision</label><select id="decision" data-feedback><option value="pending">Pending review</option><option value="changes">Changes requested</option><option value="accepted">Accepted for this revision</option></select>
+    <label for="summary">Review notes</label><textarea id="summary" data-feedback placeholder="Describe the requested change or acceptance limits."></textarea>
+  </aside>
+</main>
+<footer><p>Drafts stay in this browser when storage is available. Export feedback and give the JSON file to the agent to apply it.</p><button id="export" type="button">Export feedback</button><label for="import">Restore feedback from JSON</label><input id="import" type="file" accept="application/json,.json"><p id="message" role="status" aria-live="polite"></p></footer>
+<script type="module">
+  const root = document.documentElement;
+  const key = `artifact-review:${root.dataset.reviewId}:${root.dataset.revision}`;
+  const fields = [...document.querySelectorAll('[data-feedback]')];
+  const message = document.querySelector('#message');
+  const snapshot = () => ({ schema: 1, artifactId: root.dataset.reviewId, revision: root.dataset.revision, updatedAt: new Date().toISOString(), feedback: Object.fromEntries(fields.map(field => [field.id, field.value])) });
+  function restore(value) {
+    if (!value || value.schema !== 1 || value.artifactId !== root.dataset.reviewId || value.revision !== root.dataset.revision || !value.feedback || fields.some(field => typeof value.feedback[field.id] !== 'string' || value.feedback[field.id].length > 20000) || ![...document.querySelector('#decision').options].some(option => option.value === value.feedback.decision)) throw new Error('Feedback does not match this artifact and revision, or has invalid fields.');
+    for (const field of fields) field.value = value.feedback[field.id];
+  }
+  function save() {
+    try { localStorage.setItem(key, JSON.stringify(snapshot())); message.textContent = 'Draft saved in this browser. Export to send it to the agent.'; }
+    catch { message.textContent = 'Browser storage unavailable. Export feedback before closing this page.'; }
+  }
+  try { const saved = localStorage.getItem(key); if (saved) { restore(JSON.parse(saved)); message.textContent = 'Restored draft from this browser.'; } }
+  catch { message.textContent = 'Could not restore browser draft. You can import an exported JSON file.'; }
+  for (const field of fields) field.addEventListener('input', save);
+  document.querySelector('#export').addEventListener('click', () => {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(snapshot(), null, 2)], { type: 'application/json' }));
+    const link = document.createElement('a'); link.href = url; link.download = 'review-feedback.json'; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    message.textContent = 'Feedback export requested. Give the downloaded JSON file to the agent.';
+  });
+  document.querySelector('#import').addEventListener('change', async event => {
+    const file = event.target.files[0]; if (!file) return;
+    try { if (file.size > 100000) throw new Error('Feedback file is too large.'); restore(JSON.parse(await file.text())); save(); }
+    catch (error) { message.textContent = `Import rejected: ${error.message}`; }
+    event.target.value = '';
+  });
+</script>
+</html>

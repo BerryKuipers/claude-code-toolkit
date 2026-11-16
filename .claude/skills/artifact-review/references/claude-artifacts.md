@@ -1,0 +1,10 @@
+# Claude Artifacts: verified 2026-11-16
+
+These are documented product capabilities, not proof that the current host/account exposes them. Recheck availability before relying on a native feature.
+
+- Claude web/Desktop provides editable artifacts and personal/shared storage. New and legacy artifacts have different storage and sharing behavior. Shared storage exposes entered data to others using that artifact. [Claude Help](https://support.claude.com/en/articles/17153992-what-are-artifacts-and-how-do-i-use-them)
+- Claude Code can publish private interactive HTML/Markdown pages, update their URLs, and collect organization comments. It requires eligible claude.ai authentication and features; API-key/proxy sessions cannot be assumed eligible. Native pages enforce CSP, cannot call local MCP servers, and need a declared downloads capability for downloads. Local template blob downloads therefore need adaptation before native publishing. Do not claim a general cross-host creation API; the documented enterprise Compliance API is for administration. [Claude Code documentation](https://code.claude.com/docs/en/artifacts)
+- Publishing/sharing changes who can access content. Embedding is documented for published legacy chat artifacts, not a universal iframe bridge for private local files. Keep local source plus exported feedback as the cross-host handoff; hosting on Anthropic requires authorization. [Sharing documentation](https://support.claude.com/en/articles/9547008-share-artifacts)
+- Personal filesystem skills load from `~/.claude/skills/<name>/SKILL.md` in Claude Code. Local discovery is distinct from claude.ai account skill installation. [Skills documentation](https://code.claude.com/docs/en/skills)
+
+The local template intentionally uses browser-local drafts and explicit JSON exchange. Copying it into a native Artifact does not provide native shared storage, live comments, account synchronization or local filesystem write access. For hosted review, use that host's supported mechanisms and verify them.
