@@ -59,6 +59,7 @@ This repository serves as the **single source of truth** for Claude Code configu
 - `COPY_TO_NEW_REPO.md` - How to copy config to new repos
 - `PROJECT_CUSTOMIZATION_CHECKLIST.md` - What to customize per project
 - `CENTRAL_REPO_STRATEGY.md` - This repository's strategy
+- [`3D_MODEL_ROUTING.md`](docs/3D_MODEL_ROUTING.md) - Adaptive model/effort choices for AAA 3D and visual work; refresh benchmarks only for genuinely new model evidence
 
 ### `templates/` - Project Templates
 
