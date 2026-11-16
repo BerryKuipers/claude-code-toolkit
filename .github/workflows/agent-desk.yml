@@ -1,0 +1,89 @@
+name: Agent Desk
+
+on:
+  pull_request:
+    paths:
+      - 'apps/agent-desk/**'
+      - '.github/workflows/agent-desk.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/agent-desk/**'
+      - '.github/workflows/agent-desk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-desk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  desktop:
+    name: Desktop · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        working-directory: apps/agent-desk
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/agent-desk/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - name: Native terminal lifecycle
+        run: node scripts/check-pty.mjs
+        timeout-minutes: 2
+      - run: npm run build
+      - name: Desktop integration on Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:desktop
+      - name: Desktop integration on Windows
+        if: runner.os == 'Windows'
+        run: npm run test:desktop
+      - name: Package Linux
+        if: runner.os == 'Linux'
+        run: npx electron-builder --linux AppImage tar.gz
+      - name: Package Windows
+        if: runner.os == 'Windows'
+        run: npx electron-builder --win nsis zip
+      - name: Packaged desktop on Linux
+        if: runner.os == 'Linux'
+        env:
+          AGENT_DESK_PACKAGED: '1'
+        run: xvfb-run -a npm run test:desktop -- --grep "finds and resumes"
+      - name: Packaged desktop on Windows
+        if: runner.os == 'Windows'
+        env:
+          AGENT_DESK_PACKAGED: '1'
+        run: npm run test:desktop -- --grep "finds and resumes"
+      - name: Test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-desk-tests-${{ matrix.os }}
+          path: apps/agent-desk/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Desktop downloads
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-desk-${{ matrix.os }}
+          path: |
+            apps/agent-desk/release/*.exe
+            apps/agent-desk/release/*.zip
+            apps/agent-desk/release/*.AppImage
+            apps/agent-desk/release/*.tar.gz
+          if-no-files-found: error
+          retention-days: 30

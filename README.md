@@ -28,6 +28,10 @@ These are separate installations for Codex and Claude Code. Installing a GitHub 
 
 ## 📦 What's Included
 
+### Agent Desk desktop application
+
+[Agent Desk](apps/agent-desk/README.md) is an independently buildable desktop workspace for Claude Code, Codex, Gemini CLI and Antigravity. It brings session history, native interactive terminals, model/proxy profiles, skills and configuration editing into one application. Its dependencies and builds stay inside `apps/agent-desk`; toolkit synchronization does not install the application.
+
 ### `.claude/` - Core Configuration
 
 **SessionStart Hooks:**
