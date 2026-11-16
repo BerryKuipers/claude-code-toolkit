@@ -29,6 +29,7 @@ let allowClose = false;
 let closeDialogOpen = false;
 
 async function start(): Promise<void> {
+  if (process.platform === 'win32') app.setAppUserModelId('dev.berry.agentdesk');
   const dataDir = app.getPath('userData');
   const encryptionAvailable = await safeStorage.isAsyncEncryptionAvailable();
   const secrets = new SecretStore(join(dataDir, 'credentials.json'), {
@@ -83,6 +84,7 @@ async function start(): Promise<void> {
     minWidth: 960,
     minHeight: 640,
     title: 'Agent Desk',
+    icon: join(app.getAppPath(), 'resources', 'icon.png'),
     backgroundColor: '#f6f4ef',
     show: false,
     webPreferences: {

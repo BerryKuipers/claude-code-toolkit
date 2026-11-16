@@ -114,7 +114,7 @@ export function Sessions({
                   <X size={14} />
                 </button>
               ) : (
-                <kbd>⌘ K</kbd>
+                <kbd aria-hidden="true">{bootstrap.platform === 'darwin' ? '⌘' : 'Ctrl'} K</kbd>
               )}
             </div>
             <div className="filter-row">

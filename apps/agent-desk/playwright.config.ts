@@ -1,5 +1,8 @@
 import { defineConfig } from '@playwright/test';
 
+const resultsDirectory =
+  process.env.AGENT_DESK_PACKAGED === '1' ? 'test-results/packaged' : 'test-results';
+
 export default defineConfig({
   testDir: 'tests',
   testMatch: 'desktop.spec.ts',
@@ -7,7 +10,7 @@ export default defineConfig({
   expect: { timeout: 10000 },
   workers: 1,
   fullyParallel: false,
-  reporter: [['list'], ['html', { open: 'never', outputFolder: 'test-results/report' }]],
-  outputDir: 'test-results/desktop',
+  reporter: [['list'], ['html', { open: 'never', outputFolder: `${resultsDirectory}/report` }]],
+  outputDir: `${resultsDirectory}/desktop`,
   use: { trace: 'retain-on-failure' },
 });

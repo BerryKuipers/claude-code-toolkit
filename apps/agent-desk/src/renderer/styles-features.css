@@ -2140,7 +2140,7 @@
   .settings-section header p {
     font-size: 12px;
   }
-  .settings-content .field > span:first-child {
+  .settings-content .field > label {
     font-size: 12px;
   }
   .agent-setting > div {

@@ -56,6 +56,16 @@ jobs:
       - name: Package Windows
         if: runner.os == 'Windows'
         run: npx electron-builder --win nsis zip
+      - name: Packaged desktop on Linux
+        if: runner.os == 'Linux'
+        env:
+          AGENT_DESK_PACKAGED: '1'
+        run: xvfb-run -a npm run test:desktop -- --grep "finds and resumes"
+      - name: Packaged desktop on Windows
+        if: runner.os == 'Windows'
+        env:
+          AGENT_DESK_PACKAGED: '1'
+        run: npm run test:desktop -- --grep "finds and resumes"
       - name: Test evidence
         if: always()
         uses: actions/upload-artifact@v4

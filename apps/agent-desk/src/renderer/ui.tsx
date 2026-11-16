@@ -1,5 +1,8 @@
 import {
+  Children,
+  cloneElement,
   createContext,
+  isValidElement,
   useCallback,
   useContext,
   useEffect,
@@ -249,11 +252,34 @@ export function Field({
   hint?: string;
   children: ReactNode;
 }): ReactElement {
+  const generatedId = useId();
+  const hintId = `${generatedId}-hint`;
+  let controlId = generatedId;
+  let associated = false;
+  const associate = (nodes: ReactNode): ReactNode =>
+    Children.map(nodes, (node) => {
+      if (!isValidElement<{ id?: string; children?: ReactNode; 'aria-describedby'?: string }>(node))
+        return node;
+      if (!associated && ['input', 'select', 'textarea'].includes(String(node.type))) {
+        associated = true;
+        controlId = node.props.id ?? generatedId;
+        return cloneElement(node, {
+          id: controlId,
+          'aria-describedby':
+            [node.props['aria-describedby'], hint ? hintId : undefined].filter(Boolean).join(' ') ||
+            undefined,
+        });
+      }
+      if (node.props.children && !associated)
+        return cloneElement(node, { children: associate(node.props.children) });
+      return node;
+    });
+  const controls = associate(children);
   return (
-    <label className="field">
-      <span>{label}</span>
-      {children}
-      {hint && <small>{hint}</small>}
-    </label>
+    <div className="field">
+      <label htmlFor={controlId}>{label}</label>
+      {controls}
+      {hint && <small id={hintId}>{hint}</small>}
+    </div>
   );
 }

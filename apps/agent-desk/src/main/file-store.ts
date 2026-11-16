@@ -75,6 +75,19 @@ export function inside(root: string, candidate: string): boolean {
   );
 }
 
+export function pathKey(file: string, platform: NodeJS.Platform = process.platform): string {
+  const resolved = (platform === 'win32' ? path.win32 : path.posix).resolve(file);
+  return platform === 'win32' ? resolved.toLowerCase() : resolved;
+}
+
+export function samePath(
+  left: string,
+  right: string,
+  platform: NodeJS.Platform = process.platform,
+): boolean {
+  return pathKey(left, platform) === pathKey(right, platform);
+}
+
 export function stableId(prefix: string, value: string): string {
   return `${prefix}-${revision(value).slice(0, 24)}`;
 }
@@ -198,10 +211,11 @@ export async function writeRevision(input: {
   const canonical = await canonicalWithin(input.file, input.roots, true);
   if (Buffer.byteLength(input.content) > TEXT_LIMIT)
     throw new Error('Content exceeds the editor size limit.');
-  let queue = fileWrites.get(canonical);
+  const key = pathKey(canonical);
+  let queue = fileWrites.get(key);
   if (!queue) {
     queue = new SerialWrites();
-    fileWrites.set(canonical, queue);
+    fileWrites.set(key, queue);
   }
   return queue.run(async () => {
     const current = await optionalText(canonical);
@@ -213,7 +227,7 @@ export async function writeRevision(input: {
       await atomicWrite(path.join(input.backupDir, backupName), current);
     }
     await atomicWrite(canonical, input.content, mode, async () => {
-      if ((await canonicalWithin(input.file, input.roots, true)) !== canonical)
+      if (!samePath(await canonicalWithin(input.file, input.roots, true), canonical))
         throw new Error('The destination changed while saving. Reload it.');
       if (revision(await optionalText(canonical)) !== input.expectedRevision)
         throw new Error('This file changed while saving. Reload it.');

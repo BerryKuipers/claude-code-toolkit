@@ -35,4 +35,6 @@ On refresh:
 
 ## Repository adoption
 
+For a reusable agent workflow, see the [global AAA 3D production skill](../skills/aaa-3d-production/SKILL.md). Its user-scope Codex/Claude installation is documented in the [toolkit README](../README.md); repository links alone do not install skills.
+
 Project `AGENTS.md` should link here and keep only a short routing rule. Preserve each project's existing gameplay, visual acceptance, resource, branch and ownership requirements; these override generic scheduling/coordination suggestions. Do not copy this entire benchmark table into multiple repositories. FlowerGuy-style non-3D apps apply the rule **only** to demanding visual design, Canvas/FX or asset-production work, using task-appropriate evidence rather than 3D scores alone.

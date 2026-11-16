@@ -17,6 +17,16 @@ import type { ProviderProfile } from '../src/shared/types';
 const require = createRequire(import.meta.url);
 const appDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureSessionId = '12345678-1234-4234-8234-123456789abc';
+const packaged = process.env.AGENT_DESK_PACKAGED === '1';
+
+function desktopExecutable(): string {
+  if (!packaged) return require('electron') as string;
+  if (process.platform === 'linux')
+    return path.join(appDirectory, 'release', 'linux-unpacked', 'agent-desk');
+  if (process.platform === 'win32')
+    return path.join(appDirectory, 'release', 'win-unpacked', 'Agent Desk.exe');
+  throw new Error('Packaged desktop checks currently support Linux and Windows.');
+}
 
 interface DesktopFixture {
   application: ElectronApplication;
@@ -252,10 +262,10 @@ const test = base.extend<{ desktop: DesktopFixture }>({
         ...(process.platform === 'linux' && process.env.CI
           ? ['--no-sandbox', '--disable-dev-shm-usage']
           : []),
-        appDirectory,
+        ...(packaged ? [] : [appDirectory]),
       ];
       application = await _electron.launch({
-        executablePath: require('electron') as string,
+        executablePath: desktopExecutable(),
         args,
         cwd: appDirectory,
         env,
@@ -266,6 +276,10 @@ const test = base.extend<{ desktop: DesktopFixture }>({
       };
       application.process().stdout?.on('data', capture);
       application.process().stderr?.on('data', capture);
+      expect(
+        await application.evaluate(({ app }) => app.isPackaged),
+        'Electron packaging mode',
+      ).toBe(packaged);
       await application
         .context()
         .tracing.start({ screenshots: true, snapshots: true, sources: true });
@@ -406,7 +420,7 @@ test('creates and edits a skill, then disables and restores its original file', 
   await navigation(page, 'Skills');
   await page.getByRole('button', { name: 'Create skill', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Create a skill', exact: true });
-  await dialog.getByLabel(/^Name/).fill('desktop-smoke-skill');
+  await dialog.getByLabel('Name', { exact: true }).fill('desktop-smoke-skill');
   await dialog
     .getByLabel('Save in', { exact: true })
     .selectOption({ label: path.join(claude, 'skills') });
@@ -475,7 +489,7 @@ test('saves a connection, tests a local endpoint and chooses a model from its re
   const dialog = page.getByRole('dialog', { name: 'A new connection', exact: true });
   await dialog.getByLabel('Profile name', { exact: true }).fill('Desktop mock gateway');
   await dialog.getByLabel('Connect through', { exact: true }).selectOption('local-proxy');
-  await dialog.getByLabel(/^Endpoint URL/).fill(gatewayUrl);
+  await dialog.getByLabel('Endpoint URL', { exact: true }).fill(gatewayUrl);
   await dialog.getByLabel('API key', { exact: true }).fill('fixture-secret-only');
   const remember = dialog.getByRole('checkbox', { name: /Remember using this computer/ });
   if (await remember.isEnabled()) await remember.uncheck();
@@ -493,7 +507,7 @@ test('saves a connection, tests a local endpoint and chooses a model from its re
   await catalog.getByRole('checkbox', { name: 'Free only', exact: true }).check();
   await catalog.getByRole('button', { name: /Fixture coder/ }).click();
   const edit = page.getByRole('dialog', { name: 'Edit connection', exact: true });
-  await expect(edit.getByLabel(/^Model ID/)).toHaveValue('fixture/coder');
+  await expect(edit.getByLabel('Model ID', { exact: true })).toHaveValue('fixture/coder');
   await edit.getByRole('button', { name: 'Save connection', exact: true }).click();
   await expect(card).toContainText('fixture/coder');
   const profileFile = await readFile(path.join(data, 'profiles.json'), 'utf8');

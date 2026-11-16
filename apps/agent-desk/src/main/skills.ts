@@ -11,8 +11,10 @@ import {
   ensureDirectoryWithin,
   inside,
   optionalText,
+  pathKey,
   readText,
   revision,
+  samePath,
   SerialWrites,
   stableId,
   writeRevision,
@@ -130,11 +132,19 @@ export class SkillService {
     return [
       ...new Map(
         roots.map((root) => [
-          path.resolve(root.path),
-          { ...root, path: path.resolve(root.path), id: stableId('root', path.resolve(root.path)) },
+          pathKey(root.path),
+          { ...root, path: path.resolve(root.path), id: stableId('root', pathKey(root.path)) },
         ]),
       ).values(),
     ];
+  }
+
+  private anchorFor(directory: string): string {
+    const settings = this.options.settings();
+    return approvedAnchor(directory, this.options.home, settings.projects, [
+      ...agentHomes(this.options.home).configured,
+      ...settings.skillDirectories,
+    ]);
   }
 
   private async writableRoots(roots: SkillRoot[]): Promise<string[]> {
@@ -147,17 +157,9 @@ export class SkillService {
     for (const root of roots.filter((item) => item.writable)) {
       try {
         const canonical = await realpath(root.path);
-        const anchor = approvedAnchor(
-          root.path,
-          this.options.home,
-          this.options.settings().projects,
-          [
-            ...agentHomes(this.options.home).configured,
-            ...this.options.settings().skillDirectories,
-          ],
-        );
+        const anchor = this.anchorFor(root.path);
         const expected = path.join(await realpath(anchor), path.relative(anchor, root.path));
-        if (canonical === expected && !plugins.some((plugin) => inside(plugin, canonical)))
+        if (samePath(canonical, expected) && !plugins.some((plugin) => inside(plugin, canonical)))
           result.push(canonical);
       } catch {}
     }
@@ -172,6 +174,18 @@ export class SkillService {
     let visited = 0;
     const ignore = new Set(['node_modules', '.git', '.trash', '__pycache__', 'dist', 'build']);
     for (const root of roots) {
+      let anchor: string;
+      let canonicalAnchor: string;
+      let linkedRoot: boolean;
+      try {
+        anchor = this.anchorFor(root.path);
+        canonicalAnchor = await realpath(anchor);
+        linkedRoot = (await lstat(root.path)).isSymbolicLink();
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
+          warnings.push(`Could not read ${root.path}.`);
+        continue;
+      }
       const seen = new Set<string>();
       const walk = async (
         directory: string,
@@ -183,15 +197,17 @@ export class SkillService {
         let entries;
         try {
           canonical = await realpath(directory);
-          if (seen.has(canonical)) return;
-          seen.add(canonical);
+          const key = pathKey(canonical);
+          if (seen.has(key)) return;
+          seen.add(key);
           entries = await readdir(directory, { withFileTypes: true });
         } catch (error) {
           if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
             warnings.push(`Could not read ${directory}.`);
           return;
         }
-        const linkedDirectory = inheritedLink || canonical !== path.resolve(directory);
+        const expected = path.join(canonicalAnchor, path.relative(anchor, directory));
+        const linkedDirectory = inheritedLink || !samePath(canonical, expected);
         const skillFiles = entries
           .filter((entry) => entry.isFile() || entry.isSymbolicLink())
           .filter((entry) => entry.name === 'SKILL.md' || entry.name === 'SKILL.md.disabled');
@@ -203,7 +219,7 @@ export class SkillService {
             const info = frontmatter(content);
             const linked = linkedDirectory || entry.isSymbolicLink();
             skills.push({
-              id: stableId('skill', `${root.id}:${path.join(directory, 'SKILL.md')}`),
+              id: stableId('skill', `${root.id}:${pathKey(path.join(directory, 'SKILL.md'))}`),
               name: info.name || path.basename(directory),
               description: info.description || '',
               path: file,
@@ -233,7 +249,7 @@ export class SkillService {
           }
         }
       };
-      await walk(root.path, root.scope === 'plugin' ? 8 : 4);
+      await walk(root.path, root.scope === 'plugin' ? 8 : 4, linkedRoot);
       if (visited > 12_000 || skills.length >= 3000) break;
     }
     if (visited > 12_000 || skills.length >= 3000)
@@ -291,7 +307,7 @@ export class SkillService {
         throw new Error('Choose a writable personal or project skills directory.');
       const explicit = this.options
         .settings()
-        .skillDirectories.some((directory) => path.resolve(directory) === root.path);
+        .skillDirectories.some((directory) => samePath(directory, root.path));
       if (explicit && (await lstat(root.path)).isSymbolicLink())
         throw new Error('Create the skill in the linked directory’s original location.');
       const configuredHomes = agentHomes(this.options.home).configured;
@@ -303,7 +319,8 @@ export class SkillService {
             this.options.settings().projects,
             configuredHomes,
           );
-      if (configuredHomes.includes(anchor)) await ensureConfiguredRoot(anchor);
+      if (configuredHomes.some((directory) => samePath(directory, anchor)))
+        await ensureConfiguredRoot(anchor);
       await ensureDirectoryWithin(root.path, anchor);
       const canonicalRoot = await realpath(root.path);
       const directory = path.join(canonicalRoot, input.name);
@@ -333,6 +350,7 @@ export class SkillService {
 
   async setEnabled(input: { id: string; enabled: boolean }): Promise<void> {
     return this.writes.run(async () => {
+      await this.list();
       const skill = await this.find(input.id);
       if (
         !skill.editable ||

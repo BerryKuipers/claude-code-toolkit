@@ -209,7 +209,7 @@ function Workspace({ bootstrap }: { bootstrap: Bootstrap }): ReactElement {
           <button className="new-session-button" onClick={() => setNewSession(true)}>
             <Plus size={17} />
             <span>New session</span>
-            <kbd>⌘ N</kbd>
+            <kbd aria-hidden="true">{bootstrap.platform === 'darwin' ? '⌘' : 'Ctrl'} N</kbd>
           </button>
           <nav aria-label="Main navigation">
             {NAVIGATION.map((item) => (
@@ -304,7 +304,7 @@ function Workspace({ bootstrap }: { bootstrap: Bootstrap }): ReactElement {
             >
               <Settings2 size={17} />
               <span>Settings</span>
-              <kbd>⌘ ,</kbd>
+              <kbd aria-hidden="true">{bootstrap.platform === 'darwin' ? '⌘' : 'Ctrl'} ,</kbd>
             </button>
             <div className="local-workspace">
               <div className="local-avatar">

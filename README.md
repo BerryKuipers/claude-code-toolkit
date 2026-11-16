@@ -11,6 +11,21 @@
 
 This repository serves as the **single source of truth** for Claude Code configuration across all your projects. Instead of duplicating agents, skills, and workflows in every repository, reference this central toolkit.
 
+## 🎬 Global AAA 3D skill
+
+The [`aaa-3d-production` skill](skills/aaa-3d-production/SKILL.md) provides cross-project 3D/MetaHuman/Unreal/Blender/browser-art guidance. It combines evidence-based model/effort selection, a trigger for **new-model** benchmark refresh and actual rendered/moving-quality inspection. The [dated comparison and source of truth](docs/3D_MODEL_ROUTING.md) remains separate so models are never hardcoded into the skill.
+
+Install once at **user/global scope** in the development environment (GitHub CLI 2.90+):
+
+```sh
+gh skill install BerryKuipers/claude-code-toolkit aaa-3d-production --agent codex --scope user
+gh skill install BerryKuipers/claude-code-toolkit aaa-3d-production --agent claude-code --scope user
+```
+
+These are separate installations for Codex and Claude Code. Installing a GitHub skill in the toolkit repository **does not install it to local machines automatically**. Use `gh skill update --all` when you intentionally want to synchronize changed skill instructions. Existing repository-specific `AGENTS.md` rules, verification gates and 3D pipelines continue to apply.
+
+---
+
 ## 📦 What's Included
 
 ### Agent Desk desktop application
