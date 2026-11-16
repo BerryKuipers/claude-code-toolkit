@@ -42,7 +42,9 @@ jobs:
           cache-dependency-path: apps/agent-desk/package-lock.json
       - run: npm ci --no-audit --no-fund
       - run: npm test
-      - run: node scripts/check-pty.mjs
+      - name: Native terminal lifecycle
+        run: node scripts/check-pty.mjs
+        timeout-minutes: 2
       - run: npm run build
       - name: Desktop integration on Linux
         if: runner.os == 'Linux'

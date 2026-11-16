@@ -1,5 +1,5 @@
 import { build } from 'esbuild';
-import { spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import electron from 'electron';
 
 await build({
@@ -15,10 +15,20 @@ const child = spawn(electron, ['dist/tests/pty-smoke.cjs'], {
   stdio: 'inherit',
   env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
 });
+let timedOut = false;
+const watchdog = setTimeout(() => {
+  timedOut = true;
+  process.stderr.write('Native Electron PTY did not finish within 60 seconds.\n');
+  if (process.platform === 'win32' && child.pid)
+    execFile('taskkill.exe', ['/pid', String(child.pid), '/T', '/F'], () => child.kill('SIGKILL'));
+  else child.kill('SIGKILL');
+}, 60000);
 child.on('error', (error) => {
+  clearTimeout(watchdog);
   process.stderr.write(`${error.message}\n`);
   process.exitCode = 1;
 });
 child.on('exit', (code) => {
-  process.exitCode = code ?? 1;
+  clearTimeout(watchdog);
+  process.exitCode = timedOut ? 1 : (code ?? 1);
 });

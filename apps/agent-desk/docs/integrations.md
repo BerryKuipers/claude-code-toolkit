@@ -2,6 +2,8 @@
 
 Verified against official documentation and source on 16 November 2026. Agent Desk runs the installed native agents in a pseudoterminal. Their own tools, authentication, permission prompts, MCP connections, slash commands and skills remain available. Agent Desk indexes existing local history and prepares launches; it does not convert one vendor's agent session into another vendor's session.
 
+The terminal dependency is pinned to `node-pty 1.2.0-beta.18`. The stable 1.1.0 release can block the Windows event loop while connecting its output pipe. The pinned release includes the upstream deferred-connection, worker-timeout and spawn-cleanup fixes. Both platforms run the native lifecycle check and a packaged-application PTY test. Sources: [Windows spawn deadlock](https://github.com/microsoft/node-pty/issues/763), [upstream fixes and releases](https://github.com/microsoft/node-pty/releases).
+
 ## Supported session sources
 
 | Agent | History source | Resume |
