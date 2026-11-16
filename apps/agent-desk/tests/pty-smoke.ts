@@ -12,7 +12,7 @@ async function run(): Promise<void> {
     const file = join(directory, 'interactive.cjs');
     await writeFile(
       file,
-      "process.stdout.write('READY\\n');process.stdin.setEncoding('utf8');process.stdin.on('data',data=>{process.stdout.write('ECHO:'+data);process.exit(0)});",
+      "process.stdout.write('READY\\n');process.stdin.setEncoding('utf8');process.stdin.on('data',data=>{process.stdout.write('ECHO:'+data,()=>process.exit(0))});",
     );
     const events: TerminalEvent[] = [];
     let completed: (() => void) | undefined;
@@ -30,6 +30,7 @@ async function run(): Promise<void> {
       events.push(event);
       if (event.type === 'exit') completed?.();
     });
+    process.stdout.write('Native Electron PTY: starting an interactive child.\n');
     const terminal = await service.launch(
       { file: process.execPath, prefixArgs: [file] },
       {
@@ -48,6 +49,7 @@ async function run(): Promise<void> {
     );
     service.resize(terminal.id, 90, 26);
     service.write(terminal.id, 'agent-desk-input\r');
+    process.stdout.write('Native Electron PTY: input sent; waiting for output and exit.\n');
     await exit;
     const snapshot = service.snapshot(terminal.id);
     assert.ok(snapshot.data.includes('READY'));
