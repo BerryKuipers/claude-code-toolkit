@@ -34,7 +34,11 @@ export async function prepareNative(
 }
 
 export default async function afterExtract(context) {
-  await prepareNative(context.packager.appDir, context.electronPlatformName, Arch[context.arch]);
+  await prepareNative(
+    context.packager.info.appDir,
+    context.electronPlatformName,
+    Arch[context.arch],
+  );
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
