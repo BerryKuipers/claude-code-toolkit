@@ -1,18 +1,20 @@
 # Agent integrations
 
+Windows PTY startup, output draining and cleanup use the pinned integration described in [Windows terminal lifecycle](windows-terminal.md).
+
 Verified against official documentation and source on 16 November 2026. Agent Desk runs the installed native agents in a pseudoterminal. Their own tools, authentication, permission prompts, MCP connections, slash commands and skills remain available. Agent Desk indexes existing local history and prepares launches; it does not convert one vendor's agent session into another vendor's session.
 
 The terminal dependency is pinned to `node-pty 1.2.0-beta.18`. The stable 1.1.0 release can block the Windows event loop while connecting its output pipe. The pinned release includes the upstream deferred-connection, worker-timeout and spawn-cleanup fixes. Both platforms run the native lifecycle check and a packaged-application PTY test. Sources: [Windows spawn deadlock](https://github.com/microsoft/node-pty/issues/763), [upstream fixes and releases](https://github.com/microsoft/node-pty/releases).
 
 ## Supported session sources
 
-| Agent | History source | Resume |
-| --- | --- | --- |
-| Claude Code | `CLAUDE_CONFIG_DIR/projects`, normally `~/.claude/projects`; JSONL conversation chains | `claude --resume <id>` in the recorded project |
-| Codex | Native `codex app-server` history API; local `sessions` and `archived_sessions` rollouts as a visible compatibility fallback | `codex resume <id>` in the recorded project |
-| Gemini CLI | `~/.gemini/tmp/*/chats/session-*.jsonl`, plus legacy `session-*.json` | `gemini --resume <id>` in the recorded project |
-| Antigravity CLI | `~/.gemini/antigravity-cli/brain/*/.system_generated/logs/transcript.jsonl` | `agy --conversation <id>` |
-| Antigravity App and IDE | Corresponding `antigravity` and `antigravity-ide` transcript roots | Native import through `agy` → `/resume` → **Other**; this creates a copy |
+| Agent                   | History source                                                                                                               | Resume                                                                   |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Claude Code             | `CLAUDE_CONFIG_DIR/projects`, normally `~/.claude/projects`; JSONL conversation chains                                       | `claude --resume <id>` in the recorded project                           |
+| Codex                   | Native `codex app-server` history API; local `sessions` and `archived_sessions` rollouts as a visible compatibility fallback | `codex resume <id>` in the recorded project                              |
+| Gemini CLI              | `~/.gemini/tmp/*/chats/session-*.jsonl`, plus legacy `session-*.json`                                                        | `gemini --resume <id>` in the recorded project                           |
+| Antigravity CLI         | `~/.gemini/antigravity-cli/brain/*/.system_generated/logs/transcript.jsonl`                                                  | `agy --conversation <id>`                                                |
+| Antigravity App and IDE | Corresponding `antigravity` and `antigravity-ide` transcript roots                                                           | Native import through `agy` → `/resume` → **Other**; this creates a copy |
 
 History folders can be added in Settings. A folder may contain an exported local history tree; custom roots do not make another computer's project directory available on this computer. Project directories that are missing or unknown disable direct resume and explain why. Agent Desk never guesses a project directory from an opaque folder hash.
 
@@ -52,11 +54,11 @@ Sources: [CLI reference](https://antigravity.google/docs/cli/reference), [resume
 
 An agent and a model provider are separate choices. Provider profiles must use a protocol the selected agent understands. A model appearing in a provider's catalogue does not by itself establish tool or wire-format compatibility.
 
-| Agent | Per-process configuration |
-| --- | --- |
-| Claude Code | `--model`, `--effort`, `ANTHROPIC_BASE_URL`, bearer `ANTHROPIC_AUTH_TOKEN` or `ANTHROPIC_API_KEY` |
-| Codex | `--model`, TOML config overrides for reasoning effort and custom `model_providers` |
-| Gemini CLI | `--model`; Gemini-compatible `GOOGLE_GEMINI_BASE_URL` under API-key authentication |
+| Agent           | Per-process configuration                                                                                    |
+| --------------- | ------------------------------------------------------------------------------------------------------------ |
+| Claude Code     | `--model`, `--effort`, `ANTHROPIC_BASE_URL`, bearer `ANTHROPIC_AUTH_TOKEN` or `ANTHROPIC_API_KEY`            |
+| Codex           | `--model`, TOML config overrides for reasoning effort and custom `model_providers`                           |
+| Gemini CLI      | `--model`; Gemini-compatible `GOOGLE_GEMINI_BASE_URL` under API-key authentication                           |
 | Antigravity CLI | `--model`, `--effort`; Gemini-compatible custom endpoint where the installed authentication mode supports it |
 
 Claude Code through a translation proxy to non-Claude models is a compatibility route; Anthropic explicitly does not support that configuration. Gemini-compatible endpoint overrides are not interchangeable with OpenAI chat-completions endpoints. Agent Desk does not claim otherwise or silently convert the protocol.

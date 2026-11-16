@@ -19,7 +19,7 @@
     "dist:linux": "npm run build && electron-builder --linux AppImage tar.gz",
     "dist:win": "npm run build && electron-builder --win nsis zip",
     "dist:mac": "npm run build && electron-builder --mac dmg zip",
-    "postinstall": "node node_modules/electron/install.js && electron-builder install-app-deps",
+    "postinstall": "node node_modules/electron/install.js && electron-builder install-app-deps && node scripts/prepare-native.mjs",
     "test:desktop": "playwright test",
     "format": "prettier --write src tests scripts *.ts *.json",
     "test:pty": "node scripts/check-pty.mjs"
@@ -44,6 +44,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.1.0",
+    "@xterm/headless": "5.5.0",
     "electron": "^45.3.3",
     "electron-builder": "^26.0.12",
     "esbuild": "^0.25.0",
@@ -97,6 +98,7 @@
       "allowToChangeInstallationDirectory": true
     },
     "publish": null,
-    "artifactName": "Agent-Desk-${version}-${os}-${arch}.${ext}"
+    "artifactName": "Agent-Desk-${version}-${os}-${arch}.${ext}",
+    "afterExtract": "scripts/prepare-native.mjs"
   }
 }

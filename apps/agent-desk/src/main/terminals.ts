@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { stat } from 'node:fs/promises';
+import { platform } from 'node:process';
 import { spawn, type IPty } from 'node-pty';
 import type { TerminalEvent, TerminalInfo, TerminalSnapshot } from '../shared/types';
 import type { Executable } from './executables';
@@ -33,6 +34,7 @@ export class TerminalService extends EventEmitter {
       cwd: plan.cwd,
       env: plan.env,
       useConpty: true,
+      useConptyDll: platform === 'win32',
     });
     const info: TerminalInfo = {
       id: randomUUID(),

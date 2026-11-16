@@ -13,7 +13,7 @@ await build({
 });
 const child = spawn(electron, ['dist/tests/pty-smoke.cjs'], {
   stdio: 'inherit',
-  env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+  env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', AGENT_DESK_SMOKE_NODE: process.execPath },
 });
 let timedOut = false;
 const watchdog = setTimeout(() => {

@@ -5,7 +5,16 @@ import {
   type ElectronApplication,
   type Page,
 } from '@playwright/test';
-import { chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import {
+  chmod,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  realpath,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import { createRequire } from 'node:module';
 import os from 'node:os';
@@ -385,7 +394,7 @@ test('finds and resumes a local session through the real PTY, preserving it acro
   expect(original.status).toBe('running');
   const invocation = JSON.parse((await readFile(invocations, 'utf8')).trim().split('\n').at(-1)!);
   expect(invocation.nativeId).toBe(fixtureSessionId);
-  expect(invocation.cwd).toBe(project);
+  expect(await realpath(invocation.cwd)).toBe(await realpath(project));
   await enterTerminal(page, '/status');
   await expect(live.locator('.xterm-accessibility-tree')).toContainText('FAKE_STATUS_1');
   await navigation(page, 'Skills');
