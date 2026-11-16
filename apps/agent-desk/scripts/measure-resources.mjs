@@ -222,7 +222,7 @@ const report = {
       : 'Linux private memory is private resident clean and dirty pages.',
     'CPU is sampled user plus kernel CPU time as a percentage of one logical core; very short lived processes between samples can be missed.',
     'This is an idle desktop measurement. No claim is made about GPU memory, model inference, cold startup, or total external agent resource usage.',
-    'WebView2/WebKit are shared system dependencies. Their installed runtime size is not included in application directory sizes.',
+    'Application directory sizes include bundled files: Linux AppImages include WebKitGTK and JavaScriptCore. External system runtimes, including Windows WebView2 and Debian package dependencies, are excluded.',
   ],
   primary,
   baseline,

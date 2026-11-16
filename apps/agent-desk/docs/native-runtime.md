@@ -1,6 +1,6 @@
 # Native runtime and performance
 
-Version 0.2 uses Tauri and Rust for the desktop host and all backend services. React, TypeScript and xterm remain in the system webview. Node is a development/test dependency and may be required by an installed CLI, but no Node runtime or sidecar is bundled with Agent Desk. Version 0.1's Electron implementation remains in Git history at `3cd2b97cef95cc33b62b77ea5948871420669eeb`.
+Version 0.2 uses Tauri and Rust for the desktop host and all backend services. React, TypeScript and xterm remain in the platform webview. Node is a development/test dependency and may be required by an installed CLI, but no Node runtime or sidecar is bundled with Agent Desk. Version 0.1's Electron implementation remains in Git history at `3cd2b97cef95cc33b62b77ea5948871420669eeb`.
 
 ## Ownership and boundaries
 
@@ -26,7 +26,7 @@ Stopping a terminal terminates only its owned live process tree. Closing the app
 
 | Area | Decision |
 | --- | --- |
-| Desktop host | Rust executable with the system webview; no bundled Electron/Node application runtime. |
+| Desktop host | Rust executable with the platform webview; no bundled Electron/Node application runtime. |
 | Session index | Cache only metadata and bounded previews, release parsed transcript bodies after use. |
 | Codex history | Close app-server after each index/transcript batch; subsequent fresh work pays startup again. |
 | Files and HTTP | Bounded scans, read sizes, response sizes and timeouts; no work on the UI thread. |
@@ -35,6 +35,8 @@ Stopping a terminal terminates only its owned live process tree. Closing the app
 | Release | Native optimized build with thin LTO, a single codegen unit and stripped symbols. |
 
 Tauri is not an all-native widget toolkit: the React interface still runs in WebView2/WebKit. System webview processes, graphics composition and agent children can dominate memory. A Rust host alone does not establish lower GPU utilization or faster model responses. The app neither runs model inference itself nor adds a GPU compute pipeline.
+
+Windows uses the installed WebView2 runtime, macOS uses system WebKit, and the Linux Debian package depends on system WebKitGTK. The portable Linux AppImage bundles WebKitGTK, JavaScriptCore and their helper executables. Those bundled libraries are included in the AppImage download and extracted-directory measurements; external system runtimes are excluded from application file sizes.
 
 ## Measurement protocol
 

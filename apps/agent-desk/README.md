@@ -104,7 +104,7 @@ For a browser-only visual preview, start Vite and explicitly add `?demo=1`. This
 
 ## Runtime and resource use
 
-The native backend owns session parsing, filesystem access, provider HTTP requests, OS credentials, executable resolution and PTYs. React runs in the operating system's webview. The app therefore still has webview processes; the coding agents it starts are separate processes with their own resource use. Changing the shell language does not make remote model inference faster or eliminate GPU compositor memory.
+The native backend owns session parsing, filesystem access, provider HTTP requests, OS credentials, executable resolution and PTYs. React runs in a platform webview: installed WebView2 on Windows, system WebKit on macOS, and WebKitGTK on Linux. The Debian package uses system libraries; the portable AppImage bundles WebKitGTK, JavaScriptCore and their helper executables. The app therefore still has webview processes; the coding agents it starts are separate processes with their own resource use. Changing the shell language does not make remote model inference faster or eliminate GPU compositor memory.
 
 Blocking operations run off the UI thread. Session caches retain bounded metadata and previews, not whole transcripts. Terminal replay is limited to two million UTF-8 bytes per tab, and hidden/exited terminal cursors stop blinking. Codex app-server history helpers close at the end of a scan or transcript read; the next fresh operation starts a new helper. This saves idle residency at the cost of a startup for each such batch.
 
