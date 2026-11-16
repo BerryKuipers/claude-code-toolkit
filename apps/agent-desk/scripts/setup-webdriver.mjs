@@ -27,8 +27,10 @@ async function publish(name, value) {
 const tauriDriver =
   process.env.TAURI_DRIVER ??
   (await onPath(process.platform === 'win32' ? 'tauri-driver.exe' : 'tauri-driver'));
-const version = await execute(tauriDriver, ['--version'], { timeout: 10000, windowsHide: true });
-console.log(version.stdout.trim());
+const help = await execute(tauriDriver, ['--help'], { timeout: 10000, windowsHide: true });
+if (!help.stdout.includes('USAGE: tauri-driver'))
+  throw new Error('The selected tauri-driver did not return its supported command-line options.');
+console.log('tauri-driver is available; its installation version is pinned in CI.');
 await publish('TAURI_DRIVER', tauriDriver);
 
 if (process.platform === 'linux') {
