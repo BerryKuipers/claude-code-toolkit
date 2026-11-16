@@ -8,6 +8,8 @@ Version 0.2 uses Tauri and Rust for the desktop host and all backend services. R
 
 The frontend uses one Tauri channel for ordered terminal output. Every terminal retains a monotonically increasing sequence and a bounded snapshot. Subscribing before launch/snapshot, then replaying only events beyond the snapshot sequence, avoids losing or duplicating output while views mount.
 
+Terminal input uses a bounded queue per terminal in the shared bridge, with one native write in flight at a time. Outstanding input, including that active write, is capped at one million UTF-8 bytes and 1,024 chunks. This preserves typing order across asynchronous Rust worker tasks and view changes. Separate terminals remain independent. Closing bypasses a blocked write and explicitly rejects unsent input; write failures do not silently retry bytes whose delivery is uncertain.
+
 Filesystem edits preserve their original text and unknown configuration fields. Canonical roots, source revision checks, staged replacement and backups remain in force. Native session identifiers are resolved by the backend; an imported path does not automatically become resumable native history.
 
 ## Terminals and cleanup
