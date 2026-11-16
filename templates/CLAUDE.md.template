@@ -16,6 +16,12 @@
 
 ---
 
+## 🎨 Optional AAA/visual model routing
+
+If this project involves substantial 3D, Unreal, Blender, characters, cinematic animation or demanding visuals, follow the shared [adaptive model/effort guide](https://github.com/BerryKuipers/claude-code-toolkit/blob/main/docs/3D_MODEL_ROUTING.md). Inspect models available in the current coding environment; update its benchmark evidence only when a new relevant model or material result appears. Scale effort to task complexity and real rendered quality instead of hardcoding a default expensive model. Skip this for ordinary backend/UI work.
+
+---
+
 ## 🏗️ Architectural Rules
 
 ### Current Architecture
