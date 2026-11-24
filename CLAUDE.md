@@ -106,3 +106,13 @@ Create a `CLAUDE.md` in your project root to override or extend toolkit rules. C
 2. `.claude-toolkit/CLAUDE.md` (this toolkit)
 3. `CLAUDE.md` (project root - most authoritative)
 4. `src/module/CLAUDE.md` (module-specific)
+
+## Disk hygiene (hard rule - D: has filled up repeatedly)
+
+- Worktrees live ONLY at `<repo>/.claude/worktrees/<branch-slug>`. Never a sibling dir (`../Repo-fix`, `Repo.worktrees`) and never shared dirs like `D:\berry\Projects\_worktrees`, `_scratch`, `_tmp`, `_codex_worktrees`.
+- Remove the worktree in the same turn its branch lands or is abandoned. Check `git status --porcelain` and unpushed commits first; salvage real work, then plain `git worktree remove` (no `--force`).
+- Scratch/temp output goes in `$env:TEMP` or `<repo>/.claude/tmp` (gitignored), never loose in `D:\berry\Projects`. Delete it before you finish.
+- Never copy or clone a repo per task. Junction `node_modules` to the main checkout; never run `npm ci` inside a worktree.
+- Renders, captures, models, datasets and VM images go in one named folder and are deleted at the end unless the user asked to keep them.
+- At session start and before handoff run `git worktree list`, stop processes you started, and report D: free space. Below 20 GB free: stop and clean up first.
+
