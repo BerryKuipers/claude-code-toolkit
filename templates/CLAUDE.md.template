@@ -1,93 +1,28 @@
-# {{PROJECT_NAME}} - AI Assistant Rules
+# {{PROJECT_NAME}}
 
-**Core development rules and patterns for AI assistants working on {{PROJECT_NAME}}.**
+{{PROJECT_DESCRIPTION}}
 
----
-
-## 🎬 Project Overview
-
-**{{PROJECT_DESCRIPTION}}**
-
-**Tech Stack:**
-- **Frontend**: {{FRONTEND_STACK}}
-- **Backend**: {{BACKEND_STACK}}
-- **Database**: {{DATABASE_TYPE}}
-- **Testing**: {{TEST_FRAMEWORK}}
-
----
-
-## 🎨 Optional AAA/visual model routing
-
-If this project involves substantial 3D, Unreal, Blender, characters, cinematic animation or demanding visuals, follow the shared [adaptive model/effort guide](https://github.com/BerryKuipers/claude-code-toolkit/blob/main/docs/3D_MODEL_ROUTING.md). Inspect models available in the current coding environment; update its benchmark evidence only when a new relevant model or material result appears. Scale effort to task complexity and real rendered quality instead of hardcoding a default expensive model. Skip this for ordinary backend/UI work.
-
----
-
-## 🏗️ Architectural Rules
-
-### Current Architecture
+## Decisions that code does not explain
 
 {{ARCHITECTURE_DESCRIPTION}}
 
-### Best Practices
+{{PROJECT_SPECIFIC_RESTRICTIONS}}
 
 {{BEST_PRACTICES}}
 
----
+## Relevant checks
 
-## 📂 Project Structure
+Use the current package/configuration scripts. Record non-obvious setup requirements here; remove generic instructions that the project already documents accurately.
 
-```
-{{PROJECT_ROOT}}/
-├── {{SOURCE_DIR}}/        # {{SOURCE_DESCRIPTION}}
-├── {{TEST_DIR}}/          # {{TEST_DESCRIPTION}}
-├── {{DOCS_DIR}}/          # {{DOCS_DESCRIPTION}}
-└── ...
-```
+- Development: `{{DEV_COMMAND}}`
+- Build: `{{BUILD_COMMAND}}`
+- Tests: `{{TEST_COMMAND}}`
+- Lint: `{{LINT_COMMAND}}`
 
----
+Match verification to changed behavior and preserve the project's required integration gates. Documentation-only work needs content, link and instruction-loading checks; do not claim application tests or runtime acceptance without running them.
 
-## 📋 Common Commands
+## Task-specific guidance
 
-```bash
-{{DEV_COMMAND}}      # Start development server
-{{BUILD_COMMAND}}    # Build for production
-{{TEST_COMMAND}}     # Run tests
-{{LINT_COMMAND}}     # Lint code
-```
+For substantial 3D, Unreal, Blender, characters, cinematic animation or demanding visuals, use the shared [adaptive model/effort guide](https://github.com/BerryKuipers/claude-code-toolkit/blob/main/docs/3D_MODEL_ROUTING.md). Inspect available capabilities and judge the rendered result. Keep the project's visual ambition; do not hardcode a model or load this guide for unrelated work.
 
----
-
-## 🚫 FORBIDDEN COMMANDS
-
-### Git Restrictions:
-- ❌ `git commit --no-verify` - Pre-commit hooks MUST run
-- ❌ `git push --force` to main - Destructive
-- ❌ `git commit --amend` on pushed commits - Rewrites history
-
-### Other Restrictions:
-{{PROJECT_SPECIFIC_RESTRICTIONS}}
-
----
-
-## 🤖 Agent Usage
-
-### When to use specific agents:
-
-- **architect** - Reviewing component structure, dependencies
-- **database** - Schema changes, migrations
-- **design** - UI/UX improvements, accessibility
-- **refactor** - Code cleanup, optimization
-- **conductor** - Complete feature workflows
-
----
-
-## 💡 Remember
-
-1. **Follow project conventions** - Match existing code style
-2. **Test before committing** - Run {{TEST_COMMAND}}
-3. **Document changes** - Update docs for new features
-4. **Ask when unsure** - Better to clarify than assume
-
----
-
-**This is {{PROJECT_NAME}} - {{PROJECT_TAGLINE}}**
+Keep detailed recipes, historical status and specialized workflows in documents or skills with explicit usage triggers. If multiple clients share this project policy, place it in `AGENTS.md` and replace this file with `@AGENTS.md` after that source exists. This standalone template does not assume an AGENTS file was generated.

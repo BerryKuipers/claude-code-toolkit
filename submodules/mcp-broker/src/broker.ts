@@ -3,7 +3,8 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { loadServersConfig, loadToolsRegistry, loadToolOverrides } from './config.js';
-import { callUpstreamTool, listUpstreamTools, getCachedTools, disconnectAll } from './upstream.js';
+import { callUpstreamTool, disconnectAll } from './upstream.js';
+import { describeTool, describeUpstreamTool, searchTools } from './discovery.js';
 
 const server = new Server(
   {
@@ -31,6 +32,7 @@ async function initializeConfig() {
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   const tools: any[] = [
+    describeTool,
     {
       name: 'broker.search',
       description: 'Search and discover tools from all upstream servers',
@@ -102,99 +104,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
   if (name === 'broker.search') {
-    const q = (args?.q as string) || '';
-    const serverFilter = (args?.servers as string[]) || [];
+    return searchTools(serversConfig.servers, [...toolOverrides.overrides, ...toolsRegistry.tools], args);
+  }
 
-    const results: any[] = [];
-
-    for (const override of toolOverrides.overrides) {
-      if (serverFilter.length > 0 && !serverFilter.includes(override.server)) {
-        continue;
-      }
-
-      if (q) {
-        const searchText = `${override.name} ${override.title || ''} ${override.description || ''}`.toLowerCase();
-        if (!searchText.includes(q.toLowerCase())) {
-          continue;
-        }
-      }
-
-      results.push({
-        server: override.server,
-        name: override.name,
-        title: override.title || override.name,
-        description: override.description || '',
-      });
-    }
-
-    for (const entry of toolsRegistry.tools) {
-      if (serverFilter.length > 0 && !serverFilter.includes(entry.server)) {
-        continue;
-      }
-
-      if (q) {
-        const searchText = `${entry.name} ${entry.title || ''} ${entry.description || ''}`.toLowerCase();
-        if (!searchText.includes(q.toLowerCase())) {
-          continue;
-        }
-      }
-
-      results.push({
-        server: entry.server,
-        name: entry.name,
-        title: entry.title || entry.name,
-        description: entry.description || '',
-      });
-    }
-
-    const serversToQuery = serverFilter.length > 0
-      ? serversConfig.servers.filter((s: any) => serverFilter.includes(s.id))
-      : serversConfig.servers;
-
-    for (const serverCfg of serversToQuery) {
-      let tools = getCachedTools(serverCfg.id);
-
-      if (!tools) {
-        if (q) {
-          continue;
-        }
-
-        try {
-          tools = await listUpstreamTools(serverCfg);
-        } catch (error) {
-          console.warn(`[broker.search] Failed to list tools from ${serverCfg.id}:`, (error as Error).message);
-          continue;
-        }
-      }
-
-      for (const tool of tools) {
-        if (q) {
-          const searchText = `${tool.name} ${tool.description || ''}`.toLowerCase();
-          if (!searchText.includes(q.toLowerCase())) {
-            continue;
-          }
-        }
-
-        const alreadyListed = results.some((r) => r.server === serverCfg.id && r.name === tool.name);
-        if (!alreadyListed) {
-          results.push({
-            server: serverCfg.id,
-            name: tool.name,
-            title: tool.name,
-            description: tool.description || '',
-          });
-        }
-      }
-    }
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(results, null, 2),
-        },
-      ],
-    };
+  if (name === 'broker.describe') {
+    return describeUpstreamTool(serversConfig.servers, args);
   }
 
   if (name === 'broker.invoke') {

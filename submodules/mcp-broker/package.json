@@ -6,6 +6,7 @@
   "main": "dist/broker.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test tests/*.test.mjs",
     "start:stdio": "node dist/broker.js",
     "start:http": "node dist/http-broker.js"
   },

@@ -196,15 +196,12 @@ SUBMOD_URL="https://github.com/BerryKuipers/claude-code-toolkit.git"
 SRC_DIR="$SUBMOD_PATH/.claude"
 DST_DIR="$PROJECT_DIR/.claude"
 
-git config --global --add safe.directory "$PROJECT_DIR" || true
-git config --global --add safe.directory "$SUBMOD_PATH" || true
-
 echo "[sync] start $(date -Is) tier=$TIER" | tee -a "$LOG"
 echo "[sync] project=$PROJECT_DIR" | tee -a "$LOG"
 
 # ─── Submodule update ────────────────────────────────────────────────
 need_fallback=0
-if [ -d "$PROJECT_DIR/.git" ] && [ -f "$PROJECT_DIR/.gitmodules" ]; then
+if git -C "$PROJECT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1 && [ -f "$PROJECT_DIR/.gitmodules" ]; then
   echo "[sync] submodule update…" | tee -a "$LOG"
   if ! git -C "$PROJECT_DIR" submodule sync -- .claude-toolkit 2>&1 | tee -a "$LOG"; then need_fallback=1; fi
   if ! git -C "$PROJECT_DIR" submodule update --init --depth=1 .claude-toolkit 2>&1 | tee -a "$LOG"; then need_fallback=1; fi
@@ -214,7 +211,10 @@ fi
 
 if [ "$need_fallback" -eq 1 ]; then
   echo "[sync] fallback clone…" | tee -a "$LOG"
-  rm -rf "$SUBMOD_PATH"
+  if [ -e "$SUBMOD_PATH" ] || [ -L "$SUBMOD_PATH" ]; then
+    echo "[sync] ERROR: existing toolkit checkout could not be updated; preserving it at $SUBMOD_PATH" | tee -a "$LOG"
+    exit 1
+  fi
   git clone --depth=1 "$SUBMOD_URL" "$SUBMOD_PATH" 2>&1 | tee -a "$LOG"
 fi
 
@@ -335,9 +335,8 @@ sync_command_dirs() {
 # ─── Always sync: rules, settings, CLAUDE.md ─────────────────────────
 mkdir -p "$DST_DIR"
 
-# Rules are small and always needed
 if [ -d "$SRC_DIR/rules" ]; then
-  sync_dir "rules"
+  bash "$SUBMOD_PATH/scripts/sync-rule-files.sh" "$SRC_DIR" "$DST_DIR" | tee -a "$LOG"
 fi
 
 # Overlays are project-specific config
@@ -447,7 +446,7 @@ if [ "$CLEANUP_ENABLED" -eq 1 ]; then
     local src="$SRC_DIR/$subdir"
     local dst="$DST_DIR/$subdir"
 
-    [ -d "$dst" ] && [ -d "$src" ] || return
+    [ -d "$dst" ] && [ -d "$src" ] || return 0
     local removed=0
     for dst_file in "$dst"/*.md "$dst"/*.sh "$dst"/*.ps1; do
       [ -f "$dst_file" ] || continue

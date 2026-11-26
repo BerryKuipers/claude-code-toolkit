@@ -95,8 +95,8 @@ cd your-project
 # Add toolkit as submodule
 git submodule add https://github.com/BerryKuipers/claude-code-toolkit.git .claude-toolkit
 
-# Symlink .claude directory
-ln -s .claude-toolkit/.claude .claude
+# Copy the core tier and migrate known unchanged legacy rules
+bash .claude-toolkit/scripts/sync-claude-toolkit.sh
 
 # Copy scripts
 cp .claude-toolkit/scripts/install-gh-cli.sh scripts/
@@ -124,7 +124,8 @@ git push
 # In your projects: pull updates
 cd your-project
 git submodule update --remote .claude-toolkit
-git add .claude-toolkit
+bash .claude-toolkit/scripts/sync-claude-toolkit.sh
+git add .claude-toolkit .claude
 git commit -m "chore: Update Claude Code toolkit"
 git push
 ```
@@ -205,13 +206,13 @@ TODO: Add rate limiting
 
 Reusable, framework-agnostic coding guidelines:
 
-- **Layered Architecture:** Clean separation of concerns (UI → Services → Domain → Infrastructure)
+- **Architecture:** Follow project boundaries; keep domain/application contracts independent of concrete UI and infrastructure
 - **TypeScript/JavaScript Style:** Single quotes, async/await, naming conventions
 - **Backend HTTP Layer:** Thin routes/controllers, no direct DB access
 - **Backend Persistence:** Repository patterns, data access boundaries
 - **Frontend React:** Component organization, data fetching, state management
 
-**Cross-tool compatible:** Works with both Claude Code and Cursor via `.mdc` format.
+**Native Claude loading:** Current rules use `.md` with `paths` scopes. Cursor `.mdc` metadata is not a Claude loader contract. Historical rules remain archived; the sync helper migrates unchanged copies and preserves customizations. See [context policy](docs/CONTEXT_POLICY.md) for the actual loading, migration and measurement boundaries.
 
 **See:** [`.claude/rules/`](.claude/rules/) and [`CLAUDE.md`](CLAUDE.md)
 
@@ -355,7 +356,15 @@ git submodule update --remote
 
 ## 🧪 Testing
 
-Before deploying to all projects:
+Local checks for the shared runtime and distribution layer:
+
+```bash
+node --test scripts/tests/sync-rule-files.test.mjs
+bash -n scripts/sync-rule-files.sh scripts/sync-claude-toolkit.sh
+npm --prefix submodules/mcp-broker test
+```
+
+These use synthetic fixtures and temporary directories, without changing installed user configuration or calling paid providers. Before adopting the toolkit across projects:
 
 1. Test in one project first
 2. Verify agents work with that project's structure
