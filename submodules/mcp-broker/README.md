@@ -5,7 +5,7 @@ A lightweight Model Context Protocol (MCP) broker with lazy initialization for u
 ## 📚 Documentation
 
 - **[SETUP.md](./SETUP.md)** - Complete setup guide for global and per-project configurations
-- **[REFLECTIVE-MODE.md](./REFLECTIVE-MODE.md)** - Dynamic tool discovery with `broker.search` and `broker.invoke`
+- **[REFLECTIVE-MODE.md](./REFLECTIVE-MODE.md)** - Dynamic tool discovery with `broker.search`, `broker.describe` and `broker.invoke`
 - **[INTEGRATION.md](./INTEGRATION.md)** - Integration examples for projects
 - **[VAULT-SETUP.md](./VAULT-SETUP.md)** - Secure secret management with Vault
 
@@ -13,7 +13,7 @@ A lightweight Model Context Protocol (MCP) broker with lazy initialization for u
 
 ### v2.0+ Reflective Mode
 - **Dynamic Discovery**: No manual tool registration needed
-- **Meta-Tools**: `broker.search` and `broker.invoke` for on-demand access
+- **Meta-Tools**: `broker.search`, `broker.describe` and `broker.invoke` for on-demand access
 - **Optional Favorites**: Register frequently-used tools via `tools.overrides.json`
 - **Tool Caching**: Upstream tool lists cached per session
 - **Backwards Compatible**: `tools.registry.json` still supported
@@ -55,6 +55,12 @@ submodules/mcp-broker/
 ├── package.json
 └── tsconfig.json
 ```
+
+## Discovery and verification
+
+Search returns compact names/descriptions, including on the first query before a cache exists. Scope discovery with `servers` when the relevant server is known. Load the selected definition with `broker.describe` before building its arguments. Upstream tool lists are read through all pages before caching; a repeated cursor fails visibly. Partial listing failures appear in the tool response and a completely failed discovery is marked as an error. `broker.invoke` preserves full upstream results and error flags, while enforcing declared output schemas from every page; it does not silently truncate or redact data. HTTP forwards the already-parsed JSON body to the MCP transport.
+
+Run `npm test` for synthetic local MCP coverage of cold discovery, paginated lists, schema retrieval, scoped failures and lossless invocation. No account or paid provider is used by these tests. The suite proves behavior, not a universal token saving. Native client tool search may make this optional broker unnecessary; see [context policy](../../docs/CONTEXT_POLICY.md).
 
 ## Installation
 

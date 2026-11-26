@@ -2,11 +2,15 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import { AjvJsonSchemaValidator } from '@modelcontextprotocol/sdk/validation/ajv-provider.js';
+import type { JsonSchemaValidator } from '@modelcontextprotocol/sdk/validation/types.js';
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import type { ServerConfig } from './config.js';
 import { getOAuthToken } from './oauth.js';
 
 const upstreamClients = new Map<string, Client>();
 const toolsCache = new Map<string, any[]>();
+const outputValidators = new Map<string, JsonSchemaValidator<unknown>>();
 
 async function createStdioClient(config: ServerConfig): Promise<Client> {
   if (!config.command) {
@@ -131,7 +135,26 @@ export async function callUpstreamTool(
   args: Record<string, unknown>
 ): Promise<any> {
   const client = await getOrCreateClient(config);
-  return await client.callTool({ name: toolName, arguments: args });
+  const result = await client.callTool({ name: toolName, arguments: args });
+  const schema = toolsCache.get(config.id)?.find((tool) => tool.name === toolName)?.outputSchema;
+  if (schema) {
+    if (!result.structuredContent && !result.isError) {
+      throw new McpError(ErrorCode.InvalidRequest, `Tool ${toolName} has an output schema but did not return structured content`);
+    }
+    if (result.structuredContent) {
+      const key = JSON.stringify([config.id, toolName]);
+      let validator = outputValidators.get(key);
+      if (!validator) {
+        validator = new AjvJsonSchemaValidator().getValidator(schema);
+        outputValidators.set(key, validator);
+      }
+      const validation = validator(result.structuredContent);
+      if (!validation.valid) {
+        throw new McpError(ErrorCode.InvalidParams, `Structured content does not match the tool's output schema: ${validation.errorMessage}`);
+      }
+    }
+  }
+  return result;
 }
 
 export async function listUpstreamTools(config: ServerConfig): Promise<any[]> {
@@ -140,8 +163,18 @@ export async function listUpstreamTools(config: ServerConfig): Promise<any[]> {
   }
 
   const client = await getOrCreateClient(config);
-  const result = await client.listTools();
-  const tools = result.tools || [];
+  const tools: any[] = [];
+  const cursors = new Set<string>();
+  let cursor: string | undefined;
+  do {
+    const result = await client.listTools(cursor ? { cursor } : undefined);
+    tools.push(...result.tools);
+    cursor = result.nextCursor;
+    if (cursor) {
+      if (cursors.has(cursor)) throw new Error(`Repeated tools/list cursor from ${config.id}`);
+      cursors.add(cursor);
+    }
+  } while (cursor);
 
   toolsCache.set(config.id, tools);
   return tools;
@@ -165,4 +198,5 @@ export function disconnectAll(): void {
   }
   upstreamClients.clear();
   toolsCache.clear();
+  outputValidators.clear();
 }
